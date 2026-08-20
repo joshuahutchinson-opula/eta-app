@@ -4,11 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const bookings = await prisma.booking.findMany({
-      include: {
-        experience: true,
-        vendor: true,
-        accommodation: true
-      },
+      include: { experience: true, vendor: true, accommodation: true },
       orderBy: { createdAt: 'desc' }
     })
     return NextResponse.json(bookings)
@@ -20,7 +16,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { userId, experienceId, vendorId, accommodationId, date, totalPrice } = await request.json()
-
     const booking = await prisma.booking.create({
       data: {
         userId,
@@ -33,14 +28,10 @@ export async function POST(request: Request) {
         status: 'CONFIRMED'
       }
     })
-
-    // Add points to user
     await prisma.user.update({
       where: { id: userId },
       data: { points: { increment: Math.floor(totalPrice) } }
     })
-
-    // Create transaction
     await prisma.transaction.create({
       data: {
         userId,
@@ -50,10 +41,8 @@ export async function POST(request: Request) {
         status: 'COMPLETED'
       }
     })
-
     return NextResponse.json(booking)
   } catch (error) {
-    console.error('Booking error:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }
 }

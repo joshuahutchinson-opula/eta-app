@@ -12,7 +12,6 @@ export async function POST(request: Request) {
       body.justBoughtFood,
       body.atVendorForHours
     )
-
     return NextResponse.json(suggestion)
   } catch (error) {
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

@@ -4,10 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const transactions = await prisma.transaction.findMany({
-      include: {
-        vendor: true,
-        user: true
-      },
+      include: { vendor: true, user: true },
       orderBy: { createdAt: 'desc' },
       take: 50
     })
@@ -20,8 +17,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { userId, vendorId, amount } = await request.json()
-
-    // Create transaction
     const transaction = await prisma.transaction.create({
       data: {
         userId,
@@ -31,8 +26,6 @@ export async function POST(request: Request) {
         status: 'COMPLETED'
       }
     })
-
-    // Add points to user (1 point per $1)
     const pointsEarned = Math.floor(amount)
     await prisma.user.update({
       where: { id: userId },
@@ -41,7 +34,6 @@ export async function POST(request: Request) {
         walletBalance: { decrement: amount }
       }
     })
-
     return NextResponse.json({ transaction, pointsEarned })
   } catch (error) {
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
