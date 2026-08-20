@@ -8,15 +8,11 @@ export async function GET(
   try {
     const mood = await prisma.mood.findUnique({
       where: { id: params.id },
-      include: {
-        media: true
-      }
+      include: { media: true }
     })
-
     if (!mood) {
       return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     }
-
     return NextResponse.json(mood)
   } catch (error) {
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

@@ -6,21 +6,30 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const vendor = await prisma.vendor.findUnique({
+    const spot = await prisma.photoSpot.findUnique({
       where: { id: params.id },
       include: {
-        stories: true,
-        reviews: {
+        userPhotos: {
           include: {
             user: { select: { name: true } }
           }
         }
       }
     })
-    if (!vendor) {
+    if (!spot) {
       return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     }
-    return NextResponse.json(vendor)
+    const formattedSpot = {
+      ...spot,
+      userPhotos: spot.userPhotos.map(photo => ({
+        id: photo.id,
+        url: photo.url,
+        caption: photo.caption,
+        likes: photo.likes,
+        uploadedBy: photo.user.name
+      }))
+    }
+    return NextResponse.json(formattedSpot)
   } catch (error) {
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }

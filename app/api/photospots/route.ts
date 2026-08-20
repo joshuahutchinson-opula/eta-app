@@ -3,12 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const deals = await prisma.flashDeal.findMany({
-      where: { expires: { gt: new Date() } },
-      include: { vendor: true },
-      orderBy: { expires: 'asc' }
+    const photoSpots = await prisma.photoSpot.findMany({
+      orderBy: { createdAt: 'desc' }
     })
-    return NextResponse.json(deals)
+    return NextResponse.json(photoSpots)
   } catch (error) {
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }

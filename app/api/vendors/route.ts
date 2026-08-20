@@ -14,19 +14,13 @@ export async function GET() {
       ],
       include: {
         stories: {
-          where: {
-            expiresAt: { gt: new Date() }
-          }
+          where: { expiresAt: { gt: new Date() } }
         }
       }
     })
-
     return NextResponse.json(vendors)
   } catch (error) {
     console.error('Error fetching vendors:', error)
-    return NextResponse.json(
-      { error: 'Sumth nah wuk' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }
 }
