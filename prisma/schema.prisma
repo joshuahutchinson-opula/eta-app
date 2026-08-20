@@ -1,0 +1,349 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EXPLORER
+  VENDOR
+  ADMIN
+}
+
+enum Level {
+  WANDERER
+  EXPLORER
+  TRAILBLAZER
+  LOCAL_LEGEND
+}
+
+enum City {
+  NEGRIL
+  MONTEGO_BAY
+}
+
+enum VendorCategory {
+  FOOD
+  DRINKS
+  ACTIVITY
+  TRANSPORT
+  WELLNESS
+  BEACH
+  ACCOMMODATION
+  OTHER
+}
+
+enum AccommodationType {
+  ALL_INCLUSIVE
+  A_LA_CARTE
+  VILLA
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum TransactionType {
+  PAYMENT
+  REWARD
+  TOPUP
+  TRANSFER
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String?
+  name          String
+  role          Role     @default(EXPLORER)
+  level         Level    @default(WANDERER)
+  points        Int      @default(0)
+  walletBalance Float    @default(0)
+  streak        Int      @default(0)
+  city          City     @default(NEGRIL)
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendors       Vendor[]
+  bookings      Booking[]
+  discoveries   Discovery[]
+  reviews       Review[]
+  checkIns      CheckIn[]
+  transactions  Transaction[]
+  stories       Story[]
+  moments       UserMoment[]
+  crewGroups    CrewGroup[]
+  crewMemberships CrewMember[]
+}
+
+model Vendor {
+  id                    String          @id @default(cuid())
+  name                  String
+  category              VendorCategory
+  neighborhood          String
+  city                  City
+  lat                   Float
+  lng                   Float
+  priceRange            String
+  description           String
+  images                String[]
+  videos                String[]
+  open                  Boolean         @default(false)
+  live                  Boolean         @default(false)
+  isPremium             Boolean         @default(false)
+  isTransport           Boolean         @default(false)
+  visibleInMarketplace  Boolean         @default(true)
+  visibleOnMap          Boolean         @default(true)
+  menu                  Json?
+  whoThere              Int             @default(0)
+  tipsJar               Boolean         @default(false)
+  payItForward          Boolean         @default(false)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  ownerId               String?
+  owner                 User?           @relation(fields: [ownerId], references: [id])
+
+  stories               Story[]
+  reviews               Review[]
+  checkIns              CheckIn[]
+  transactions          Transaction[]
+  experiences           Experience[]
+  bookings              Booking[]
+  discoveries           Discovery[]
+  flashDeals            FlashDeal[]
+}
+
+model Accommodation {
+  id          String   @id @default(cuid())
+  name        String
+  type        AccommodationType
+  googleStars Float
+  description String
+  amenities   String[]
+  priceRange  String
+  lat         Float
+  lng         Float
+  city        City
+  vetted      Boolean  @default(false)
+  hostName    String?
+  media       Json
+  roomViews   String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    Booking[]
+  bundles     Bundle[]
+}
+
+model Experience {
+  id            String   @id @default(cuid())
+  name          String
+  tagline       String
+  price         Float
+  imageUrl      String
+  videoUrl      String?
+  city          City
+  startLocation String
+  travelTime    Int
+  travelMode    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendorId      String?
+  vendor        Vendor?  @relation(fields: [vendorId], references: [id])
+  bookings      Booking[]
+  bundles       Bundle[]
+  moods         Mood[]
+}
+
+model Mood {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  coverImage  String
+  icon        String
+  createdAt   DateTime @default(now())
+
+  experiences Experience[]
+  media       MoodMedia[]
+}
+
+model MoodMedia {
+  id          String   @id @default(cuid())
+  type        String
+  url         String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  moodId      String
+  mood        Mood     @relation(fields: [moodId], references: [id])
+}
+
+model PhotoSpot {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  lat           Float
+  lng           Float
+  bestTime      String
+  officialPhoto String
+  city          City
+  createdAt     DateTime @default(now())
+
+  userPhotos    UserMoment[]
+  discoveries   Discovery[]
+}
+
+model Story {
+  id          String   @id @default(cuid())
+  content     String
+  type        String
+  imageUrl    String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  vendorId    String?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  status        BookingStatus @default(PENDING)
+  date          DateTime
+  totalPrice    Float
+  pointsEarned  Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  experienceId   String?
+  experience     Experience?   @relation(fields: [experienceId], references: [id])
+  vendorId       String?
+  vendor         Vendor?       @relation(fields: [vendorId], references: [id])
+  accommodationId String?
+  accommodation  Accommodation? @relation(fields: [accommodationId], references: [id])
+}
+
+model Discovery {
+  id          String   @id @default(cuid())
+  type        String
+  points      Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  vendorId    String?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id])
+  photoSpotId String?
+  photoSpot   PhotoSpot? @relation(fields: [photoSpotId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  vendorId  String?
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id])
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  amount    Float
+  type      TransactionType
+  status    TransactionStatus @default(PENDING)
+  createdAt DateTime        @default(now())
+
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  vendorId  String?
+  vendor    Vendor?         @relation(fields: [vendorId], references: [id])
+}
+
+model UserMoment {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  photoSpotId String?
+  photoSpot   PhotoSpot? @relation(fields: [photoSpotId], references: [id])
+}
+
+model CrewGroup {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  creatorId String
+  creator   User     @relation(fields: [creatorId], references: [id])
+  members   CrewMember[]
+}
+
+model CrewMember {
+  id           String   @id @default(cuid())
+  isActive     Boolean  @default(true)
+  lastLocation Json?
+  joinedAt     DateTime @default(now())
+
+  groupId      String
+  group        CrewGroup @relation(fields: [groupId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+}
+
+model FlashDeal {
+  id        String   @id @default(cuid())
+  deal      String
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+}
+
+model Bundle {
+  id              String   @id @default(cuid())
+  name            String
+  discount        Float
+  bonusPoints     Int
+  createdAt       DateTime @default(now())
+
+  experienceId    String?
+  experience      Experience? @relation(fields: [experienceId], references: [id])
+  accommodationId String?
+  accommodation   Accommodation? @relation(fields: [accommodationId], references: [id])
+}
