@@ -5,7 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "5.10.0",
@@ -28,6 +34,7 @@
     "@types/react": "18.2.55",
     "@types/react-dom": "18.2.19",
     "prisma": "5.10.0",
+    "tsx": "^4.7.0",
     "typescript": "5.3.3"
   }
 }
