@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#FAFAFA',
+  themeColor: '#F8C19A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -31,13 +31,15 @@ export default function RootLayout({
       </head>
       <body style={{ 
         fontFamily: 'Inter, system-ui, sans-serif',
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#F8C19A',
         color: '#0F0E0C'
       }}>
         <LaunchScreen />
         <main style={{ 
-          paddingBottom: '70px', // Space for bottom tab bar
-          minHeight: '100vh'
+          paddingBottom: '70px',
+          minHeight: '100vh',
+          overflowX: 'hidden',
+          overflowY: 'visible'
         }}>
           {children}
         </main>

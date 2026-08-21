@@ -109,7 +109,6 @@ export default function MarketplacePage() {
 
   const premiumVendors = vendors.filter(v => v.isPremium)
 
-  // Show ALL vendors (change 2)
   const filteredVendors = vendors
     .filter(v => !search || 
       v.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,12 +155,12 @@ export default function MarketplacePage() {
       <TopBar />
 
       <div style={{ padding: '16px' }}>
-        {/* Search bar - sticky */}
+        {/* Search bar with filter icon */}
         <div className="search-bar sticky" style={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: '8px',
-          marginBottom: '12px',
+          marginBottom: '16px',
           position: 'sticky',
           top: '60px',
           zIndex: 30
@@ -185,19 +184,6 @@ export default function MarketplacePage() {
           <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer' }}>
             <Icon name="filter" size={18} />
           </span>
-        </div>
-
-        {/* City toggle - segmented control */}
-        <div className="segmented-control" style={{ marginBottom: '16px' }}>
-          {['NEGRIL', 'MONTEGO_BAY'].map(c => (
-            <button
-              key={c}
-              className={`segmented-item ${city === c ? 'active' : ''}`}
-              onClick={() => setCity(c as 'NEGRIL' | 'MONTEGO_BAY')}
-            >
-              {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
-            </button>
-          ))}
         </div>
 
         {/* Dish Of The Day */}
@@ -549,7 +535,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Filter & Sort Bottom Sheet (change 7) */}
+      {/* Unified Filter & Sort Bottom Sheet */}
       <div className={`bottom-sheet-overlay ${showFilterSheet ? 'open' : ''}`} onClick={() => setShowFilterSheet(false)} />
       <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
         <div style={{ padding: '20px' }}>
@@ -562,6 +548,20 @@ export default function MarketplacePage() {
           }} />
           <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Filter & Sort</h3>
           
+          {/* Location */}
+          <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Location</p>
+          <div className="segmented-control" style={{ marginBottom: '20px' }}>
+            {['NEGRIL', 'MONTEGO_BAY'].map(c => (
+              <button
+                key={c}
+                className={`segmented-item ${city === c ? 'active' : ''}`}
+                onClick={() => setCity(c as 'NEGRIL' | 'MONTEGO_BAY')}
+              >
+                {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
+              </button>
+            ))}
+          </div>
+
           {/* Categories */}
           <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Categories</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
@@ -587,10 +587,7 @@ export default function MarketplacePage() {
             {SORT_OPTIONS.map(option => (
               <button
                 key={option}
-                onClick={() => {
-                  setSortBy(option)
-                  setShowFilterSheet(false)
-                }}
+                onClick={() => setSortBy(option)}
                 className={`chip ${sortBy === option ? 'active' : ''}`}
                 style={{
                   background: sortBy === option ? 'var(--rum)' : 'var(--light-grey)',
@@ -610,67 +607,6 @@ export default function MarketplacePage() {
             Done
           </button>
         </div>
-      </div>
-
-      {/* Bottom sheet quick view */}
-      <div className={`bottom-sheet-overlay ${selectedVendor ? 'open' : ''}`} onClick={() => setSelectedVendor(null)} />
-      <div className={`bottom-sheet ${selectedVendor ? 'open' : ''}`}>
-        {selectedVendor && (
-          <div style={{ padding: '20px' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '4px', 
-              background: 'var(--light-grey)', 
-              borderRadius: '2px',
-              margin: '0 auto 16px'
-            }} />
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <img 
-                src={selectedVendor.images[0]} 
-                alt={selectedVendor.name}
-                style={{ 
-                  width: '80px', 
-                  height: '80px', 
-                  borderRadius: '12px',
-                  objectFit: 'cover'
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
-                  {selectedVendor.name}
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--grey)' }}>
-                  {selectedVendor.category} • {selectedVendor.neighborhood}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                  {selectedVendor.isPremium && (
-                    <div className="premium-badge">
-                      <Icon name="crown" size={10} />
-                      PREMIUM
-                    </div>
-                  )}
-                  {selectedVendor.live && (
-                    <div className="live-indicator">
-                      <span className="live-dot" />
-                      {selectedVendor.whoThere} here now
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <p style={{ fontSize: '14px', color: 'var(--black)', marginBottom: '16px' }}>
-              {selectedVendor.description}
-            </p>
-            <Link 
-              href={`/vendor/${selectedVendor.id}`}
-              style={{ textDecoration: 'none' }}
-            >
-              <button className="btn btn-primary" style={{ width: '100%' }}>
-                View Full Details
-              </button>
-            </Link>
-          </div>
-        )}
       </div>
 
       <Dock />

@@ -2,7 +2,7 @@
 :root {
   --black: #0F0E0C;
   --white: #FFFFFF;
-  --off-white: #FAFAFA;
+  --off-white: #F8C19A;
   --grey: #717171;
   --light-grey: #EBEBEB;
   --sand: #F5EFE6;
@@ -38,8 +38,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-image: 
-    radial-gradient(ellipse at 20% 20%, rgba(255, 75, 43, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(255, 184, 0, 0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 20%, rgba(255, 75, 43, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 184, 0, 0.04) 0%, transparent 50%);
 }
 
 /* Dark theme */
@@ -650,39 +650,6 @@ body {
   color: white;
 }
 
-/* ============ CATEGORY CHIPS ============ */
-.category-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.category-chip-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--light-grey);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.category-chip.active .category-chip-icon {
-  background: var(--rum);
-  color: white;
-}
-
-.category-chip-label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--grey);
-}
-
 /* ============ EMPTY STATE ============ */
 .empty-state {
   display: flex;
@@ -768,16 +735,6 @@ body {
   50% { box-shadow: 0 0 0 4px rgba(0, 200, 83, 0); }
 }
 
-/* ============ WEATHER PULSE ============ */
-.weather-pulse {
-  animation: weather-pulse 3s ease infinite;
-}
-
-@keyframes weather-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
 /* ============ BOTTOM SHEET ============ */
 .bottom-sheet {
   position: fixed;
@@ -846,29 +803,4 @@ body {
 
 .avatar-stack img:first-child {
   margin-left: 0;
-}
-
-/* ============ TODAY STRIP SLEEK PILLS ============ */
-.today-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.today-pill-weather {
-  background: transparent;
-  color: var(--grey);
-}
-
-.today-pill-sunset {
-  background: linear-gradient(135deg, rgba(255, 184, 0, 0.15), rgba(255, 75, 43, 0.15));
-  color: var(--rum);
-  font-weight: 600;
-  border: 1px solid rgba(255, 184, 0, 0.25);
 }

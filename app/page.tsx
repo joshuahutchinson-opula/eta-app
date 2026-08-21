@@ -211,26 +211,6 @@ export default function HomePage() {
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
 
-  const getSunsetTime = () => {
-    const now = new Date()
-    const sunset = new Date(now)
-    sunset.setHours(18, 15, 0, 0)
-    const diffMs = sunset.getTime() - now.getTime()
-    const diffMin = Math.max(0, Math.round(diffMs / 60000))
-    if (diffMin === 0) return 'Sunset now'
-    if (diffMin > 60) return `Sunset in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
-    return `Sunset in ${diffMin} min`
-  }
-
-  const isWithinSunsetWindow = () => {
-    const now = new Date()
-    const sunset = new Date(now)
-    sunset.setHours(18, 15, 0, 0)
-    const diffMs = sunset.getTime() - now.getTime()
-    const diffHours = diffMs / (1000 * 60 * 60)
-    return diffHours >= 0 && diffHours <= 2
-  }
-
   const calculateDistance = (spotLat?: number, spotLng?: number) => {
     if (!spotLat || !spotLng || !userLocation) return null
     const R = 6371
@@ -307,8 +287,8 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <TopBar />
 
-      {/* Stories Row - ABOVE StatusModule (change 6) */}
-      <div className="horizontal-scroll" style={{ padding: '0 16px 4px' }}>
+      {/* Stories Row - with extra top spacing */}
+      <div className="horizontal-scroll" style={{ padding: '24px 16px 4px' }}>
         <div style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
           <div className="story-ring standard" style={{ background: 'var(--light-grey)' }}>
             <div style={{ width: '58px', height: '58px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -329,26 +309,12 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Status Module (change 1) */}
+      {/* Status Module */}
       <div style={{ padding: '16px 16px 0' }}>
         <StatusModule />
       </div>
 
-      {/* Today Strip - sleek pills (change 5) */}
-      <div style={{ display: 'flex', gap: '8px', padding: '0 16px 12px', alignItems: 'center' }}>
-        <span className="today-pill today-pill-weather">
-          <Icon name="sun" size={14} className="weather-pulse" style={{ color: 'var(--gold)' }} />
-          28°C
-        </span>
-        {isWithinSunsetWindow() && (
-          <span className="today-pill today-pill-sunset">
-            <Icon name="sun" size={14} style={{ color: 'var(--gold)' }} />
-            {getSunsetTime()}
-          </span>
-        )}
-      </div>
-
-      {/* Featured Section (changes 9, 10) */}
+      {/* Featured Section */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -502,7 +468,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Photo Spots with Polaroid style (change 1 - overflow fix) */}
+      {/* Photo Spots with Polaroid style */}
       {photoSpots.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
