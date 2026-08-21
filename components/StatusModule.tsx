@@ -1,44 +1,164 @@
+// components/StatusModule.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Icon from '@/lib/icons'
 
-export default function StatusModule() {
+interface StatusModuleProps {
+  userId?: string
+}
+
+export default function StatusModule({ userId }: StatusModuleProps) {
   const [walletHidden, setWalletHidden] = useState(true)
-  const points = 1240
-  const balance = 250
-  const transportEta = '12 min'
+  const [points, setPoints] = useState(1240)
+  const [balance, setBalance] = useState(250)
+  const [loading, setLoading] = useState(false)
+
+  // Fetch real data if userId provided
+  useEffect(() => {
+    if (userId) {
+      fetchUserStatus()
+    }
+  }, [userId])
+
+  const fetchUserStatus = async () => {
+    setLoading(true)
+    try {
+      const [pointsRes, walletRes] = await Promise.all([
+        fetch(`/api/transactions?userId=${userId}&type=points`),
+        fetch(`/api/transactions?userId=${userId}&type=wallet`)
+      ])
+      
+      if (pointsRes.ok) {
+        const pointsData = await pointsRes.json()
+        if (pointsData.total) setPoints(pointsData.total)
+      }
+      
+      if (walletRes.ok) {
+        const walletData = await walletRes.json()
+        if (walletData.balance) setBalance(walletData.balance)
+      }
+    } catch (error) {
+      console.error('Failed to fetch user status:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="user-status">
-      <div style={{ flex: 1, textAlign: 'center', cursor: 'pointer' }}>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--gold)' }}>
-          {points.toLocaleString()}
+    <div className="card" style={{ 
+      padding: '16px',
+      marginBottom: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'relative'
+    }}>
+      {/* Points Section */}
+      <div style={{ 
+        flex: 1, 
+        textAlign: 'center',
+        cursor: 'pointer',
+        padding: '8px',
+        borderRadius: '8px',
+        transition: 'background 0.2s ease'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--light-grey)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      >
+        <div style={{ 
+          fontSize: '18px', 
+          fontWeight: 800, 
+          color: 'var(--gold)',
+          fontFamily: 'Space Mono, monospace'
+        }}>
+          {loading ? '...' : points.toLocaleString()}
         </div>
-        <div style={{ fontSize: '10px', color: 'var(--sand-dim)', marginTop: '2px' }}>
+        <div style={{ 
+          fontSize: '10px', 
+          color: 'var(--grey)', 
+          marginTop: '2px',
+          fontWeight: 600,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase'
+        }}>
           Points
         </div>
       </div>
 
-      <div style={{ flex: 1, textAlign: 'center', cursor: 'pointer' }} onClick={() => setWalletHidden(!walletHidden)}>
+      {/* Divider */}
+      <div style={{
+        width: '1px',
+        height: '32px',
+        background: 'var(--light-grey)'
+      }} />
+
+      {/* Wallet Section */}
+      <div style={{ 
+        flex: 1, 
+        textAlign: 'center',
+        cursor: 'pointer',
+        padding: '8px',
+        borderRadius: '8px',
+        transition: 'background 0.2s ease'
+      }}
+      onClick={() => setWalletHidden(!walletHidden)}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--light-grey)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      >
         <div style={{
           fontSize: '18px',
           fontWeight: 800,
           letterSpacing: walletHidden ? '2px' : '0',
-          opacity: walletHidden ? 0.5 : 1
+          opacity: walletHidden ? 0.5 : 1,
+          fontFamily: 'Space Mono, monospace',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px'
         }}>
-          {walletHidden ? '••••' : `$${balance}`}
+          {loading ? '...' : walletHidden ? '••••' : `$${balance.toFixed(2)}`}
+          <Icon name="eye" size={12} style={{ opacity: 0.5 }} />
         </div>
-        <div style={{ fontSize: '10px', color: 'var(--sand-dim)', marginTop: '2px' }}>
+        <div style={{ 
+          fontSize: '10px', 
+          color: 'var(--grey)', 
+          marginTop: '2px',
+          fontWeight: 600,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase'
+        }}>
           Wallet
         </div>
       </div>
 
-      <div style={{ flex: 1, textAlign: 'center', cursor: 'pointer' }}>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--sea)' }}>
-          {transportEta}
+      {/* Divider */}
+      <div style={{
+        width: '1px',
+        height: '32px',
+        background: 'var(--light-grey)'
+      }} />
+
+      {/* Premium Badge */}
+      <div style={{ 
+        flex: 1, 
+        textAlign: 'center',
+        padding: '8px'
+      }}>
+        <div className="premium-badge" style={{ marginBottom: '2px' }}>
+          <Icon name="crown" size={12} />
+          PRO
         </div>
-        <div style={{ fontSize: '10px', color: 'var(--sand-dim)', marginTop: '2px' }}>
-          ETA
+        <div style={{ 
+          fontSize: '10px', 
+          color: 'var(--grey)', 
+          marginTop: '2px',
+          fontWeight: 600,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase'
+        }}>
+          Member
         </div>
       </div>
     </div>

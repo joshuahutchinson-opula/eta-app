@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
+import StatusModule from '@/components/StatusModule'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
 import { getBounceSuggestion } from '@/lib/context-engine'
@@ -14,6 +15,7 @@ interface Vendor {
   name: string
   category: string
   neighborhood: string
+  city: string
   priceRange: string
   description: string
   images: string[]
@@ -34,6 +36,8 @@ interface Experience {
   price: number
   imageUrl: string
   videoUrl?: string | null
+  city: string
+  startLocation: string
   travelTime: number
   travelMode: string
   stopCount?: number
@@ -78,6 +82,20 @@ interface ActiveBooking {
   date: string
 }
 
+// Mood icon mappings (requirement 8)
+const MOOD_ICONS: Record<string, string> = {
+  'R&R': 'wellness',
+  'Just The Two Of Us': 'heart',
+  'Party Time': 'moon',
+  'Sunset Chaser': 'sun',
+  'Water Life': 'activity',
+  'Street Food Crawl': 'food',
+  'Hangover Cures': 'drink',
+  'Solo Missions': 'user',
+  'Family Day': 'users',
+  'Rum & Bass': 'drink'
+}
+
 export default function HomePage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
@@ -89,13 +107,29 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
+  const [previewCard, setPreviewCard] = useState<any | null>(null)
+  const [holdTimer, setHoldTimer] = useState<NodeJS.Timeout | null>(null)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
     getUserLocation()
     checkActiveBooking()
-  }, [])
+    
+    // Auto-scroll featured every 5 seconds (requirement 6)
+    const autoScroll = setInterval(() => {
+      if (featuredScrollRef.current && featuredVendors.length > 1) {
+        const nextIndex = (featuredIndex + 1) % featuredVendors.length
+        featuredScrollRef.current.scrollTo({
+          left: nextIndex * featuredScrollRef.current.clientWidth,
+          behavior: 'smooth'
+        })
+        setFeaturedIndex(nextIndex)
+      }
+    }, 5000)
+
+    return () => clearInterval(autoScroll)
+  }, [featuredIndex])
 
   const getUserLocation = () => {
     if (navigator.geolocation) {
@@ -156,7 +190,18 @@ export default function HomePage() {
       }
       if (moodsRes.status === 'fulfilled' && moodsRes.value.ok) {
         const data = await moodsRes.value.json()
-        setMoods(Array.isArray(data) ? data : [])
+        // Map mood names to new names and icons (requirements 8, 9)
+        const mappedMoods = data.map((mood: Mood) => {
+          let name = mood.name
+          if (name === 'Out Til Sunrise') name = 'Party Time'
+          if (name === 'Golden Hour') name = 'Sunset Chaser'
+          return {
+            ...mood,
+            name,
+            icon: MOOD_ICONS[name] || mood.icon
+          }
+        })
+        setMoods(mappedMoods)
       }
     } catch (error) {
       console.error('Fetch error:', error)
@@ -219,6 +264,31 @@ export default function HomePage() {
     }
   }
 
+  // Tap and hold for quick preview (requirement 7)
+  const handleHoldStart = (card: any) => {
+    const timer = setTimeout(() => {
+      setPreviewCard(card)
+    }, 500)
+    setHoldTimer(timer)
+  }
+
+  const handleHoldEnd = () => {
+    if (holdTimer) {
+      clearTimeout(holdTimer)
+      setHoldTimer(null)
+    }
+    setPreviewCard(null)
+  }
+
+  // Filter experiences and vendors by selected mood (requirement 5)
+  const filteredExperiences = selectedMood 
+    ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
+    : experiences
+
+  const filteredVendors = selectedMood
+    ? vendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
+    : vendors
+
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
@@ -247,16 +317,43 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px' }}>
       <TopBar />
 
-      {/* Today Strip */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-        <span style={{ fontSize: '13px', color: 'var(--grey)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Icon name="sun" size={14} />
-          28°C, light breeze
-        </span>
-        <span style={{ fontSize: '13px', color: 'var(--rum)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Icon name="sun" size={14} />
-          {getSunsetTime()}
-        </span>
+      {/* Status Module (requirement 1) */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <StatusModule />
+      </div>
+
+      {/* Today Strip - split into weather and sunset pills (requirement 12) */}
+      <div style={{ display: 'flex', gap: '12px', padding: '0 16px 12px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          padding: '8px 12px',
+          background: 'var(--card-bg)',
+          borderRadius: '20px',
+          boxShadow: 'var(--card-shadow)',
+          flexShrink: 0
+        }}>
+          <Icon name="sun" size={16} className="weather-pulse" style={{ color: 'var(--gold)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--black)', fontWeight: 500 }}>
+            28°C
+          </span>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          padding: '8px 12px',
+          background: 'linear-gradient(135deg, rgba(255,184,0,0.1), rgba(255,75,43,0.1))',
+          borderRadius: '20px',
+          border: '1px solid rgba(255,184,0,0.3)',
+          flexShrink: 0
+        }}>
+          <Icon name="sun" size={16} style={{ color: 'var(--gold)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--rum)', fontWeight: 600 }}>
+            {getSunsetTime()}
+          </span>
+        </div>
       </div>
 
       {/* Stories Row */}
@@ -281,7 +378,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Featured Section */}
+      {/* Featured Section with gold glow (requirement 6) */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -298,28 +395,48 @@ export default function HomePage() {
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
                 style={{ textDecoration: 'none', flexShrink: 0, width: '85%', scrollSnapAlign: 'center' }}
+                onTouchStart={() => handleHoldStart(vendor)}
+                onTouchEnd={handleHoldEnd}
+                onMouseDown={() => handleHoldStart(vendor)}
+                onMouseUp={handleHoldEnd}
+                onMouseLeave={handleHoldEnd}
               >
-                <div className="card">
-                  <div className="card-image" style={{ height: '200px' }}>
+                <div className="featured-card">
+                  <div className="card-image" style={{ height: '220px' }}>
                     {vendor.videos && vendor.videos.length > 0 ? (
                       <video
                         src={vendor.videos[0]}
-                        muted={true}
-                        loop={true}
-                        autoPlay={true}
-                        playsInline={true}
+                        muted
+                        loop
+                        autoPlay
+                        playsInline
                         preload="auto"
                         poster={vendor.images[0]}
+                        controls={false}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     ) : (
                       <img src={vendor.images[0]} alt={vendor.name} />
                     )}
                     <div className="card-overlay" />
-                    {vendor.isPremium && <div className="card-badge premium">PREMIUM</div>}
+                    {vendor.isPremium && (
+                      <div className="premium-badge" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                        <Icon name="crown" size={12} />
+                        PREMIUM
+                      </div>
+                    )}
                     {vendor.live && (
-                      <div className="card-badge" style={{ top: 'auto', bottom: '12px', background: 'var(--sea)', color: '#0F0E0C' }}>
-                        ● LIVE • {vendor.whoThere} here now
+                      <div className="card-badge" style={{ 
+                        top: 'auto', 
+                        bottom: '12px', 
+                        background: 'var(--sea)', 
+                        color: '#0F0E0C',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span className="live-dot" />
+                        LIVE • {vendor.whoThere} here now
                       </div>
                     )}
                     <div className="card-content" style={{ position: 'absolute', bottom: '0', left: '0', right: '0' }}>
@@ -366,8 +483,8 @@ export default function HomePage() {
                 <p style={{ fontSize: '13px', color: 'var(--grey)' }}>{bounce.desc}</p>
               </div>
               <span style={{ marginLeft: 'auto' }}>
-  <Icon name="chevronRight" size={18} />
-</span>
+                <Icon name="arrow-right" size={18} />
+              </span>
             </div>
           </Link>
         </div>
@@ -403,35 +520,51 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Photo Spots */}
+      {/* Photo Spots with Polaroid style (requirement 4) */}
       {photoSpots.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <span className="section-title">Photo Spots</span>
           </div>
           <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
-            {photoSpots.map(spot => (
+            {photoSpots.map((spot, index) => (
               <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '200px' }}>
-                  <div className="card-image" style={{ height: '140px' }}>
-                    <img src={spot.officialPhoto} alt={spot.name} />
-                    <div className="card-overlay" />
+                <div className="polaroid" style={{ width: '200px' }}>
+                  <div className="tape-strip" />
+                  <div style={{ 
+                    width: '100%', 
+                    height: '140px', 
+                    overflow: 'hidden',
+                    borderRadius: '4px'
+                  }}>
+                    <img 
+                      src={spot.officialPhoto} 
+                      alt={spot.name} 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover',
+                        transition: 'transform 0.3s ease'
+                      }}
+                    />
                   </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-                      {spot.name}
-                    </p>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{spot.description}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                      <p style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>
-                        Best: {spot.bestTime}
-                      </p>
-                      {calculateDistance(spot.lat, spot.lng) && (
-                        <p style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                          {calculateDistance(spot.lat, spot.lng)}
-                        </p>
-                      )}
-                    </div>
+                  <div className="polaroid-caption">
+                    {spot.name}
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    marginTop: '4px',
+                    padding: '0 4px'
+                  }}>
+                    <span style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>
+                      Best: {spot.bestTime}
+                    </span>
+                    {calculateDistance(spot.lat, spot.lng) && (
+                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
+                        {calculateDistance(spot.lat, spot.lng)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </Link>
@@ -440,7 +573,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Moods */}
+      {/* Moods with proper icons (requirements 8, 9) */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -452,6 +585,11 @@ export default function HomePage() {
                 key={mood.id}
                 onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
                 className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
+                style={{
+                  background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)',
+                  color: selectedMood === mood.id ? 'white' : 'var(--black)',
+                  boxShadow: selectedMood === mood.id ? 'none' : 'var(--card-shadow)'
+                }}
               >
                 <Icon name={mood.icon as any} size={14} />
                 {mood.name}
@@ -461,20 +599,35 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Experiences */}
-      {experiences.length > 0 && (
+      {/* Experiences filtered by mood (requirement 5) */}
+      {filteredExperiences.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <span className="section-title">Experiences</span>
             <Link href="/experiences" className="section-link">See all</Link>
           </div>
           <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
-            {experiences.slice(0, 4).map(e => (
-              <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+            {filteredExperiences.slice(0, 4).map(e => (
+              <Link 
+                key={e.id} 
+                href="/experiences" 
+                style={{ textDecoration: 'none', flexShrink: 0 }}
+                onTouchStart={() => handleHoldStart(e)}
+                onTouchEnd={handleHoldEnd}
+                onMouseDown={() => handleHoldStart(e)}
+                onMouseUp={handleHoldEnd}
+                onMouseLeave={handleHoldEnd}
+              >
                 <div className="card" style={{ width: '280px' }}>
                   <div className="card-image" style={{ height: '160px' }}>
                     <img src={e.imageUrl} alt={e.name} />
                     <div className="card-overlay" />
+                    {e.vendor?.isPremium && (
+                      <div className="premium-badge" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                        <Icon name="crown" size={12} />
+                        PREMIUM
+                      </div>
+                    )}
                   </div>
                   <div className="card-content">
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
@@ -494,7 +647,7 @@ export default function HomePage() {
                       <span className="card-price">${e.price}</span>
                       {activeBooking && (
                         <span style={{ fontSize: '11px', color: 'var(--sea)' }}>
-                          {e.name} ETA: {e.travelTime} min
+                          ETA: {e.travelTime} min
                         </span>
                       )}
                     </div>
@@ -506,20 +659,51 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Near You Now */}
-      {vendors.length > 0 && (
+      {/* Near You Now filtered by mood (requirement 5) */}
+      {filteredVendors.length > 0 && (
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <span className="section-title">Near You Now</span>
             <Link href="/marketplace" className="section-link">See all</Link>
           </div>
           <div className="grid-2" style={{ padding: '0 16px' }}>
-            {vendors.slice(0, 4).map(v => (
-              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+            {filteredVendors.slice(0, 4).map(v => (
+              <Link 
+                key={v.id} 
+                href={`/vendor/${v.id}`} 
+                style={{ textDecoration: 'none' }}
+                onTouchStart={() => handleHoldStart(v)}
+                onTouchEnd={handleHoldEnd}
+                onMouseDown={() => handleHoldStart(v)}
+                onMouseUp={handleHoldEnd}
+                onMouseLeave={handleHoldEnd}
+              >
                 <div className="card">
                   <div className="card-image" style={{ height: '120px' }}>
                     <img src={v.images[0]} alt={v.name} />
-                    {v.isPremium && <div className="card-badge premium">PREMIUM</div>}
+                    {v.isPremium && (
+                      <div className="premium-badge" style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 2 }}>
+                        <Icon name="crown" size={10} />
+                        PREMIUM
+                      </div>
+                    )}
+                    {v.live && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        left: '8px',
+                        zIndex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: '#00C853'
+                      }}>
+                        <span className="live-dot" />
+                        {v.whoThere} here now
+                      </div>
+                    )}
                   </div>
                   <div className="card-content">
                     <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
@@ -532,6 +716,42 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Preview Modal (requirement 7) */}
+      {previewCard && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
+            {previewCard.images?.[0] && (
+              <div className="card-image" style={{ height: '200px' }}>
+                <img src={previewCard.images[0]} alt={previewCard.name} />
+              </div>
+            )}
+            {previewCard.imageUrl && (
+              <div className="card-image" style={{ height: '200px' }}>
+                <img src={previewCard.imageUrl} alt={previewCard.name} />
+              </div>
+            )}
+            <div className="card-content">
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{previewCard.name}</h3>
+              <p style={{ fontSize: '13px', color: 'var(--grey)' }}>{previewCard.tagline || previewCard.description}</p>
+              {previewCard.price && (
+                <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--gold)', marginTop: '8px' }}>
+                  ${previewCard.price}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
