@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
 import StatusModule from '@/components/StatusModule'
@@ -17,6 +17,7 @@ interface Vendor {
   priceRange: string
   description: string
   images: string[]
+  videos: string[]
   open: boolean
   live: boolean
   isPremium: boolean
@@ -35,6 +36,10 @@ interface Experience {
   videoUrl?: string | null
   travelTime: number
   travelMode: string
+  stopCount?: number
+  totalDuration?: number
+  travelIncluded?: boolean
+  stops?: Array<{ id: string; name: string; type: string }>
   vendor?: { name: string; isPremium?: boolean }
   moods?: Array<{ id: string; name: string; icon: string }>
 }
@@ -65,9 +70,12 @@ interface Mood {
   coverImage: string
 }
 
-interface CheckInUser {
-  name: string
-  avatarUrl?: string | null
+interface ActiveBooking {
+  id: string
+  experienceId?: string
+  vendorId?: string
+  status: string
+  date: string
 }
 
 export default function HomePage() {
@@ -79,11 +87,14 @@ export default function HomePage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [checkIns, setCheckIns] = useState<Array<{ id: string; user: CheckInUser; vendor: { name: string } }>>([])
+  const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
+  const [featuredIndex, setFeaturedIndex] = useState(0)
+  const featuredScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
     getUserLocation()
+    checkActiveBooking()
   }, [])
 
   const getUserLocation = () => {
@@ -101,15 +112,30 @@ export default function HomePage() {
     }
   }
 
+  const checkActiveBooking = () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch('/api/bookings', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const active = data.find((b: any) => b.status === 'CONFIRMED' || b.status === 'PENDING')
+          if (active) setActiveBooking(active)
+        }
+      })
+      .catch(() => {})
+  }
+
   const fetchAll = async () => {
     try {
-      const [vendorsRes, experiencesRes, photoSpotsRes, flashDealsRes, moodsRes, checkInsRes] = await Promise.allSettled([
+      const [vendorsRes, experiencesRes, photoSpotsRes, flashDealsRes, moodsRes] = await Promise.allSettled([
         fetch('/api/vendors'),
         fetch('/api/experiences'),
         fetch('/api/photospots'),
         fetch('/api/flashdeals'),
-        fetch('/api/moods'),
-        fetch('/api/checkins')
+        fetch('/api/moods')
       ])
 
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
@@ -132,10 +158,6 @@ export default function HomePage() {
         const data = await moodsRes.value.json()
         setMoods(Array.isArray(data) ? data : [])
       }
-      if (checkInsRes.status === 'fulfilled' && checkInsRes.value.ok) {
-        const data = await checkInsRes.value.json()
-        setCheckIns(Array.isArray(data) ? data : [])
-      }
     } catch (error) {
       console.error('Fetch error:', error)
     } finally {
@@ -143,7 +165,8 @@ export default function HomePage() {
     }
   }
 
-  const heroVendor = vendors.find(v => v.live) || vendors[0] || null
+  const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+  const heroVendor = featuredVendors[featuredIndex] || null
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
 
@@ -183,30 +206,19 @@ export default function HomePage() {
   }
 
   const getVendorEta = (vendor: Vendor) => {
-    if (!userLocation || !vendor) return null
+    if (!activeBooking || !userLocation) return null
     const baseEta = vendor.category === 'FOOD' ? 5 : vendor.category === 'DRINKS' ? 8 : 12
     return `${baseEta} min`
   }
 
-  const curatedCollections = [
-    {
-      name: 'Sunset Spots',
-      icon: 'sun',
-      vendors: vendors.filter(v => v.category === 'DRINKS' || v.name.includes('Cliff')).slice(0, 3),
-      photoSpots: photoSpots.filter(ps => ps.bestTime === 'Golden Hour').slice(0, 2)
-    },
-    {
-      name: 'Local Favorites',
-      icon: 'flame',
-      vendors: vendors.filter(v => v.isPremium).slice(0, 4)
-    },
-    {
-      name: 'Hidden Gems',
-      icon: 'sparkle',
-      vendors: vendors.filter(v => !v.isPremium && v.category !== 'TRANSPORT').slice(0, 3),
-      photoSpots: photoSpots.filter(ps => ps.bestTime === 'Dawn').slice(0, 2)
+  const handleFeaturedScroll = () => {
+    if (featuredScrollRef.current) {
+      const scrollLeft = featuredScrollRef.current.scrollLeft
+      const cardWidth = featuredScrollRef.current.clientWidth
+      const newIndex = Math.round(scrollLeft / cardWidth)
+      setFeaturedIndex(Math.min(newIndex, featuredVendors.length - 1))
     }
-  ]
+  }
 
   if (loading) {
     return (
@@ -223,8 +235,8 @@ export default function HomePage() {
               <div key={i} style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
             ))}
           </div>
-          {/* Hero Skeleton */}
-          <div className="glass" style={{ height: '220px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s ease-in-out infinite', marginBottom: '20px' }} />
+          {/* Featured Skeleton */}
+          <div className="glass" style={{ height: '240px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s ease-in-out infinite', marginBottom: '20px' }} />
           {/* Section Skeleton */}
           {[...Array(3)].map((_, i) => (
             <div key={i} style={{ marginBottom: '24px' }}>
@@ -285,66 +297,88 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: '16px', paddingBottom: '120px', position: 'relative', zIndex: 2 }}>
-        {/* Sunset Countdown */}
-        <Link href="/explore" style={{ textDecoration: 'none' }}>
-          <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '16px', cursor: 'pointer' }}>
-            <Icon name="sun" size={20} />
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--sand)' }}>{getSunsetTime()}</p>
-              <p style={{ fontSize: '11px', color: 'var(--sand-dim)' }}>Tap for best sunset spots</p>
-            </div>
-          </div>
-        </Link>
-
-        {/* Hero Card */}
-        {heroVendor && (
-          <Link href={`/vendor/${heroVendor.id}`} style={{ textDecoration: 'none', color: 'var(--sand)' }}>
-            <div className="glass" style={{ position: 'relative', height: '240px', overflow: 'hidden', cursor: 'pointer', marginBottom: '16px', borderRadius: '16px' }}>
-              <img src={heroVendor.images[0]} alt={heroVendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(15,14,12,0.95))' }} />
-              {heroVendor.isPremium && <div className="bond-badge">PREMIUM</div>}
-              <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px' }}>
-                {heroVendor.live && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <p style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                      ● LIVE • {heroVendor.whoThere} here now
-                    </p>
-                    {checkIns.length > 0 && (
-                      <div style={{ display: 'flex', marginLeft: 'auto' }}>
-                        {checkIns.slice(0, 3).map((ci, i) => (
-                          <div key={ci.id} style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--black)', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, marginLeft: i === 0 ? '0' : '-8px' }}>
-                            {ci.user.name?.[0]}
-                          </div>
-                        ))}
-                      </div>
+        {/* Featured Section */}
+        {featuredVendors.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <div
+              ref={featuredScrollRef}
+              onScroll={handleFeaturedScroll}
+              style={{ display: 'flex', gap: '12px', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', borderRadius: '16px' }}
+            >
+              {featuredVendors.map((vendor, idx) => (
+                <Link
+                  key={vendor.id}
+                  href={`/vendor/${vendor.id}`}
+                  style={{ textDecoration: 'none', color: 'var(--sand)', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
+                >
+                  <div className="glass" style={{ position: 'relative', height: '240px', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px' }}>
+                    {vendor.videos && vendor.videos.length > 0 ? (
+                      <video
+                        src={vendor.videos[0]}
+                        muted
+                        loop
+                        autoPlay
+                        playsInline
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                      />
+                    ) : (
+                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
                     )}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(15,14,12,0.95))' }} />
+                    {vendor.isPremium && <div className="bond-badge">PREMIUM</div>}
+                    <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px' }}>
+                      {vendor.live && (
+                        <p style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600, marginBottom: '6px' }}>
+                          ● LIVE • {vendor.whoThere} here now
+                        </p>
+                      )}
+                      <h3 style={{ fontSize: '22px', fontWeight: 700 }}>{vendor.name}</h3>
+                      <p style={{ fontSize: '12px', color: 'var(--sand-dim)' }}>
+                        {vendor.category} • {getVendorEta(vendor) || 'Featured'}
+                      </p>
+                    </div>
                   </div>
-                )}
-                <h3 style={{ fontSize: '22px', fontWeight: 700 }}>{heroVendor.name}</h3>
-                <p style={{ fontSize: '12px', color: 'var(--sand-dim)' }}>
-                  {heroVendor.category} • {heroVendor.name} ETA: {getVendorEta(heroVendor) || '5 min'}
-                </p>
+                </Link>
+              ))}
+            </div>
+            {/* Pagination Dots */}
+            {featuredVendors.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
+                {featuredVendors.map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: i === featuredIndex ? '20px' : '6px',
+                      height: '6px',
+                      borderRadius: '3px',
+                      background: i === featuredIndex ? 'var(--rum)' : 'var(--glass-border)',
+                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Not Feeling It Here? Let's Bounce — only during active experience */}
+        {activeBooking && (
+          <Link href={bounce.action === 'vendor' && bounce.vendorId ? `/vendor/${bounce.vendorId}` : bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none', color: 'var(--sand)' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                <Icon name={bounce.icon as any} size={18} />
+                Not Feeling It Here? Let&apos;s Bounce
+              </h2>
+              <div className="glass" style={{ padding: '16px', cursor: 'pointer', borderRadius: '12px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{bounce.title}</h3>
+                <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{bounce.desc}</p>
               </div>
             </div>
           </Link>
         )}
 
-        {/* Not Feeling It Here? Let's Bounce */}
-        <Link href={bounce.action === 'vendor' && bounce.vendorId ? `/vendor/${bounce.vendorId}` : bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none', color: 'var(--sand)' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <Icon name={bounce.icon as any} size={18} />
-              Not Feeling It Here? Let&apos;s Bounce
-            </h2>
-            <div className="glass" style={{ padding: '16px', cursor: 'pointer', borderRadius: '12px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{bounce.title}</h3>
-              <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{bounce.desc}</p>
-            </div>
-          </div>
-        </Link>
-
-        {/* Flash Deals */}
-        {flashDeals.length > 0 && (
+        {/* Flash Deals — only when NOT on active experience */}
+        {!activeBooking && flashDeals.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Icon name="flame" size={18} />
@@ -439,50 +473,11 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Curated Collections */}
-        {curatedCollections.map(collection => (
-          <div key={collection.name} style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name={collection.icon as any} size={18} />
-              {collection.name}
-            </h2>
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {collection.vendors.map(v => (
-                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', color: 'var(--sand)', flexShrink: 0 }}>
-                  <div className="window-card" style={{ position: 'relative', width: '180px', height: '200px' }}>
-                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    {v.isPremium && <div className="bond-badge">PREMIUM</div>}
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px', background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95) 50%)' }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{v.name}</h4>
-                      <p style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
-                        {v.category} • {getVendorEta(v) || '5 min'}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {collection.photoSpots && collection.photoSpots.map(spot => (
-                <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', color: 'var(--sand)', flexShrink: 0 }}>
-                  <div className="window-card" style={{ position: 'relative', width: '180px', height: '200px' }}>
-                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px', background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95) 50%)' }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{spot.name}</h4>
-                      <p style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
-                        Photo Spot • {spot.bestTime}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Experiences Preview */}
+        {/* Experiences Preview — Bundle Format */}
         {experiences.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Experiences</h2>
-            {experiences.slice(0, 2).map(e => (
+            {experiences.slice(0, 3).map(e => (
               <Link key={e.id} href={`/experiences`} style={{ textDecoration: 'none', color: 'var(--sand)', display: 'block' }}>
                 <div className="ticket-card" style={{ position: 'relative', marginBottom: '10px' }}>
                   <div style={{ width: '40%', minWidth: '40%', backgroundImage: `url(${e.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
@@ -490,16 +485,32 @@ export default function HomePage() {
                   <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{e.name}</h3>
                     <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{e.tagline}</p>
-                    {e.vendor && (
-                      <p style={{ fontSize: '11px', color: 'var(--sand-dim)' }}>{e.vendor.name}</p>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {e.stopCount && (
+                        <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
+                          {e.stopCount} STOPS
+                        </span>
+                      )}
+                      {e.totalDuration && (
+                        <span style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
+                          {e.totalDuration} HRS
+                        </span>
+                      )}
+                      {e.travelIncluded && (
+                        <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
+                          TRAVEL INCLUDED
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <p style={{ fontSize: '12px', color: 'var(--sea)' }}>
-                        {e.name} ETA: {e.travelTime} min
-                      </p>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)', marginLeft: 'auto' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)' }}>
                         ${e.price}
                       </p>
+                      {activeBooking && (
+                        <p style={{ fontSize: '12px', color: 'var(--sea)' }}>
+                          {e.name} ETA: {e.travelTime} min
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -520,7 +531,8 @@ export default function HomePage() {
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px', background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95) 50%)' }}>
                     <h4 style={{ fontSize: '15px', fontWeight: 700 }}>{v.name}</h4>
                     <p style={{ fontSize: '11px', color: 'var(--sand-dim)' }}>
-                      {v.category} • {getVendorEta(v) || '5 min'}
+                      {v.category}
+                      {activeBooking && getVendorEta(v) && ` • ${getVendorEta(v)}`}
                       {!v.open && ' • Closed'}
                     </p>
                   </div>
