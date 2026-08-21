@@ -10,10 +10,10 @@ export default function Dock() {
 
   const tabs = [
     { name: 'Home', href: '/', icon: 'home' },
-    { name: 'Explore', href: '/explore', icon: 'compass' },
+    { name: 'Experiences', href: '/experiences', icon: 'compass' },
     { name: 'Pay', href: '/pay', icon: 'camera' },
     { name: 'Market', href: '/marketplace', icon: 'marketplace' },
-    { name: 'Profile', href: '/profile', icon: 'user' }
+    { name: 'Explore', href: '/explore', icon: 'mapPin' }
   ]
 
   return (

@@ -1,7 +1,7 @@
 // app/marketplace/page.tsx
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
@@ -37,7 +37,6 @@ interface Accommodation {
   vetted?: boolean
 }
 
-// Category quick filters (requirement 16)
 const CATEGORIES = [
   { name: 'Food', icon: 'food' },
   { name: 'Drinks', icon: 'drink' },
@@ -47,7 +46,6 @@ const CATEGORIES = [
   { name: 'Transport', icon: 'compass' }
 ]
 
-// Sort options (requirement 24)
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
 
 export default function MarketplacePage() {
@@ -61,12 +59,11 @@ export default function MarketplacePage() {
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
-  const [showSortMenu, setShowSortMenu] = useState(false)
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string }>>([])
 
   useEffect(() => {
     fetchData()
-    // Load saved vendors from localStorage
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
   }, [])
@@ -84,7 +81,6 @@ export default function MarketplacePage() {
       setVendors(Array.isArray(vendorsData) ? vendorsData : [])
       setAccommodations(Array.isArray(accomData) ? accomData : [])
       
-      // Generate mock dishes of the day from food vendors (requirement 17)
       const foodVendors = Array.isArray(vendorsData) ? vendorsData.filter((v: Vendor) => v.category === 'FOOD').slice(0, 3) : []
       const mockDishes = foodVendors.map((v: Vendor, i: number) => ({
         id: `dish-${v.id}`,
@@ -111,28 +107,22 @@ export default function MarketplacePage() {
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
   }
 
-  const shuffleVendors = () => {
-    const shuffled = [...vendors].sort(() => Math.random() - 0.5)
-    setVendors(shuffled)
-  }
-
   const premiumVendors = vendors.filter(v => v.isPremium)
-  const standardVendors = vendors.filter(v => !v.isPremium)
 
-  // Apply filters (requirement 13, 14, 16, 20, 24)
+  // Show ALL vendors (change 2)
   const filteredVendors = vendors
-    .filter(v => v.city === city || !city)
-    .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
     .filter(v => !search || 
       v.name.toLowerCase().includes(search.toLowerCase()) ||
       v.category.toLowerCase().includes(search.toLowerCase()) ||
       v.neighborhood.toLowerCase().includes(search.toLowerCase())
     )
+    .filter(v => !city || v.city === city)
+    .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
       if (sortBy === 'Distance') return (a.neighborhood || '').localeCompare(b.neighborhood || '')
-      return 0 // Recommended
+      return 0
     })
 
   const filteredAccommodations = accommodations.filter(a => 
@@ -141,17 +131,11 @@ export default function MarketplacePage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
+      <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <TopBar />
         <div style={{ padding: '16px', paddingBottom: '100px' }}>
-          {/* Skeleton loading in 2-column grid (requirement 28) */}
           <div className="skeleton" style={{ height: '44px', borderRadius: '10px', marginBottom: '16px' }} />
           <div className="skeleton" style={{ height: '36px', borderRadius: '10px', marginBottom: '20px' }} />
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto' }}>
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }} />
-            ))}
-          </div>
           <div className="grid-2">
             {[...Array(6)].map((_, i) => (
               <div key={i}>
@@ -168,11 +152,11 @@ export default function MarketplacePage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px' }}>
+    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <TopBar />
 
       <div style={{ padding: '16px' }}>
-        {/* Search bar - sticky (requirement 13) */}
+        {/* Search bar - sticky */}
         <div className="search-bar sticky" style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -198,10 +182,12 @@ export default function MarketplacePage() {
               fontFamily: 'inherit' 
             }}
           />
-          <Icon name="filter" size={18} style={{ cursor: 'pointer' }} />
+          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer' }}>
+            <Icon name="filter" size={18} />
+          </span>
         </div>
 
-        {/* City toggle - segmented control (requirement 14) */}
+        {/* City toggle - segmented control */}
         <div className="segmented-control" style={{ marginBottom: '16px' }}>
           {['NEGRIL', 'MONTEGO_BAY'].map(c => (
             <button
@@ -214,98 +200,17 @@ export default function MarketplacePage() {
           ))}
         </div>
 
-        {/* Shuffle button (requirement 15) */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-          <button 
-            className="chip"
-            onClick={shuffleVendors}
-            style={{ 
-              background: 'var(--card-bg)',
-              boxShadow: 'var(--card-shadow)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Icon name="shuffle" size={14} />
-            Shuffle
-          </button>
-        </div>
-
-        {/* Category quick filters - circular icon chips (requirement 16) */}
-        <div className="horizontal-scroll" style={{ marginBottom: '20px' }}>
-          {CATEGORIES.map(cat => (
-            <div 
-              key={cat.name}
-              className={`category-chip ${selectedCategory === cat.name ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
-            >
-              <div className="category-chip-icon">
-                <Icon name={cat.icon as any} size={20} />
-              </div>
-              <span className="category-chip-label">{cat.name}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Sort options (requirement 24) */}
-        <div style={{ position: 'relative', marginBottom: '20px' }}>
-          <button
-            className="chip"
-            onClick={() => setShowSortMenu(!showSortMenu)}
-            style={{ 
-              background: 'var(--card-bg)',
-              boxShadow: 'var(--card-shadow)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            Sort: {sortBy}
-            <Icon name="chevronDown" size={14} />
-          </button>
-          {showSortMenu && (
-            <div className="card" style={{ 
-              position: 'absolute', 
-              top: '40px', 
-              left: 0, 
-              zIndex: 40,
-              minWidth: '150px',
-              padding: '8px'
-            }}>
-              {SORT_OPTIONS.map(option => (
-                <button
-                  key={option}
-                  onClick={() => {
-                    setSortBy(option)
-                    setShowSortMenu(false)
-                  }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '8px 12px',
-                    textAlign: 'left',
-                    background: sortBy === option ? 'var(--light-grey)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    color: 'var(--black)',
-                    fontFamily: 'inherit'
-                  }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Dish Of The Day (requirement 17) */}
+        {/* Dish Of The Day */}
         {dishesOfDay.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
-              <span className="section-title">Dish Of The Day</span>
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Today&apos;s Pick</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Dish Of The Day</span>
+                </div>
+              </div>
             </div>
             <Link href={`/vendor/${dishesOfDay[0].vendorId}`} style={{ textDecoration: 'none' }}>
               <div className="featured-card" style={{ 
@@ -368,17 +273,20 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Premium Members section (requirement 18) */}
+        {/* Premium Members section */}
         {premiumVendors.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '24px', overflow: 'visible' }}>
             <div className="section-header">
-              <span className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="crown" size={18} style={{ color: 'var(--gold)' }} />
-                Premium Members
-              </span>
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Top Tier</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Premium Members</span>
+                </div>
+              </div>
               <span className="section-link">See all</span>
             </div>
-            <div className="horizontal-scroll">
+            <div className="horizontal-scroll" style={{ padding: '10px 0 30px 0' }}>
               {premiumVendors.map(v => (
                 <Link 
                   key={v.id} 
@@ -422,7 +330,6 @@ export default function MarketplacePage() {
                     <div style={{ padding: '12px' }}>
                       <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</h4>
                       <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{v.category} • {v.neighborhood}</p>
-                      {/* Avatar stack (requirement 18) */}
                       <div className="avatar-stack" style={{ marginTop: '8px' }}>
                         {[...Array(Math.min(3, v.whoThere))].map((_, i) => (
                           <img 
@@ -443,14 +350,19 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Accommodation section (requirement 21) */}
+        {/* Accommodation section */}
         {filteredAccommodations.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '24px', overflow: 'visible' }}>
             <div className="section-header">
-              <span className="section-title">Accommodation</span>
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Stay Awhile</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Accommodation</span>
+                </div>
+              </div>
               <span className="section-link">See all</span>
             </div>
-            {/* Accommodation type toggle */}
             <div className="segmented-control" style={{ marginBottom: '12px' }}>
               {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
                 <button
@@ -462,7 +374,7 @@ export default function MarketplacePage() {
                 </button>
               ))}
             </div>
-            <div className="horizontal-scroll">
+            <div className="horizontal-scroll" style={{ padding: '10px 0 30px 0' }}>
               {filteredAccommodations.map(a => (
                 <Link 
                   key={a.id} 
@@ -501,10 +413,16 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* All Vendors grid (requirement 19, 22, 25, 26) */}
+        {/* All Vendors grid - shows ALL vendors */}
         <div>
           <div className="section-header">
-            <span className="section-title">All Vendors</span>
+            <div className="section-heading section-heading-animate section-heading-glow">
+              <span className="section-eyebrow">Full Listings</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title">All Vendors</span>
+              </div>
+            </div>
             <span className="section-link">See all</span>
           </div>
           {filteredVendors.length === 0 ? (
@@ -631,7 +549,70 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Bottom sheet quick view (requirement 22) */}
+      {/* Filter & Sort Bottom Sheet (change 7) */}
+      <div className={`bottom-sheet-overlay ${showFilterSheet ? 'open' : ''}`} onClick={() => setShowFilterSheet(false)} />
+      <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
+        <div style={{ padding: '20px' }}>
+          <div style={{ 
+            width: '40px', 
+            height: '4px', 
+            background: 'var(--light-grey)', 
+            borderRadius: '2px',
+            margin: '0 auto 16px'
+          }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Filter & Sort</h3>
+          
+          {/* Categories */}
+          <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Categories</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+                className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
+                style={{
+                  background: selectedCategory === cat.name ? 'var(--rum)' : 'var(--light-grey)',
+                  color: selectedCategory === cat.name ? 'white' : 'var(--black)'
+                }}
+              >
+                <Icon name={cat.icon as any} size={14} />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort */}
+          <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Sort By</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {SORT_OPTIONS.map(option => (
+              <button
+                key={option}
+                onClick={() => {
+                  setSortBy(option)
+                  setShowFilterSheet(false)
+                }}
+                className={`chip ${sortBy === option ? 'active' : ''}`}
+                style={{
+                  background: sortBy === option ? 'var(--rum)' : 'var(--light-grey)',
+                  color: sortBy === option ? 'white' : 'var(--black)'
+                }}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            className="btn btn-primary" 
+            style={{ width: '100%' }}
+            onClick={() => setShowFilterSheet(false)}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom sheet quick view */}
       <div className={`bottom-sheet-overlay ${selectedVendor ? 'open' : ''}`} onClick={() => setSelectedVendor(null)} />
       <div className={`bottom-sheet ${selectedVendor ? 'open' : ''}`}>
         {selectedVendor && (

@@ -8,17 +8,31 @@ interface StatusModuleProps {
   userId?: string
 }
 
+interface ActiveBooking {
+  id: string
+  experienceId?: string
+  vendorId?: string
+  status: string
+  date: string
+  experience?: {
+    name: string
+    travelTime: number
+  }
+}
+
 export default function StatusModule({ userId }: StatusModuleProps) {
   const [walletHidden, setWalletHidden] = useState(true)
   const [points, setPoints] = useState(1240)
   const [balance, setBalance] = useState(250)
   const [loading, setLoading] = useState(false)
+  const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
+  const [etaMinutes, setEtaMinutes] = useState<number | null>(null)
 
-  // Fetch real data if userId provided
   useEffect(() => {
     if (userId) {
       fetchUserStatus()
     }
+    checkActiveBooking()
   }, [userId])
 
   const fetchUserStatus = async () => {
@@ -43,6 +57,26 @@ export default function StatusModule({ userId }: StatusModuleProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkActiveBooking = () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch('/api/bookings', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const active = data.find((b: any) => b.status === 'CONFIRMED' || b.status === 'PENDING')
+          if (active) {
+            setActiveBooking(active)
+            const mockEta = Math.floor(Math.random() * 20) + 5
+            setEtaMinutes(mockEta)
+          }
+        }
+      })
+      .catch(() => {})
   }
 
   return (
@@ -133,34 +167,48 @@ export default function StatusModule({ userId }: StatusModuleProps) {
         </div>
       </div>
 
-      {/* Divider */}
-      <div style={{
-        width: '1px',
-        height: '32px',
-        background: 'var(--light-grey)'
-      }} />
+      {/* Divider - only show if ETA exists */}
+      {activeBooking && etaMinutes !== null && (
+        <div style={{
+          width: '1px',
+          height: '32px',
+          background: 'var(--light-grey)'
+        }} />
+      )}
 
-      {/* Premium Badge */}
-      <div style={{ 
-        flex: 1, 
-        textAlign: 'center',
-        padding: '8px'
-      }}>
-        <div className="premium-badge" style={{ marginBottom: '2px' }}>
-          <Icon name="crown" size={12} />
-          PRO
-        </div>
+      {/* ETA Section - only active when booking exists */}
+      {activeBooking && etaMinutes !== null && (
         <div style={{ 
-          fontSize: '10px', 
-          color: 'var(--grey)', 
-          marginTop: '2px',
-          fontWeight: 600,
-          letterSpacing: '0.5px',
-          textTransform: 'uppercase'
-        }}>
-          Member
+          flex: 1, 
+          textAlign: 'center',
+          padding: '8px',
+          borderRadius: '8px',
+          transition: 'background 0.2s ease',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--light-grey)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{ 
+            fontSize: '18px', 
+            fontWeight: 800, 
+            color: 'var(--sea)',
+            fontFamily: 'Space Mono, monospace'
+          }}>
+            {etaMinutes} min
+          </div>
+          <div style={{ 
+            fontSize: '10px', 
+            color: 'var(--grey)', 
+            marginTop: '2px',
+            fontWeight: 600,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase'
+          }}>
+            Next Stop ETA
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

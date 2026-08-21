@@ -71,6 +71,7 @@ body {
     0 8px 32px rgba(0, 0, 0, 0.02);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 4px;
 }
 
 .card:hover {
@@ -187,6 +188,7 @@ body {
     0 8px 32px rgba(0, 0, 0, 0.12);
   transition: all 0.3s ease;
   overflow: hidden;
+  margin: 8px 4px;
 }
 
 .featured-card:hover {
@@ -254,6 +256,7 @@ body {
   transform: rotate(-2deg);
   transition: all 0.3s ease;
   position: relative;
+  margin: 10px 5px;
 }
 
 .polaroid:nth-child(even) {
@@ -446,6 +449,8 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--grey);
+  border: none;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .segmented-item.active {
@@ -474,6 +479,101 @@ body {
   color: var(--rum);
   cursor: pointer;
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Section heading with accent bar */
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.section-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--rum);
+  animation: eyebrow-expand 0.5s ease forwards;
+}
+
+@keyframes eyebrow-expand {
+  from { letter-spacing: 0px; }
+  to { letter-spacing: 2px; }
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-accent-bar {
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gold), var(--rum));
+  animation: bar-grow 0.4s ease forwards;
+  transform-origin: top;
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* Regular heading animations */
+.section-heading-animate {
+  animation: slide-in-fade 0.3s ease forwards;
+}
+
+.section-heading-glow {
+  position: relative;
+}
+
+.section-heading-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(ellipse, rgba(255, 184, 0, 0.15) 0%, transparent 70%);
+  opacity: 0;
+  animation: glow-flare 0.6s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes slide-in-fade {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes glow-flare {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Featured heading gradient shimmer */
+.featured-heading-text {
+  background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s ease infinite;
 }
 
 /* ============ HORIZONTAL SCROLL ============ */
@@ -481,23 +581,26 @@ body {
   display: flex;
   gap: 12px;
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  padding-top: 10px;
+  padding-bottom: 20px;
 }
 
 .horizontal-scroll::-webkit-scrollbar {
   display: none;
 }
 
-/* ============ STORY RINGS ============ */
+/* ============ STORY RINGS (Instagram size) ============ */
 .story-ring {
-  width: 56px;
-  height: 56px;
+  width: 66px;
+  height: 66px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: 3px;
   flex-shrink: 0;
 }
 
@@ -510,8 +613,8 @@ body {
 }
 
 .story-ring img {
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--card-bg);
@@ -743,4 +846,29 @@ body {
 
 .avatar-stack img:first-child {
   margin-left: 0;
+}
+
+/* ============ TODAY STRIP SLEEK PILLS ============ */
+.today-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.today-pill-weather {
+  background: transparent;
+  color: var(--grey);
+}
+
+.today-pill-sunset {
+  background: linear-gradient(135deg, rgba(255, 184, 0, 0.15), rgba(255, 75, 43, 0.15));
+  color: var(--rum);
+  font-weight: 600;
+  border: 1px solid rgba(255, 184, 0, 0.25);
 }
