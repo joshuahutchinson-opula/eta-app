@@ -313,6 +313,7 @@ export default function HomePage() {
                         loop
                         autoPlay
                         playsInline
+                          preload="metadata"
                         style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                       />
                     ) : (
