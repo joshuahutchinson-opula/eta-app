@@ -365,7 +365,9 @@ export default function HomePage() {
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{bounce.title}</h3>
                 <p style={{ fontSize: '13px', color: 'var(--grey)' }}>{bounce.desc}</p>
               </div>
-              <Icon name="chevronRight" size={18} style={{ marginLeft: 'auto' }} />
+              <span style={{ marginLeft: 'auto' }}>
+  <Icon name="chevronRight" size={18} />
+</span>
             </div>
           </Link>
         </div>
