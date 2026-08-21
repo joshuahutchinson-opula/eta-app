@@ -1,0 +1,27 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
+  try {
+    const accommodations = await prisma.accommodation.findMany({
+      orderBy: [
+        { vetted: 'desc' },
+        { googleStars: 'desc' }
+      ],
+      include: {
+        bookings: true,
+        bundles: true
+      }
+    })
+
+    return NextResponse.json(accommodations)
+  } catch (error) {
+    console.error('Error fetching accommodations:', error)
+    return NextResponse.json(
+      { error: 'Sumth nah wuk' },
+      { status: 500 }
+    )
+  }
+}
