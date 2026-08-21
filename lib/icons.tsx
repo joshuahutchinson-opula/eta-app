@@ -1,3 +1,4 @@
+// lib/icons.tsx
 'use client'
 
 import React from 'react'
@@ -6,9 +7,11 @@ interface IconProps {
   name: string
   size?: number
   className?: string
+  style?: React.CSSProperties
+  onClick?: () => void
 }
 
-export default function Icon({ name, size = 20, className = '' }: IconProps) {
+export default function Icon({ name, size = 20, className = '', style, onClick }: IconProps) {
   const icons: Record<string, React.ReactNode> = {
     home: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -51,6 +54,11 @@ export default function Icon({ name, size = 20, className = '' }: IconProps) {
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <circle cx="11" cy="11" r="8" />
         <path d="M21 21l-4.35-4.35" />
+      </svg>
+    ),
+    filter: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
       </svg>
     ),
     back: (
@@ -139,6 +147,28 @@ export default function Icon({ name, size = 20, className = '' }: IconProps) {
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 00-3-3.87" />
         <path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    heart: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={className.includes('filled') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+      </svg>
+    ),
+    crown: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M2 18h20M3 18l1-12 5 4 3-6 3 6 5-4 1 12" />
+        <path d="M7 22h10" />
+      </svg>
+    ),
+    check: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20 6L9 17l-5-5" />
+      </svg>
+    ),
+    eye: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
       </svg>
     ),
     bell: (
@@ -233,5 +263,17 @@ export default function Icon({ name, size = 20, className = '' }: IconProps) {
     ),
   }
 
-  return <>{icons[name] || null}</>
+  return (
+    <span 
+      style={{ 
+        display: 'inline-flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        ...style 
+      }}
+      onClick={onClick}
+    >
+      {icons[name] || null}
+    </span>
+  )
 }
