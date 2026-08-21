@@ -316,17 +316,17 @@ export default function HomePage() {
                 >
                   <div className="glass" style={{ position: 'relative', height: '240px', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px' }}>
                     {vendor.videos && vendor.videos.length > 0 ? (
-                      <video
-                        key={vendor.id}
-                        src={vendor.videos[0]}
-                        muted={true}
-                        loop={true}
-                        autoPlay={true}
-                        playsInline={true}
-                        preload="metadata"
-                        poster={vendor.images[0]}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
-                      />
+<video
+  key={vendor.id}
+  src={vendor.videos[0]}
+  muted={true}
+  loop={true}
+  autoPlay={true}
+  playsInline={true}
+  preload="auto"
+  poster={vendor.images[0]}
+  style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 1 }}
+/>
                     ) : (
                       <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
                     )}
