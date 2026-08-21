@@ -1,6 +1,7 @@
+// app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import SceneBackground from '@/components/SceneBackground'
+import LaunchScreen from '@/components/LaunchScreen'
 
 export const metadata: Metadata = {
   title: 'ETA — Experience Travel Adventure',
@@ -29,7 +30,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </head>
       <body style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <SceneBackground />
+        <LaunchScreen />
         {children}
       </body>
     </html>
