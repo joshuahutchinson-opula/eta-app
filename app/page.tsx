@@ -166,7 +166,6 @@ export default function HomePage() {
   }
 
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
-  const heroVendor = featuredVendors[featuredIndex] || null
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
 
@@ -225,19 +224,15 @@ export default function HomePage() {
       <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
         <TopBar />
         <div style={{ padding: '16px', paddingBottom: '120px' }}>
-          {/* Today Strip Skeleton */}
           <div className="glass-pill" style={{ padding: '12px 16px', marginBottom: '16px' }}>
             <div style={{ width: '120px', height: '16px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', animation: 'pulse 1.5s ease-in-out infinite' }} />
           </div>
-          {/* Stories Skeleton */}
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', overflowX: 'auto' }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
             ))}
           </div>
-          {/* Featured Skeleton */}
           <div className="glass" style={{ height: '240px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s ease-in-out infinite', marginBottom: '20px' }} />
-          {/* Section Skeleton */}
           {[...Array(3)].map((_, i) => (
             <div key={i} style={{ marginBottom: '24px' }}>
               <div style={{ width: '150px', height: '20px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '12px', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -267,7 +262,6 @@ export default function HomePage() {
 
       {/* Stories Row */}
       <div style={{ display: 'flex', gap: '14px', padding: '14px 16px 4px', overflowX: 'auto', scrollbarWidth: 'none', position: 'relative', zIndex: 2 }}>
-        {/* Your Story */}
         <div style={{ textDecoration: 'none', flexShrink: 0, textAlign: 'center', cursor: 'pointer' }}>
           <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '2px dashed var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
             <Icon name="camera" size={20} />
@@ -305,7 +299,7 @@ export default function HomePage() {
               onScroll={handleFeaturedScroll}
               style={{ display: 'flex', gap: '12px', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', borderRadius: '16px' }}
             >
-              {featuredVendors.map((vendor, idx) => (
+              {featuredVendors.map((vendor) => (
                 <Link
                   key={vendor.id}
                   href={`/vendor/${vendor.id}`}
@@ -341,7 +335,6 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-            {/* Pagination Dots */}
             {featuredVendors.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
                 {featuredVendors.map((_, i) => (
@@ -361,7 +354,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Not Feeling It Here? Let's Bounce — only during active experience */}
+        {/* Not Feeling It Here? Let's Bounce */}
         {activeBooking && (
           <Link href={bounce.action === 'vendor' && bounce.vendorId ? `/vendor/${bounce.vendorId}` : bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none', color: 'var(--sand)' }}>
             <div style={{ marginBottom: '20px' }}>
@@ -377,7 +370,7 @@ export default function HomePage() {
           </Link>
         )}
 
-        {/* Flash Deals — only when NOT on active experience */}
+        {/* Flash Deals */}
         {!activeBooking && flashDeals.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
             <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -486,21 +479,15 @@ export default function HomePage() {
                     <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{e.name}</h3>
                     <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{e.tagline}</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      {e.stopCount && (
-                        <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                          {e.stopCount} STOPS
-                        </span>
-                      )}
-                      {e.totalDuration && (
-                        <span style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
-                          {e.totalDuration} HRS
-                        </span>
-                      )}
-                      {e.travelIncluded && (
-                        <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
-                          TRAVEL INCLUDED
-                        </span>
-                      )}
+                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
+                        {e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
+                        {e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
+                        TRAVEL INCLUDED
+                      </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)' }}>
