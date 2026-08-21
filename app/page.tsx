@@ -1,9 +1,9 @@
+// app/page.tsx
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
-import StatusModule from '@/components/StatusModule'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
@@ -140,29 +140,22 @@ export default function HomePage() {
 
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
         const data = await vendorsRes.value.json()
-        console.log('Vendors loaded:', Array.isArray(data) ? data.length : 0)
         setVendors(Array.isArray(data) ? data : [])
-      } else {
-        console.log('Vendors fetch failed:', vendorsRes.status)
       }
       if (experiencesRes.status === 'fulfilled' && experiencesRes.value.ok) {
         const data = await experiencesRes.value.json()
-        console.log('Experiences loaded:', Array.isArray(data) ? data.length : 0)
         setExperiences(Array.isArray(data) ? data : [])
       }
       if (photoSpotsRes.status === 'fulfilled' && photoSpotsRes.value.ok) {
         const data = await photoSpotsRes.value.json()
-        console.log('PhotoSpots loaded:', Array.isArray(data) ? data.length : 0)
         setPhotoSpots(Array.isArray(data) ? data : [])
       }
       if (flashDealsRes.status === 'fulfilled' && flashDealsRes.value.ok) {
         const data = await flashDealsRes.value.json()
-        console.log('FlashDeals loaded:', Array.isArray(data) ? data.length : 0)
         setFlashDeals(Array.isArray(data) ? data : [])
       }
       if (moodsRes.status === 'fulfilled' && moodsRes.value.ok) {
         const data = await moodsRes.value.json()
-        console.log('Moods loaded:', Array.isArray(data) ? data.length : 0)
         setMoods(Array.isArray(data) ? data : [])
       }
     } catch (error) {
@@ -175,8 +168,6 @@ export default function HomePage() {
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
-
-  console.log('Featured vendors count:', featuredVendors.length)
 
   const getSunsetTime = () => {
     const now = new Date()
@@ -230,22 +221,20 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+      <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
         <TopBar />
-        <div style={{ padding: '16px', paddingBottom: '120px' }}>
-          <div className="glass-pill" style={{ padding: '12px 16px', marginBottom: '16px' }}>
-            <div style={{ width: '120px', height: '16px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          </div>
+        <div style={{ padding: '16px', paddingBottom: '100px' }}>
+          <div className="skeleton" style={{ height: '40px', borderRadius: '10px', marginBottom: '16px' }} />
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', overflowX: 'auto' }}>
             {[...Array(5)].map((_, i) => (
-              <div key={i} style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+              <div key={i} className="skeleton" style={{ width: '56px', height: '56px', borderRadius: '50%', flexShrink: 0 }} />
             ))}
           </div>
-          <div className="glass" style={{ height: '240px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s ease-in-out infinite', marginBottom: '20px' }} />
+          <div className="skeleton" style={{ height: '220px', borderRadius: '12px', marginBottom: '20px' }} />
           {[...Array(3)].map((_, i) => (
             <div key={i} style={{ marginBottom: '24px' }}>
-              <div style={{ width: '150px', height: '20px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '12px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div className="glass" style={{ height: '100px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div className="skeleton" style={{ width: '150px', height: '20px', marginBottom: '12px' }} />
+              <div className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
             </div>
           ))}
         </div>
@@ -255,259 +244,189 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px' }}>
       <TopBar />
-      <StatusModule />
 
       {/* Today Strip */}
-      <div className="glass-pill" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 18px', margin: '8px 16px 0', fontSize: '13px', color: 'var(--sand-dim)', position: 'relative', zIndex: 2 }}>
-        <Icon name="sun" size={16} />
-        <span>28°C, light breeze</span>
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--gold)', fontWeight: 600, fontSize: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+        <span style={{ fontSize: '13px', color: 'var(--grey)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Icon name="sun" size={14} />
+          28°C, light breeze
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--rum)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Icon name="sun" size={14} />
           {getSunsetTime()}
         </span>
       </div>
 
       {/* Stories Row */}
-      <div style={{ display: 'flex', gap: '14px', padding: '14px 16px 4px', overflowX: 'auto', scrollbarWidth: 'none', position: 'relative', zIndex: 2 }}>
-        <div style={{ textDecoration: 'none', flexShrink: 0, textAlign: 'center', cursor: 'pointer' }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '2px dashed var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
-            <Icon name="camera" size={20} />
+      <div className="horizontal-scroll" style={{ padding: '0 16px 12px' }}>
+        <div style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
+          <div className="story-ring standard" style={{ background: 'var(--light-grey)' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="camera" size={18} />
+            </div>
           </div>
-          <p style={{ fontSize: '9px', color: 'var(--sand-dim)', marginTop: '4px' }}>Your Story</p>
+          <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>Your Story</p>
         </div>
         {vendors.filter(v => v.stories && v.stories.length > 0).map(v => (
-          <Link key={v.id} href="/stories" style={{ textDecoration: 'none', flexShrink: 0, textAlign: 'center' }}>
+          <Link key={v.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
             <div className={`story-ring ${v.isPremium ? 'premium' : 'standard'}`}>
-              <img
-                src={v.images[0]}
-                alt={v.name}
-                style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--black)', display: 'block' }}
-              />
+              <img src={v.images[0]} alt={v.name} />
             </div>
-            <p style={{ fontSize: '9px', color: 'var(--sand-dim)', marginTop: '4px' }}>
+            <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>
               {v.name.split(' ')[0]}
             </p>
           </Link>
         ))}
-        {vendors.filter(v => v.stories && v.stories.length > 0).length === 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--sand-dim)', padding: '12px 0' }}>
-            <Icon name="camera" size={16} />
-            {patois.emptySaved}
-          </div>
-        )}
       </div>
 
-      <div style={{ padding: '16px', paddingBottom: '120px', position: 'relative', zIndex: 2 }}>
-        {/* Featured Section */}
-        {featuredVendors.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <div
-              ref={featuredScrollRef}
-              onScroll={handleFeaturedScroll}
-              style={{ display: 'flex', gap: '12px', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', borderRadius: '16px' }}
-            >
-              {featuredVendors.map((vendor) => (
-                <Link
-                  key={vendor.id}
-                  href={`/vendor/${vendor.id}`}
-                  style={{ textDecoration: 'none', color: 'var(--sand)', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
-                >
-                  <div className="glass" style={{ position: 'relative', height: '240px', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px' }}>
+      {/* Featured Section */}
+      {featuredVendors.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Featured</span>
+          </div>
+          <div
+            ref={featuredScrollRef}
+            onScroll={handleFeaturedScroll}
+            className="horizontal-scroll"
+            style={{ padding: '0 16px', scrollSnapType: 'x mandatory' }}
+          >
+            {featuredVendors.map((vendor) => (
+              <Link
+                key={vendor.id}
+                href={`/vendor/${vendor.id}`}
+                style={{ textDecoration: 'none', flexShrink: 0, width: '85%', scrollSnapAlign: 'center' }}
+              >
+                <div className="card">
+                  <div className="card-image" style={{ height: '200px' }}>
                     {vendor.videos && vendor.videos.length > 0 ? (
-<video
-  key={vendor.id}
-  src={vendor.videos[0]}
-  muted={true}
-  loop={true}
-  autoPlay={true}
-  playsInline={true}
-  preload="auto"
-  poster={vendor.images[0]}
-  style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 1 }}
-/>
+                      <video
+                        src={vendor.videos[0]}
+                        muted={true}
+                        loop={true}
+                        autoPlay={true}
+                        playsInline={true}
+                        preload="auto"
+                        poster={vendor.images[0]}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
-                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      <img src={vendor.images[0]} alt={vendor.name} />
                     )}
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(15,14,12,0.95))' }} />
-                    {vendor.isPremium && <div className="bond-badge">PREMIUM</div>}
-                    <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px' }}>
-                      {vendor.live && (
-                        <p style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600, marginBottom: '6px' }}>
-                          ● LIVE • {vendor.whoThere} here now
-                        </p>
-                      )}
-                      <h3 style={{ fontSize: '22px', fontWeight: 700 }}>{vendor.name}</h3>
-                      <p style={{ fontSize: '12px', color: 'var(--sand-dim)' }}>
+                    <div className="card-overlay" />
+                    {vendor.isPremium && <div className="card-badge premium">PREMIUM</div>}
+                    {vendor.live && (
+                      <div className="card-badge" style={{ top: 'auto', bottom: '12px', background: 'var(--sea)', color: '#0F0E0C' }}>
+                        ● LIVE • {vendor.whoThere} here now
+                      </div>
+                    )}
+                    <div className="card-content" style={{ position: 'absolute', bottom: '0', left: '0', right: '0' }}>
+                      <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'white' }}>{vendor.name}</h3>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
                         {vendor.category} • {getVendorEta(vendor) || 'Featured'}
                       </p>
                     </div>
                   </div>
-                </Link>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {featuredVendors.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
+              {featuredVendors.map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: i === featuredIndex ? '20px' : '6px',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: i === featuredIndex ? 'var(--rum)' : 'var(--light-grey)',
+                    transition: 'all 0.3s ease'
+                  }}
+                />
               ))}
             </div>
-            {featuredVendors.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
-                {featuredVendors.map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: i === featuredIndex ? '20px' : '6px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      background: i === featuredIndex ? 'var(--rum)' : 'var(--glass-border)',
-                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Not Feeling It Here? Let's Bounce */}
-        {activeBooking && (
-          <Link href={bounce.action === 'vendor' && bounce.vendorId ? `/vendor/${bounce.vendorId}` : bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none', color: 'var(--sand)' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '17px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                <Icon name={bounce.icon as any} size={18} />
-                Not Feeling It Here? Let&apos;s Bounce
-              </h2>
-              <div className="glass" style={{ padding: '16px', cursor: 'pointer', borderRadius: '12px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{bounce.title}</h3>
-                <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{bounce.desc}</p>
+      {/* Not Feeling It Here? */}
+      {activeBooking && (
+        <div style={{ padding: '0 16px', marginBottom: '20px' }}>
+          <div className="section-header">
+            <span className="section-title">Not Feeling It Here? Let&apos;s Bounce</span>
+          </div>
+          <Link href={bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none' }}>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Icon name={bounce.icon as any} size={24} />
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{bounce.title}</h3>
+                <p style={{ fontSize: '13px', color: 'var(--grey)' }}>{bounce.desc}</p>
               </div>
+              <Icon name="chevronRight" size={18} style={{ marginLeft: 'auto' }} />
             </div>
           </Link>
-        )}
+        </div>
+      )}
 
-        {/* Flash Deals */}
-        {!activeBooking && flashDeals.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="flame" size={18} />
-              Flash Deals
-            </h2>
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {flashDeals.map(fd => (
-                <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', color: 'var(--sand)', flexShrink: 0 }}>
-                  <div className="glass" style={{ padding: '14px', cursor: 'pointer', minWidth: '220px', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      {fd.vendor.images?.[0] && (
-                        <img src={fd.vendor.images[0]} alt={fd.vendor.name} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                      )}
-                      <div>
-                        <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum-bright)' }}>{fd.vendor.name}</p>
-                        <p style={{ fontSize: '13px', fontWeight: 600 }}>{fd.deal}</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: '10px', color: 'var(--sand-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Icon name="clock" size={12} />
-                        {formatCountdown(fd.expires)}
-                      </p>
-                      <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--gold)' }}>
-                        CLAIM
-                      </p>
-                    </div>
+      {/* Flash Deals */}
+      {!activeBooking && flashDeals.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Flash Deals</span>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
+            {flashDeals.map(fd => (
+              <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '220px' }}>
+                  <div className="card-image" style={{ height: '120px' }}>
+                    {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
+                    <div className="card-overlay" />
+                    <div className="card-badge" style={{ background: 'var(--rum)', color: 'white' }}>DEAL</div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Photo Spots */}
-        {photoSpots.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="camera" size={18} />
-              Photo Spots
-            </h2>
-            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
-              {photoSpots.map(spot => (
-                <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', color: 'var(--black)', background: '#F5EFE6', padding: '8px 8px 14px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, width: '170px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                  <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '2px' }} />
-                  <p style={{ fontSize: '12px', fontWeight: 600, marginTop: '8px', textAlign: 'center', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-                    {spot.name}
-                  </p>
-                  <p style={{ fontSize: '10px', color: '#666', textAlign: 'center' }}>{spot.description}</p>
-                  <p style={{ fontSize: '9px', color: 'var(--rum)', textAlign: 'center', marginTop: '4px', fontWeight: 600 }}>
-                    Best: {spot.bestTime}
-                  </p>
-                  {spot.userPhotos && spot.userPhotos.length > 0 && (
-                    <p style={{ fontSize: '9px', color: '#999', textAlign: 'center', marginTop: '2px' }}>
-                      {spot.userPhotos.length} photos
+                  <div className="card-content">
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Icon name="clock" size={12} />
+                      {formatCountdown(fd.expires)}
                     </p>
-                  )}
-                  {calculateDistance(spot.lat, spot.lng) && (
-                    <p style={{ fontSize: '9px', color: 'var(--sea)', textAlign: 'center', marginTop: '2px', fontWeight: 600 }}>
-                      {calculateDistance(spot.lat, spot.lng)}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Photo Spots */}
+      {photoSpots.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Photo Spots</span>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
+            {photoSpots.map(spot => (
+              <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '200px' }}>
+                  <div className="card-image" style={{ height: '140px' }}>
+                    <img src={spot.officialPhoto} alt={spot.name} />
+                    <div className="card-overlay" />
+                  </div>
+                  <div className="card-content">
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+                      {spot.name}
                     </p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Moods */}
-        {moods.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Moods</h2>
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {moods.map(mood => (
-                <button
-                  key={mood.id}
-                  onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
-                  className="mood-chip"
-                  style={{
-                    background: selectedMood === mood.id ? 'var(--rum)' : 'var(--glass-bg)',
-                    color: selectedMood === mood.id ? 'var(--sand)' : 'var(--sand-dim)',
-                    border: selectedMood === mood.id ? '1px solid var(--rum-bright)' : '1px solid var(--glass-border)',
-                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    transform: selectedMood === mood.id ? 'scale(1.05)' : 'scale(1)'
-                  }}
-                >
-                  <Icon name={mood.icon as any} size={14} />
-                  {mood.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Experiences Preview — Bundle Format */}
-        {experiences.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Experiences</h2>
-            {experiences.slice(0, 3).map(e => (
-              <Link key={e.id} href={`/experiences`} style={{ textDecoration: 'none', color: 'var(--sand)', display: 'block' }}>
-                <div className="ticket-card" style={{ position: 'relative', marginBottom: '10px' }}>
-                  <div style={{ width: '40%', minWidth: '40%', backgroundImage: `url(${e.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                  <div style={{ position: 'absolute', left: '40%', top: 0, bottom: 0, width: '20px', borderLeft: '2px dashed rgba(255,255,255,0.2)' }} />
-                  <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{e.name}</h3>
-                    <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{e.tagline}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                        {e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}
-                      </span>
-                      <span style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>
-                        {e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}
-                      </span>
-                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
-                        TRAVEL INCLUDED
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)' }}>
-                        ${e.price}
+                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{spot.description}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                      <p style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>
+                        Best: {spot.bestTime}
                       </p>
-                      {activeBooking && (
-                        <p style={{ fontSize: '12px', color: 'var(--sea)' }}>
-                          {e.name} ETA: {e.travelTime} min
+                      {calculateDistance(spot.lat, spot.lng) && (
+                        <p style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
+                          {calculateDistance(spot.lat, spot.lng)}
                         </p>
                       )}
                     </div>
@@ -516,31 +435,104 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Near You Now */}
-        {vendors.length > 0 && (
-          <div>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Near You Now</h2>
-            <div className="vendor-grid">
-              {vendors.slice(0, 4).map(v => (
-                <Link key={v.id} href={`/vendor/${v.id}`} className={`window-card ${v.isPremium ? 'bond' : ''}`} style={{ textDecoration: 'none', color: 'var(--sand)', position: 'relative' }}>
-                  <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }} />
-                  {v.isPremium && <div className="bond-badge">PREMIUM</div>}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px', background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95) 50%)' }}>
-                    <h4 style={{ fontSize: '15px', fontWeight: 700 }}>{v.name}</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--sand-dim)' }}>
+      {/* Moods */}
+      {moods.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Moods</span>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
+            {moods.map(mood => (
+              <button
+                key={mood.id}
+                onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
+                className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
+              >
+                <Icon name={mood.icon as any} size={14} />
+                {mood.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Experiences */}
+      {experiences.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Experiences</span>
+            <Link href="/experiences" className="section-link">See all</Link>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '0 16px' }}>
+            {experiences.slice(0, 4).map(e => (
+              <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '280px' }}>
+                  <div className="card-image" style={{ height: '160px' }}>
+                    <img src={e.imageUrl} alt={e.name} />
+                    <div className="card-overlay" />
+                  </div>
+                  <div className="card-content">
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
+                    <p style={{ fontSize: '12px', color: 'var(--grey)' }}>{e.tagline}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
+                        {e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>
+                        {e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
+                        TRAVEL INCLUDED
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                      <span className="card-price">${e.price}</span>
+                      {activeBooking && (
+                        <span style={{ fontSize: '11px', color: 'var(--sea)' }}>
+                          {e.name} ETA: {e.travelTime} min
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Near You Now */}
+      {vendors.length > 0 && (
+        <div>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <span className="section-title">Near You Now</span>
+            <Link href="/marketplace" className="section-link">See all</Link>
+          </div>
+          <div className="grid-2" style={{ padding: '0 16px' }}>
+            {vendors.slice(0, 4).map(v => (
+              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                <div className="card">
+                  <div className="card-image" style={{ height: '120px' }}>
+                    <img src={v.images[0]} alt={v.name} />
+                    {v.isPremium && <div className="card-badge premium">PREMIUM</div>}
+                  </div>
+                  <div className="card-content">
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
                       {v.category}
                       {activeBooking && getVendorEta(v) && ` • ${getVendorEta(v)}`}
                       {!v.open && ' • Closed'}
                     </p>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <Dock />
     </main>
