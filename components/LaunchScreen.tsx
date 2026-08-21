@@ -9,7 +9,7 @@ export default function LaunchScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false)
-    }, 2000)
+    }, 2200)
 
     return () => clearTimeout(timer)
   }, [])

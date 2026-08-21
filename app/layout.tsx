@@ -1,6 +1,6 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next'
-
+// @ts-expect-error Next.js processes global CSS imports at build time.
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0F0E0C',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
