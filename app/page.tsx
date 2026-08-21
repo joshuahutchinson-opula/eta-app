@@ -140,22 +140,29 @@ export default function HomePage() {
 
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
         const data = await vendorsRes.value.json()
+        console.log('Vendors loaded:', Array.isArray(data) ? data.length : 0)
         setVendors(Array.isArray(data) ? data : [])
+      } else {
+        console.log('Vendors fetch failed:', vendorsRes.status)
       }
       if (experiencesRes.status === 'fulfilled' && experiencesRes.value.ok) {
         const data = await experiencesRes.value.json()
+        console.log('Experiences loaded:', Array.isArray(data) ? data.length : 0)
         setExperiences(Array.isArray(data) ? data : [])
       }
       if (photoSpotsRes.status === 'fulfilled' && photoSpotsRes.value.ok) {
         const data = await photoSpotsRes.value.json()
+        console.log('PhotoSpots loaded:', Array.isArray(data) ? data.length : 0)
         setPhotoSpots(Array.isArray(data) ? data : [])
       }
       if (flashDealsRes.status === 'fulfilled' && flashDealsRes.value.ok) {
         const data = await flashDealsRes.value.json()
+        console.log('FlashDeals loaded:', Array.isArray(data) ? data.length : 0)
         setFlashDeals(Array.isArray(data) ? data : [])
       }
       if (moodsRes.status === 'fulfilled' && moodsRes.value.ok) {
         const data = await moodsRes.value.json()
+        console.log('Moods loaded:', Array.isArray(data) ? data.length : 0)
         setMoods(Array.isArray(data) ? data : [])
       }
     } catch (error) {
@@ -168,6 +175,8 @@ export default function HomePage() {
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
+
+  console.log('Featured vendors count:', featuredVendors.length)
 
   const getSunsetTime = () => {
     const now = new Date()
@@ -308,12 +317,14 @@ export default function HomePage() {
                   <div className="glass" style={{ position: 'relative', height: '240px', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px' }}>
                     {vendor.videos && vendor.videos.length > 0 ? (
                       <video
+                        key={vendor.id}
                         src={vendor.videos[0]}
-                        muted
-                        loop
-                        autoPlay
-                        playsInline
-                          preload="metadata"
+                        muted={true}
+                        loop={true}
+                        autoPlay={true}
+                        playsInline={true}
+                        preload="metadata"
+                        poster={vendor.images[0]}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                       />
                     ) : (
