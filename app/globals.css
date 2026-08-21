@@ -18,6 +18,7 @@
   --card-bg-dark: #1C1C1E;
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --deep-orange: #D97B3A;
 }
 
 * {
@@ -127,33 +128,6 @@ body {
   z-index: 2;
 }
 
-.card-badge.premium {
-  background: var(--gold);
-  color: #0F0E0C;
-}
-
-.card-heart {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 2;
-  cursor: pointer;
-  color: white;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.card-heart:hover {
-  background: rgba(0, 0, 0, 0.5);
-  transform: scale(1.1);
-}
-
 .card-content {
   padding: 12px;
 }
@@ -199,24 +173,23 @@ body {
   transform: translateY(-2px);
 }
 
-/* ============ PREMIUM BADGE ============ */
-.premium-badge {
+/* ============ PREMIUM CROWN BADGE (icon only) ============ */
+.premium-crown {
   position: relative;
   background: linear-gradient(135deg, #FFB800 0%, #FFD700 50%, #FFB800 100%);
   background-size: 200% 200%;
   animation: shimmer 3s ease infinite;
   overflow: hidden;
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-weight: 600;
-  color: #0F0E0C;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  justify-content: center;
+  color: #0F0E0C;
 }
 
-.premium-badge::after {
+.premium-crown::after {
   content: '';
   position: absolute;
   top: 0;
@@ -270,11 +243,6 @@ body {
     0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
-.polaroid-frame {
-  background: #FFFEF5;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
 .polaroid-caption {
   font-family: 'Georgia', serif;
   font-style: italic;
@@ -323,22 +291,7 @@ body {
   transform: translateY(-1px);
 }
 
-.btn-secondary {
-  background: transparent;
-  color: var(--rum);
-  height: 50px;
-  border-radius: 12px;
-  padding: 0 20px;
-  border: 1px solid var(--rum);
-}
-
-.btn-tertiary {
-  background: transparent;
-  color: var(--rum);
-  padding: 8px;
-}
-
-/* ============ TAB BAR ============ */
+/* ============ TAB BAR - DEEP ORANGE ============ */
 .tab-bar {
   position: fixed;
   bottom: 0;
@@ -346,8 +299,8 @@ body {
   right: 0;
   height: 50px;
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--card-bg);
-  border-top: 1px solid var(--light-grey);
+  background: var(--deep-orange);
+  border-top: none;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -365,11 +318,11 @@ body {
 }
 
 .tab-item.active {
-  color: var(--rum);
+  color: #FFFFFF;
 }
 
 .tab-item.inactive {
-  color: var(--grey);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .tab-icon {
@@ -382,81 +335,15 @@ body {
   font-weight: 500;
 }
 
-/* ============ NAVIGATION ============ */
+/* ============ NAVIGATION - WHITE TOPBAR ============ */
 .nav-bar {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--off-white);
+  background: #FFFFFF;
   border-bottom: 1px solid var(--light-grey);
   padding: 8px 16px;
   backdrop-filter: blur(10px);
-}
-
-.nav-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--black);
-}
-
-.nav-title.large {
-  font-size: 34px;
-  font-weight: 800;
-}
-
-/* ============ SEARCH BAR ============ */
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--light-grey);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 14px;
-  color: var(--grey);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.search-bar:hover {
-  background: #E0E0E0;
-}
-
-.search-bar.sticky {
-  position: sticky;
-  top: 60px;
-  z-index: 30;
-  background: var(--card-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-/* ============ SEGMENTED CONTROL ============ */
-.segmented-control {
-  display: flex;
-  background: var(--light-grey);
-  border-radius: 10px;
-  padding: 2px;
-  gap: 2px;
-}
-
-.segmented-item {
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--grey);
-  border: none;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.segmented-item.active {
-  background: var(--card-bg);
-  color: var(--black);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* ============ SECTION HEADERS ============ */
@@ -484,12 +371,19 @@ body {
   gap: 4px;
 }
 
-/* Section heading with accent bar */
+/* Section heading white card */
+.section-heading-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: inline-block;
+}
+
 .section-heading {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 8px;
 }
 
 .section-eyebrow {
@@ -526,7 +420,6 @@ body {
   to { transform: scaleY(1); }
 }
 
-/* Regular heading animations */
 .section-heading-animate {
   animation: slide-in-fade 0.3s ease forwards;
 }
@@ -566,7 +459,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Featured heading gradient shimmer */
+/* Featured heading with black outline */
 .featured-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -574,6 +467,7 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: shimmer 3s ease infinite;
+  -webkit-text-stroke: 1.5px #0F0E0C;
 }
 
 /* ============ HORIZONTAL SCROLL ============ */
@@ -592,7 +486,7 @@ body {
   display: none;
 }
 
-/* ============ STORY RINGS (Instagram size) ============ */
+/* ============ STORY RINGS ============ */
 .story-ring {
   width: 66px;
   height: 66px;

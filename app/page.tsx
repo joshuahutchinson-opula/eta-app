@@ -94,6 +94,16 @@ const MOOD_ICONS: Record<string, string> = {
   'Rum & Bass': 'drink'
 }
 
+// Story examples (change 1)
+const STORY_EXAMPLES = [
+  { id: 'your-story', name: 'Your Story', type: 'user', image: '' },
+  { id: 'story-1', name: 'Rick\'s', type: 'premium', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=100&h=100&fit=crop' },
+  { id: 'story-2', name: 'Pork Pit', type: 'standard', image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=100&h=100&fit=crop' },
+  { id: 'story-3', name: 'Catamaran', type: 'premium', image: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=100&h=100&fit=crop' },
+  { id: 'story-4', name: 'Blue Hole', type: 'standard', image: 'https://images.unsplash.com/photo-1519111830404-c95d1a4d7332?w=100&h=100&fit=crop' },
+  { id: 'story-5', name: 'Beach', type: 'standard', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100&h=100&fit=crop' }
+]
+
 export default function HomePage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
@@ -132,12 +142,8 @@ export default function HomePage() {
   const getUserLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        },
-        () => {
-          setUserLocation({ lat: 18.2723, lng: -78.3521 })
-        }
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setUserLocation({ lat: 18.2723, lng: -78.3521 })
       )
     } else {
       setUserLocation({ lat: 18.2723, lng: -78.3521 })
@@ -147,9 +153,7 @@ export default function HomePage() {
   const checkActiveBooking = () => {
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch('/api/bookings', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -192,11 +196,7 @@ export default function HomePage() {
           let name = mood.name
           if (name === 'Out Til Sunrise') name = 'Party Time'
           if (name === 'Golden Hour') name = 'Sunset Chaser'
-          return {
-            ...mood,
-            name,
-            icon: MOOD_ICONS[name] || mood.icon
-          }
+          return { ...mood, name, icon: MOOD_ICONS[name] || mood.icon }
         })
         setMoods(mappedMoods)
       }
@@ -230,9 +230,7 @@ export default function HomePage() {
     if (diffMs <= 0) return 'Ended'
     const diffMin = Math.floor(diffMs / 60000)
     if (diffMin < 60) return `Ends in ${diffMin}m`
-    const diffHr = Math.floor(diffMin / 60)
-    const remainingMin = diffMin % 60
-    return `Ends in ${diffHr}h ${remainingMin}m`
+    return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
   }
 
   const getVendorEta = (vendor: Vendor) => {
@@ -264,19 +262,9 @@ export default function HomePage() {
         <TopBar />
         <div style={{ padding: '16px', paddingBottom: '100px' }}>
           <div className="skeleton" style={{ height: '66px', borderRadius: '50%', width: '66px', marginBottom: '4px' }} />
+          <div className="skeleton" style={{ height: '220px', borderRadius: '12px', marginBottom: '16px' }} />
           <div className="skeleton" style={{ height: '40px', borderRadius: '10px', marginBottom: '16px' }} />
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', overflowX: 'auto' }}>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ width: '66px', height: '66px', borderRadius: '50%', flexShrink: 0 }} />
-            ))}
-          </div>
-          <div className="skeleton" style={{ height: '220px', borderRadius: '12px', marginBottom: '20px' }} />
-          {[...Array(3)].map((_, i) => (
-            <div key={i} style={{ marginBottom: '24px' }}>
-              <div className="skeleton" style={{ width: '150px', height: '20px', marginBottom: '12px' }} />
-              <div className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
-            </div>
-          ))}
+          <div className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
         </div>
         <Dock />
       </main>
@@ -287,42 +275,40 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <TopBar />
 
-      {/* Stories Row - with extra top spacing */}
+      {/* Stories Row with examples (change 1) */}
       <div className="horizontal-scroll" style={{ padding: '24px 16px 4px' }}>
-        <div style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
-          <div className="story-ring standard" style={{ background: 'var(--light-grey)' }}>
-            <div style={{ width: '58px', height: '58px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="camera" size={20} />
+        {STORY_EXAMPLES.map(story => (
+          story.type === 'user' ? (
+            <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
+              <div className="story-ring standard" style={{ background: 'var(--light-grey)' }}>
+                <div style={{ width: '58px', height: '58px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="camera" size={20} />
+                </div>
+              </div>
+              <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>{story.name}</p>
             </div>
-          </div>
-          <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>Your Story</p>
-        </div>
-        {vendors.filter(v => v.stories && v.stories.length > 0).map(v => (
-          <Link key={v.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
-            <div className={`story-ring ${v.isPremium ? 'premium' : 'standard'}`}>
-              <img src={v.images[0]} alt={v.name} />
-            </div>
-            <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>
-              {v.name.split(' ')[0]}
-            </p>
-          </Link>
+          ) : (
+            <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
+              <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
+                <img src={story.image} alt={story.name} />
+              </div>
+              <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>{story.name}</p>
+            </Link>
+          )
         ))}
       </div>
 
-      {/* Status Module */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <StatusModule />
-      </div>
-
-      {/* Featured Section */}
+      {/* Featured Section - ABOVE StatusModule (change 4) */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">Explore Jamaica</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title featured-heading-text">Featured</span>
+            <div className="section-heading-card">
+              <div className="section-heading">
+                <span className="section-eyebrow">Explore Jamaica</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title featured-heading-text">Featured</span>
+                </div>
               </div>
             </div>
           </div>
@@ -356,21 +342,12 @@ export default function HomePage() {
                     )}
                     <div className="card-overlay" />
                     {vendor.isPremium && (
-                      <div className="premium-badge" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
-                        <Icon name="crown" size={12} />
-                        PREMIUM
+                      <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                        <Icon name="crown" size={14} />
                       </div>
                     )}
                     {vendor.live && (
-                      <div className="card-badge" style={{ 
-                        top: 'auto', 
-                        bottom: '12px', 
-                        background: 'var(--sea)', 
-                        color: '#0F0E0C',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}>
+                      <div className="card-badge" style={{ top: 'auto', bottom: '12px', background: 'var(--sea)', color: '#0F0E0C', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span className="live-dot" />
                         LIVE • {vendor.whoThere} here now
                       </div>
@@ -389,58 +366,29 @@ export default function HomePage() {
           {featuredVendors.length > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
               {featuredVendors.map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: i === featuredIndex ? '20px' : '6px',
-                    height: '6px',
-                    borderRadius: '3px',
-                    background: i === featuredIndex ? 'var(--rum)' : 'var(--light-grey)',
-                    transition: 'all 0.3s ease'
-                  }}
-                />
+                <div key={i} style={{ width: i === featuredIndex ? '20px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--light-grey)', transition: 'all 0.3s ease' }} />
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Not Feeling It Here? */}
-      {activeBooking && (
-        <div style={{ padding: '0 16px', marginBottom: '20px' }}>
-          <div className="section-header">
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">Let&apos;s Bounce</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Not Feeling It Here?</span>
-              </div>
-            </div>
-          </div>
-          <Link href={bounce.action === 'map' ? '/explore' : '/experiences'} style={{ textDecoration: 'none' }}>
-            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Icon name={bounce.icon as any} size={24} />
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{bounce.title}</h3>
-                <p style={{ fontSize: '13px', color: 'var(--grey)' }}>{bounce.desc}</p>
-              </div>
-              <span style={{ marginLeft: 'auto' }}>
-                <Icon name="chevronRight" size={18} />
-              </span>
-            </div>
-          </Link>
-        </div>
-      )}
+      {/* Status Module */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <StatusModule />
+      </div>
 
       {/* Flash Deals */}
       {!activeBooking && flashDeals.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">Limited Time</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Flash Deals</span>
+            <div className="section-heading-card">
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Limited Time</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Flash Deals</span>
+                </div>
               </div>
             </div>
           </div>
@@ -468,15 +416,17 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Photo Spots with Polaroid style */}
+      {/* Photo Spots */}
       {photoSpots.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">Capture It</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Photo Spots</span>
+            <div className="section-heading-card">
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Capture It</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Photo Spots</span>
+                </div>
               </div>
             </div>
           </div>
@@ -485,39 +435,14 @@ export default function HomePage() {
               <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                 <div className="polaroid" style={{ width: '200px' }}>
                   <div className="tape-strip" />
-                  <div style={{ 
-                    width: '100%', 
-                    height: '140px', 
-                    overflow: 'hidden',
-                    borderRadius: '4px'
-                  }}>
-                    <img 
-                      src={spot.officialPhoto} 
-                      alt={spot.name} 
-                      style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'cover',
-                        transition: 'transform 0.3s ease'
-                      }}
-                    />
+                  <div style={{ width: '100%', height: '140px', overflow: 'hidden', borderRadius: '4px' }}>
+                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <div className="polaroid-caption">
-                    {spot.name}
-                  </div>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    marginTop: '4px',
-                    padding: '0 4px'
-                  }}>
-                    <span style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>
-                      Best: {spot.bestTime}
-                    </span>
+                  <div className="polaroid-caption">{spot.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>Best: {spot.bestTime}</span>
                     {calculateDistance(spot.lat, spot.lng) && (
-                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                        {calculateDistance(spot.lat, spot.lng)}
-                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{calculateDistance(spot.lat, spot.lng)}</span>
                     )}
                   </div>
                 </div>
@@ -531,26 +456,19 @@ export default function HomePage() {
       {moods.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">How Yuh Feel?</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Moods</span>
+            <div className="section-heading-card">
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">How Yuh Feel?</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Moods</span>
+                </div>
               </div>
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '10px 16px 20px 16px' }}>
             {moods.map(mood => (
-              <button
-                key={mood.id}
-                onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
-                className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
-                style={{
-                  background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)',
-                  color: selectedMood === mood.id ? 'white' : 'var(--black)',
-                  boxShadow: selectedMood === mood.id ? 'none' : 'var(--card-shadow)'
-                }}
-              >
+              <button key={mood.id} onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)} className={`chip ${selectedMood === mood.id ? 'active' : ''}`} style={{ background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)', color: selectedMood === mood.id ? 'white' : 'var(--black)', boxShadow: selectedMood === mood.id ? 'none' : 'var(--card-shadow)' }}>
                 <Icon name={mood.icon as any} size={14} />
                 {mood.name}
               </button>
@@ -559,20 +477,20 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Experiences filtered by mood */}
+      {/* Experiences */}
       {filteredExperiences.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">Curated For You</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Experiences</span>
+            <div className="section-heading-card">
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Curated For You</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Experiences</span>
+                </div>
               </div>
             </div>
-            <Link href="/experiences" className="section-link">
-              See all <Icon name="chevronRight" size={14} />
-            </Link>
+            <Link href="/experiences" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
           <div className="horizontal-scroll" style={{ padding: '10px 16px 30px 16px' }}>
             {filteredExperiences.slice(0, 4).map(e => (
@@ -582,9 +500,8 @@ export default function HomePage() {
                     <img src={e.imageUrl} alt={e.name} />
                     <div className="card-overlay" />
                     {e.vendor?.isPremium && (
-                      <div className="premium-badge" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
-                        <Icon name="crown" size={12} />
-                        PREMIUM
+                      <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                        <Icon name="crown" size={14} />
                       </div>
                     )}
                   </div>
@@ -592,23 +509,13 @@ export default function HomePage() {
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
                     <p style={{ fontSize: '12px', color: 'var(--grey)' }}>{e.tagline}</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>
-                        {e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}
-                      </span>
-                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>
-                        {e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}
-                      </span>
-                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>
-                        TRAVEL INCLUDED
-                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>TRAVEL INCLUDED</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                       <span className="card-price">${e.price}</span>
-                      {activeBooking && (
-                        <span style={{ fontSize: '11px', color: 'var(--sea)' }}>
-                          ETA: {e.travelTime} min
-                        </span>
-                      )}
+                      {activeBooking && <span style={{ fontSize: '11px', color: 'var(--sea)' }}>ETA: {e.travelTime} min</span>}
                     </div>
                   </div>
                 </div>
@@ -618,20 +525,20 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Near You Now filtered by mood */}
+      {/* Near You Now */}
       {filteredVendors.length > 0 && (
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading section-heading-animate section-heading-glow">
-              <span className="section-eyebrow">Close By</span>
-              <div className="section-title-row">
-                <span className="section-accent-bar" />
-                <span className="section-title">Near You Now</span>
+            <div className="section-heading-card">
+              <div className="section-heading section-heading-animate section-heading-glow">
+                <span className="section-eyebrow">Close By</span>
+                <div className="section-title-row">
+                  <span className="section-accent-bar" />
+                  <span className="section-title">Near You Now</span>
+                </div>
               </div>
             </div>
-            <Link href="/marketplace" className="section-link">
-              See all <Icon name="chevronRight" size={14} />
-            </Link>
+            <Link href="/marketplace" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
           <div className="grid-2" style={{ padding: '0 16px' }}>
             {filteredVendors.slice(0, 4).map(v => (
@@ -640,24 +547,12 @@ export default function HomePage() {
                   <div className="card-image" style={{ height: '120px' }}>
                     <img src={v.images[0]} alt={v.name} />
                     {v.isPremium && (
-                      <div className="premium-badge" style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 2 }}>
-                        <Icon name="crown" size={10} />
-                        PREMIUM
+                      <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 2 }}>
+                        <Icon name="crown" size={12} />
                       </div>
                     )}
                     {v.live && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        left: '8px',
-                        zIndex: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        color: '#00C853'
-                      }}>
+                      <div style={{ position: 'absolute', bottom: '8px', left: '8px', zIndex: 2, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 600, color: '#00C853' }}>
                         <span className="live-dot" />
                         {v.whoThere} here now
                       </div>
