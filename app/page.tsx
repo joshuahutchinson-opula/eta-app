@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
-import StatusModule from '@/components/StatusModule'
 import Icon from '@/lib/icons'
 import { getBounceSuggestion } from '@/lib/context-engine'
 
@@ -73,14 +72,6 @@ interface Mood {
   coverImage: string
 }
 
-interface ActiveBooking {
-  id: string
-  experienceId?: string
-  vendorId?: string
-  status: string
-  date: string
-}
-
 const MOOD_ICONS: Record<string, string> = {
   'R&R': 'wellness',
   'Just The Two Of Us': 'heart',
@@ -94,7 +85,6 @@ const MOOD_ICONS: Record<string, string> = {
   'Rum & Bass': 'drink'
 }
 
-// Story examples (change 1)
 const STORY_EXAMPLES = [
   { id: 'your-story', name: 'Your Story', type: 'user', image: '' },
   { id: 'story-1', name: 'Rick\'s', type: 'premium', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=100&h=100&fit=crop' },
@@ -233,12 +223,6 @@ export default function HomePage() {
     return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
   }
 
-  const getVendorEta = (vendor: Vendor) => {
-    if (!activeBooking || !userLocation) return null
-    const baseEta = vendor.category === 'FOOD' ? 5 : vendor.category === 'DRINKS' ? 8 : 12
-    return `${baseEta} min`
-  }
-
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
       const scrollLeft = featuredScrollRef.current.scrollLeft
@@ -262,8 +246,7 @@ export default function HomePage() {
         <TopBar />
         <div style={{ padding: '16px', paddingBottom: '100px' }}>
           <div className="skeleton" style={{ height: '66px', borderRadius: '50%', width: '66px', marginBottom: '4px' }} />
-          <div className="skeleton" style={{ height: '220px', borderRadius: '12px', marginBottom: '16px' }} />
-          <div className="skeleton" style={{ height: '40px', borderRadius: '10px', marginBottom: '16px' }} />
+          <div className="skeleton" style={{ height: '280px', borderRadius: '12px', marginBottom: '16px' }} />
           <div className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
         </div>
         <Dock />
@@ -275,7 +258,7 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <TopBar />
 
-      {/* Stories Row with examples (change 1) */}
+      {/* Stories Row */}
       <div className="horizontal-scroll" style={{ padding: '24px 16px 4px' }}>
         {STORY_EXAMPLES.map(story => (
           story.type === 'user' ? (
@@ -298,7 +281,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Featured Section - ABOVE StatusModule (change 4) */}
+      {/* Featured - full width, taller */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -322,10 +305,10 @@ export default function HomePage() {
               <Link
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
-                style={{ textDecoration: 'none', flexShrink: 0, width: '85%', scrollSnapAlign: 'center' }}
+                style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
               >
                 <div className="featured-card">
-                  <div className="card-image" style={{ height: '220px' }}>
+                  <div className="card-image" style={{ height: '280px' }}>
                     {vendor.videos && vendor.videos.length > 0 ? (
                       <video
                         src={vendor.videos[0]}
@@ -347,7 +330,16 @@ export default function HomePage() {
                       </div>
                     )}
                     {vendor.live && (
-                      <div className="card-badge" style={{ top: 'auto', bottom: '12px', background: 'var(--sea)', color: '#0F0E0C', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div className="card-badge" style={{ 
+                        top: '12px', 
+                        right: '12px', 
+                        left: 'auto',
+                        background: 'var(--sea)', 
+                        color: '#0F0E0C',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
                         <span className="live-dot" />
                         LIVE • {vendor.whoThere} here now
                       </div>
@@ -355,7 +347,7 @@ export default function HomePage() {
                     <div className="card-content" style={{ position: 'absolute', bottom: '0', left: '0', right: '0' }}>
                       <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'white' }}>{vendor.name}</h3>
                       <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
-                        {vendor.category} • {getVendorEta(vendor) || 'Featured'}
+                        {vendor.category}
                       </p>
                     </div>
                   </div>
@@ -373,17 +365,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Status Module */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <StatusModule />
-      </div>
-
       {/* Flash Deals */}
-      {!activeBooking && flashDeals.length > 0 && (
+      {flashDeals.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading-card">
-              <div className="section-heading section-heading-animate section-heading-glow">
+              <div className="section-heading section-heading-animate">
                 <span className="section-eyebrow">Limited Time</span>
                 <div className="section-title-row">
                   <span className="section-accent-bar" />
@@ -421,7 +408,7 @@ export default function HomePage() {
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading-card">
-              <div className="section-heading section-heading-animate section-heading-glow">
+              <div className="section-heading section-heading-animate">
                 <span className="section-eyebrow">Capture It</span>
                 <div className="section-title-row">
                   <span className="section-accent-bar" />
@@ -452,23 +439,24 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Moods */}
+      {/* Moods - centered, "How We Feelin Today?" */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading section-heading-animate section-heading-glow">
-                <span className="section-eyebrow">How Yuh Feel?</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title">Moods</span>
-                </div>
-              </div>
-            </div>
+          <div style={{ textAlign: 'center', marginBottom: '12px', padding: '0 16px' }}>
+            <h2 className="moods-heading-text" style={{ fontSize: '22px', fontWeight: 800 }}>How We Feelin Today?</h2>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '10px 16px 20px 16px' }}>
+          <div className="horizontal-scroll" style={{ padding: '10px 16px 20px 16px', justifyContent: 'center' }}>
             {moods.map(mood => (
-              <button key={mood.id} onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)} className={`chip ${selectedMood === mood.id ? 'active' : ''}`} style={{ background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)', color: selectedMood === mood.id ? 'white' : 'var(--black)', boxShadow: selectedMood === mood.id ? 'none' : 'var(--card-shadow)' }}>
+              <button
+                key={mood.id}
+                onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
+                className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
+                style={{
+                  background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)',
+                  color: selectedMood === mood.id ? 'white' : 'var(--black)',
+                  boxShadow: selectedMood === mood.id ? 'none' : 'var(--card-shadow)'
+                }}
+              >
                 <Icon name={mood.icon as any} size={14} />
                 {mood.name}
               </button>
@@ -482,7 +470,7 @@ export default function HomePage() {
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading-card">
-              <div className="section-heading section-heading-animate section-heading-glow">
+              <div className="section-heading section-heading-animate">
                 <span className="section-eyebrow">Curated For You</span>
                 <div className="section-title-row">
                   <span className="section-accent-bar" />
@@ -515,7 +503,6 @@ export default function HomePage() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                       <span className="card-price">${e.price}</span>
-                      {activeBooking && <span style={{ fontSize: '11px', color: 'var(--sea)' }}>ETA: {e.travelTime} min</span>}
                     </div>
                   </div>
                 </div>
@@ -530,7 +517,7 @@ export default function HomePage() {
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading-card">
-              <div className="section-heading section-heading-animate section-heading-glow">
+              <div className="section-heading section-heading-animate">
                 <span className="section-eyebrow">Close By</span>
                 <div className="section-title-row">
                   <span className="section-accent-bar" />
@@ -562,7 +549,6 @@ export default function HomePage() {
                     <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
                     <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
                       {v.category}
-                      {activeBooking && getVendorEta(v) && ` • ${getVendorEta(v)}`}
                       {!v.open && ' • Closed'}
                     </p>
                   </div>
@@ -576,4 +562,12 @@ export default function HomePage() {
       <Dock />
     </main>
   )
+}
+
+interface ActiveBooking {
+  id: string
+  experienceId?: string
+  vendorId?: string
+  status: string
+  date: string
 }

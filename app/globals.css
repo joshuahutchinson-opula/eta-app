@@ -2,7 +2,7 @@
 :root {
   --black: #0F0E0C;
   --white: #FFFFFF;
-  --off-white: #F8C19A;
+  --off-white: #FBD8B8;
   --grey: #717171;
   --light-grey: #EBEBEB;
   --sand: #F5EFE6;
@@ -18,7 +18,6 @@
   --card-bg-dark: #1C1C1E;
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --deep-orange: #D97B3A;
 }
 
 * {
@@ -57,12 +56,9 @@ body {
 [data-theme="dark"] body {
   background: #0F0E0C;
   color: #F5EFE6;
-  background-image: 
-    radial-gradient(ellipse at 20% 20%, rgba(255, 75, 43, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(255, 184, 0, 0.05) 0%, transparent 50%);
 }
 
-/* ============ CARD STYLES WITH DEPTH ============ */
+/* ============ CARD STYLES ============ */
 .card {
   background: var(--card-bg);
   border-radius: 12px;
@@ -81,13 +77,6 @@ body {
     0 4px 12px rgba(0, 0, 0, 0.12),
     0 8px 24px rgba(0, 0, 0, 0.08),
     0 16px 48px rgba(0, 0, 0, 0.04);
-}
-
-[data-theme="dark"] .card {
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(0, 0, 0, 0.2),
-    0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .card-image {
@@ -173,7 +162,7 @@ body {
   transform: translateY(-2px);
 }
 
-/* ============ PREMIUM CROWN BADGE (icon only) ============ */
+/* ============ PREMIUM CROWN ============ */
 .premium-crown {
   position: relative;
   background: linear-gradient(135deg, #FFB800 0%, #FFD700 50%, #FFB800 100%);
@@ -219,7 +208,7 @@ body {
   50% { box-shadow: 0 0 0 6px rgba(255, 184, 0, 0); }
 }
 
-/* ============ POLAROID STYLES ============ */
+/* ============ POLAROID ============ */
 .polaroid {
   background: white;
   padding: 10px 10px 40px 10px;
@@ -238,9 +227,6 @@ body {
 
 .polaroid:hover {
   transform: rotate(0deg) scale(1.02);
-  box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
 .polaroid-caption {
@@ -264,7 +250,7 @@ body {
   z-index: 2;
 }
 
-/* ============ BUTTON STYLES ============ */
+/* ============ BUTTONS ============ */
 .btn {
   display: flex;
   align-items: center;
@@ -291,7 +277,7 @@ body {
   transform: translateY(-1px);
 }
 
-/* ============ TAB BAR - DEEP ORANGE ============ */
+/* ============ TAB BAR - RUM PUNCH ============ */
 .tab-bar {
   position: fixed;
   bottom: 0;
@@ -299,7 +285,7 @@ body {
   right: 0;
   height: 50px;
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--deep-orange);
+  background: var(--rum);
   border-top: none;
   display: flex;
   align-items: center;
@@ -322,7 +308,7 @@ body {
 }
 
 .tab-item.inactive {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .tab-icon {
@@ -335,7 +321,7 @@ body {
   font-weight: 500;
 }
 
-/* ============ NAVIGATION - WHITE TOPBAR ============ */
+/* ============ NAVIGATION ============ */
 .nav-bar {
   position: sticky;
   top: 0;
@@ -371,13 +357,14 @@ body {
   gap: 4px;
 }
 
-/* Section heading white card */
+/* Full width heading card */
 .section-heading-card {
   background: #FFFFFF;
   border-radius: 12px;
   padding: 10px 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  display: inline-block;
+  display: block;
+  width: 100%;
 }
 
 .section-heading {
@@ -443,14 +430,8 @@ body {
 }
 
 @keyframes slide-in-fade {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes glow-flare {
@@ -459,7 +440,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Featured heading with black outline */
+/* Featured heading - thin outline */
 .featured-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -467,7 +448,18 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: shimmer 3s ease infinite;
-  -webkit-text-stroke: 1.5px #0F0E0C;
+  -webkit-text-stroke: 0.5px #0F0E0C;
+}
+
+/* Moods heading - no outline, centered */
+.moods-heading-text {
+  background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s ease infinite;
+  text-align: center;
 }
 
 /* ============ HORIZONTAL SCROLL ============ */
@@ -557,7 +549,7 @@ body {
   text-align: center;
 }
 
-/* ============ LOADING SKELETON ============ */
+/* ============ SKELETON ============ */
 .skeleton {
   background: linear-gradient(90deg, var(--light-grey) 25%, #F5F5F5 50%, var(--light-grey) 75%);
   background-size: 200% 100%;
@@ -595,10 +587,7 @@ body {
 }
 
 @keyframes fadeOut {
-  to {
-    opacity: 0;
-    visibility: hidden;
-  }
+  to { opacity: 0; visibility: hidden; }
 }
 
 @keyframes pulse {
@@ -606,16 +595,7 @@ body {
   50% { opacity: 0.6; transform: scale(1.05); }
 }
 
-/* ============ LIVE INDICATOR ============ */
-.live-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #00C853;
-  font-size: 12px;
-  font-weight: 500;
-}
-
+/* ============ LIVE DOT ============ */
 .live-dot {
   width: 8px;
   height: 8px;
