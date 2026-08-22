@@ -1,7 +1,7 @@
+// app/pay/page.tsx
 'use client'
 
 import { useState } from 'react'
-import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
@@ -27,9 +27,7 @@ export default function PayPage() {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-      <TopBar />
-
+    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: '#0A1628' }}>
       {step === 'scan' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ width: '240px', height: '240px', border: '2px solid var(--gold)', borderRadius: '24px', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
