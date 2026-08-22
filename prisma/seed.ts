@@ -115,7 +115,7 @@ async function main() {
     },
   })
 
-  // Create vendors
+  // Create vendors with videos for premium vendors
   const pushCart = await prisma.vendor.create({
     data: {
       name: 'Push Cart',
@@ -131,7 +131,9 @@ async function main() {
         'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800',
         'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+      ],
       open: true,
       live: true,
       isPremium: true,
@@ -157,7 +159,9 @@ async function main() {
         'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
         'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+      ],
       open: true,
       live: false,
       isPremium: true,
@@ -183,7 +187,9 @@ async function main() {
         'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800',
         'https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+      ],
       open: true,
       live: true,
       isPremium: true,
@@ -286,7 +292,9 @@ async function main() {
         'https://images.unsplash.com/photo-1544025162-d76694265947?w=800',
         'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      ],
       open: true,
       live: true,
       isPremium: true,
@@ -335,7 +343,9 @@ async function main() {
         'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+      ],
       open: true,
       live: true,
       isPremium: true,
@@ -383,7 +393,9 @@ async function main() {
         'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
-      videos: [],
+      videos: [
+        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+      ],
       open: true,
       live: true,
       isPremium: true,
