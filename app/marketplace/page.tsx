@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import TopBar from '@/components/TopBar'
+import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
@@ -48,6 +48,10 @@ const CATEGORIES = [
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
 
+function formatCategory(category: string): string {
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
+
 export default function MarketplacePage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
@@ -65,6 +69,12 @@ export default function MarketplacePage() {
     fetchData()
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
+    const savedCity = localStorage.getItem('marketplaceCity')
+    if (savedCity) setCity(savedCity as 'NEGRIL' | 'MONTEGO_BAY')
+    const savedCategory = localStorage.getItem('marketplaceCategory')
+    if (savedCategory) setSelectedCategory(savedCategory)
+    const savedSort = localStorage.getItem('marketplaceSort')
+    if (savedSort) setSortBy(savedSort)
   }, [])
 
   const fetchData = async () => {
@@ -106,6 +116,22 @@ export default function MarketplacePage() {
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
   }
 
+  const handleCityChange = (c: 'NEGRIL' | 'MONTEGO_BAY') => {
+    setCity(c)
+    localStorage.setItem('marketplaceCity', c)
+  }
+
+  const handleCategoryChange = (cat: string | null) => {
+    setSelectedCategory(cat)
+    if (cat) localStorage.setItem('marketplaceCategory', cat)
+    else localStorage.removeItem('marketplaceCategory')
+  }
+
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort)
+    localStorage.setItem('marketplaceSort', sort)
+  }
+
   const premiumVendors = vendors.filter(v => v.isPremium)
 
   const filteredVendors = vendors
@@ -127,19 +153,27 @@ export default function MarketplacePage() {
     !accommodationType || a.type === accommodationType
   )
 
+  const topRatedPremium = [...premiumVendors].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]
+
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
-        <TopBar />
-        <div style={{ padding: '16px', paddingBottom: '100px' }}>
-          <div className="skeleton" style={{ height: '44px', borderRadius: '12px', marginBottom: '24px' }} />
-          <div className="skeleton" style={{ height: '200px', borderRadius: '12px', marginBottom: '32px' }} />
+        <FloatingPill />
+        <div style={{ padding: '16px', paddingBottom: '100px', paddingTop: '60px' }}>
+          <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
+            <div className="skeleton-image" style={{ height: '100%' }} />
+          </div>
+          <div className="skeleton-card" style={{ height: '200px', marginBottom: '32px' }}>
+            <div className="skeleton-image" style={{ height: '100%' }} />
+          </div>
           <div className="grid-2">
             {[...Array(6)].map((_, i) => (
-              <div key={i}>
-                <div className="skeleton" style={{ height: '140px', borderRadius: '12px', marginBottom: '8px' }} />
-                <div className="skeleton" style={{ height: '16px', width: '80%', marginBottom: '4px' }} />
-                <div className="skeleton" style={{ height: '12px', width: '60%' }} />
+              <div key={i} className="skeleton-card">
+                <div className="skeleton-image" style={{ height: '140px' }} />
+                <div style={{ padding: '12px' }}>
+                  <div className="skeleton-text" style={{ height: '14px', width: '80%', marginBottom: '8px' }} />
+                  <div className="skeleton-text" style={{ height: '10px', width: '60%' }} />
+                </div>
               </div>
             ))}
           </div>
@@ -151,9 +185,9 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <TopBar />
+      <FloatingPill />
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '60px 16px 16px' }}>
         {/* Search bar */}
         <div className="card" style={{ 
           display: 'flex', 
@@ -162,7 +196,7 @@ export default function MarketplacePage() {
           padding: '10px 14px',
           marginBottom: '24px',
           position: 'sticky',
-          top: '52px',
+          top: '12px',
           zIndex: 30
         }}>
           <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
@@ -173,7 +207,7 @@ export default function MarketplacePage() {
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, background: 'none', border: 'none', color: 'var(--black)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
           />
-          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer' }}>
+          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
             <Icon name="filter" size={16} style={{ color: 'var(--grey)' }} />
           </span>
         </div>
@@ -183,7 +217,7 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Today&apos;s Pick</span>
+                <span className="section-eyebrow">TODAY&apos;S PICK</span>
                 <span className="section-title">Dish Of The Day</span>
               </div>
             </div>
@@ -197,11 +231,11 @@ export default function MarketplacePage() {
                   </p>
                   <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{dishesOfDay[0].dish}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="price-font" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--rum)' }}>
+                    <span className="num-font" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--rum)' }}>
                       ${dishesOfDay[0].price}
                     </span>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
-                      ETA: {dishesOfDay[0].eta}
+                    <span className="num-font" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                      {dishesOfDay[0].eta}
                     </span>
                   </div>
                 </div>
@@ -215,33 +249,41 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Top Tier</span>
+                <span className="section-eyebrow">TOP TIER</span>
                 <span className="section-title">Premium Members</span>
               </div>
-              <span className="section-link">See all</span>
+              <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
             </div>
-            <div className="section-content-card">
-              <div className="horizontal-scroll" style={{ padding: '0' }}>
-                {premiumVendors.map(v => (
-                  <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '180px' }}>
-                    <div className="card">
-                      <div className="card-image" style={{ height: '120px' }}>
-                        <img src={v.images[0]} alt={v.name} />
-                        {v.live && (
-                          <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="live-dot" />
-                            {v.whoThere} here
-                          </div>
-                        )}
-                      </div>
-                      <div className="card-content">
-                        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{v.category} • {v.neighborhood}</p>
-                      </div>
+            <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+              {premiumVendors.map((v) => (
+                <Link 
+                  key={v.id} 
+                  href={`/vendor/${v.id}`} 
+                  style={{ textDecoration: 'none', flexShrink: 0, width: v.id === topRatedPremium?.id ? '280px' : '180px' }}
+                >
+                  <div className="card">
+                    <div className="card-image" style={{ height: v.id === topRatedPremium?.id ? '180px' : '120px' }}>
+                      <img src={v.images[0]} alt={v.name} />
+                      {v.live && (
+                        <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className="live-dot" />
+                          <span className="num-font">{v.whoThere}</span> here now
+                        </div>
+                      )}
                     </div>
-                  </Link>
-                ))}
-              </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                      {v.rating && (
+                        <div className="rating-text">
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         )}
@@ -251,52 +293,39 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Stay Awhile</span>
+                <span className="section-eyebrow">STAY AWHILE</span>
                 <span className="section-title">Accommodation</span>
               </div>
-              <span className="section-link">See all</span>
+              <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
             </div>
-            <div className="segmented-control" style={{ marginBottom: '12px', marginLeft: '16px', marginRight: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', padding: '0 16px 12px' }}>
               {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
                 <button
                   key={type}
-                  className={`segmented-item ${accommodationType === type ? 'active' : ''}`}
                   onClick={() => setAccommodationType(type)}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    padding: '8px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    border: 'none',
-                    fontFamily: 'inherit',
-                    background: accommodationType === type ? 'var(--rum)' : 'var(--light-grey)',
-                    color: accommodationType === type ? 'white' : 'var(--grey)'
-                  }}
+                  className={`chip ${accommodationType === type ? 'active' : ''}`}
                 >
                   {type}
                 </button>
               ))}
             </div>
-            <div className="section-content-card">
-              <div className="horizontal-scroll" style={{ padding: '0' }}>
-                {filteredAccommodations.map(a => (
-                  <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '220px' }}>
-                    <div className="card">
-                      <div className="card-image" style={{ height: '120px' }}>
-                        <img src={a.media?.[0]?.url || ''} alt={a.name} />
-                      </div>
-                      <div className="card-content">
-                        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{a.name}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--grey)' }}>★ {a.googleStars} • {a.type}</p>
-                        <p className="card-price" style={{ marginTop: '4px' }}>{a.priceRange}/night</p>
-                      </div>
+            <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+              {filteredAccommodations.map(a => (
+                <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '220px' }}>
+                  <div className="card">
+                    <div className="card-image" style={{ height: '120px' }}>
+                      <img src={a.media?.[0]?.url || ''} alt={a.name} />
                     </div>
-                  </Link>
-                ))}
-              </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{a.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>
+                        ★ <span className="num-font">{a.googleStars}</span> · {a.type}
+                      </p>
+                      <p className="card-price">{a.priceRange}/night</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         )}
@@ -305,10 +334,10 @@ export default function MarketplacePage() {
         <div>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">Full Listings</span>
+              <span className="section-eyebrow">FULL LISTINGS</span>
               <span className="section-title">All Vendors</span>
             </div>
-            <span className="section-link">See all</span>
+            <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
           {filteredVendors.length === 0 ? (
             <div className="empty-state">
@@ -317,10 +346,10 @@ export default function MarketplacePage() {
               <p style={{ fontSize: '13px' }}>Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div className="section-content-card">
-              <div className="grid-2" style={{ gap: '8px' }}>
+            <div style={{ padding: '0 16px' }}>
+              <div className="grid-2" style={{ gap: '12px' }}>
                 {filteredVendors.map(v => (
-                  <div key={v.id} style={{ position: 'relative' }}>
+                  <div key={v.id}>
                     <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
                       <div className="card">
                         <div className="card-image" style={{ height: '120px' }}>
@@ -328,30 +357,31 @@ export default function MarketplacePage() {
                           {v.live && (
                             <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <span className="live-dot" />
-                              {v.whoThere} here
+                              <span className="num-font">{v.whoThere}</span> here now
                             </div>
                           )}
                         </div>
                         <div className="card-content">
-                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                             <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
-                              <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{v.category} • {v.neighborhood}</p>
+                              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
+                              <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                               {v.rating && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--black)' }}>★ {v.rating}</span>
-                                  {v.reviewCount && <span style={{ fontSize: '10px', color: 'var(--grey)' }}>({v.reviewCount})</span>}
+                                <div className="rating-text" style={{ marginBottom: '4px' }}>
+                                  ★ <span className="num-font">{v.rating}</span>
+                                  {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                                 </div>
                               )}
                             </div>
                             <button
+                              className="heart-btn"
                               onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--grey)' }}
+                              style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--grey)' }}
                             >
-                              <Icon name="heart" size={16} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                              <Icon name="heart" size={14} className={savedVendors.includes(v.id) ? 'filled' : ''} />
                             </button>
                           </div>
-                          <p className="card-price" style={{ marginTop: '8px' }}>{v.priceRange}</p>
+                          <p className="price-tier">{v.priceRange}</p>
                         </div>
                       </div>
                     </Link>
@@ -375,19 +405,9 @@ export default function MarketplacePage() {
             {['NEGRIL', 'MONTEGO_BAY'].map(c => (
               <button
                 key={c}
-                onClick={() => setCity(c as 'NEGRIL' | 'MONTEGO_BAY')}
-                style={{
-                  flex: 1,
-                  padding: '8px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: 'none',
-                  fontFamily: 'inherit',
-                  background: city === c ? 'var(--rum)' : 'var(--light-grey)',
-                  color: city === c ? 'white' : 'var(--grey)'
-                }}
+                onClick={() => handleCityChange(c as 'NEGRIL' | 'MONTEGO_BAY')}
+                className={`chip ${city === c ? 'active' : ''}`}
+                style={{ flex: 1, justifyContent: 'center' }}
               >
                 {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
               </button>
@@ -399,7 +419,7 @@ export default function MarketplacePage() {
             {CATEGORIES.map(cat => (
               <button
                 key={cat.name}
-                onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+                onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
                 className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
               >
                 <Icon name={cat.icon as any} size={12} />
@@ -413,7 +433,7 @@ export default function MarketplacePage() {
             {SORT_OPTIONS.map(option => (
               <button
                 key={option}
-                onClick={() => setSortBy(option)}
+                onClick={() => handleSortChange(option)}
                 className={`chip ${sortBy === option ? 'active' : ''}`}
               >
                 {option}

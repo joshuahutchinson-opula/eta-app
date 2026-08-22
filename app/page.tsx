@@ -4,7 +4,8 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import TopBar from '@/components/TopBar'
+import FloatingPill from '@/components/FloatingPill'
+import ActiveTripBanner from '@/components/ActiveTripBanner'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { getBounceSuggestion } from '@/lib/context-engine'
@@ -105,6 +106,14 @@ const STORY_EXAMPLES = [
   { id: 'story-5', name: 'Beach', type: 'standard', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100&h=100&fit=crop' }
 ]
 
+const EDITORIAL_SUBHEADS: Record<string, string> = {
+  'Rick\'s Café': 'Where the cliffs meet the sunset',
+  'Pork Pit': 'Smoke and spice, the real deal',
+  'Catamaran': 'Where the reef comes alive at sunrise',
+  'Blue Hole': 'Hidden falls, worth the trek',
+  'Beach': 'Soft sand, warm water, no rush'
+}
+
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
@@ -121,8 +130,8 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [search, setSearch] = useState('')
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -142,6 +151,7 @@ export default function HomePage() {
           behavior: 'smooth'
         })
         setFeaturedIndex(nextIndex)
+        setActiveVideoIndex(nextIndex)
       }
     }, 5000)
 
@@ -227,14 +237,13 @@ export default function HomePage() {
 
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
   const hour = new Date().getHours()
-  const bounce = getBounceSuggestion(null, userLocation, hour)
 
-  const getTimeContext = () => {
-    if (hour >= 6 && hour < 11) return "Here's what's good right now — breakfast spots and morning activities"
-    if (hour >= 11 && hour < 16) return "Here's what's good right now — lunch, beach, and daytime adventures"
-    if (hour >= 16 && hour < 19) return "Here's what's good right now — golden hour and sunset spots"
-    if (hour >= 19 && hour < 23) return "Here's what's good right now — dinner, drinks, and nightlife"
-    return "Here's what's good right now — late night bites and spots still open"
+  const getTimeEyebrow = () => {
+    if (hour >= 6 && hour < 11) return 'MORNING PICKS'
+    if (hour >= 11 && hour < 16) return 'MIDDAY PICKS'
+    if (hour >= 16 && hour < 19) return 'SUNSET PICKS'
+    if (hour >= 19 && hour < 23) return 'NIGHT PICKS'
+    return 'LATE NIGHT'
   }
 
   const calculateDistance = (spotLat?: number, spotLng?: number) => {
@@ -263,10 +272,10 @@ export default function HomePage() {
       const cardWidth = featuredScrollRef.current.clientWidth
       const newIndex = Math.round(scrollLeft / cardWidth)
       setFeaturedIndex(Math.min(newIndex, featuredVendors.length - 1))
+      setActiveVideoIndex(Math.min(newIndex, featuredVendors.length - 1))
     }
   }
 
-  // Filter photo spots by proximity (within 50km)
   const nearbyPhotoSpots = photoSpots.filter(spot => {
     const dist = calculateDistance(spot.lat, spot.lng)
     return dist !== null && dist <= 50
@@ -280,23 +289,19 @@ export default function HomePage() {
     ? vendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
     : vendors
 
-  // Sort vendors by rating for hero card
   const topRatedVendor = [...filteredVendors].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]
 
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
-        <TopBar />
-        <div style={{ padding: '16px', paddingBottom: '100px' }}>
-          {/* Skeleton story ring */}
+        <FloatingPill />
+        <div style={{ padding: '16px', paddingBottom: '100px', paddingTop: '60px' }}>
           <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
             <div className="skeleton-image" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
           </div>
-          {/* Skeleton featured */}
-          <div className="skeleton-card" style={{ height: '240px', marginBottom: '24px' }}>
+          <div className="skeleton-card" style={{ height: '380px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
-          {/* Skeleton cards */}
           <div className="grid-2">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="skeleton-card">
@@ -316,10 +321,19 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <TopBar />
+      <FloatingPill />
+
+      {/* Active trip banner */}
+      {activeBooking && (
+        <ActiveTripBanner 
+          tripName={activeBooking.experience?.name || 'Your Experience'}
+          etaMinutes={12}
+          nextStopName="Rick's Café"
+        />
+      )}
 
       {/* Stories */}
-      <div className="horizontal-scroll" style={{ padding: '24px 16px 8px' }}>
+      <div className="horizontal-scroll" style={{ padding: '60px 16px 8px' }}>
         {STORY_EXAMPLES.map(story => (
           story.type === 'user' ? (
             <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
@@ -341,49 +355,12 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Search bar */}
-      <div style={{ padding: '0 16px 16px' }}>
-        <div className="card" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '8px',
-          padding: '10px 14px'
-        }}>
-          <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
-          <input
-            type="text"
-            placeholder="Search vendors, experiences, spots..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--black)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
-          />
-        </div>
-      </div>
-
-      {/* Active booking banner */}
-      {activeBooking && (
-        <div style={{ padding: '0 16px 16px' }}>
-          <Link href="/experiences" style={{ textDecoration: 'none' }}>
-            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Icon name="clock" size={20} style={{ color: 'var(--rum)' }} />
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>
-                  {activeBooking.experience?.name || 'Your experience'} starts soon
-                </p>
-                <p style={{ fontSize: '11px', color: 'var(--grey)' }}>Tap to view live plan</p>
-              </div>
-              <Icon name="chevronRight" size={16} style={{ color: 'var(--grey)' }} />
-            </div>
-          </Link>
-        </div>
-      )}
-
-      {/* Featured */}
+      {/* Featured - full-bleed hero */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', paddingBottom: '0' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">{getTimeContext()}</span>
+              <span className="section-eyebrow">{getTimeEyebrow()}</span>
               <span className="section-title">Featured</span>
             </div>
           </div>
@@ -391,48 +368,47 @@ export default function HomePage() {
             ref={featuredScrollRef}
             onScroll={handleFeaturedScroll}
             className="horizontal-scroll"
-            style={{ padding: '8px 16px 16px 16px', scrollSnapType: 'x mandatory' }}
+            style={{ padding: '8px 0 16px 0', scrollSnapType: 'x mandatory' }}
           >
-            {featuredVendors.map((vendor) => (
+            {featuredVendors.map((vendor, index) => (
               <Link
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
                 style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
               >
-                <div className="card">
-                  <div className="card-image" style={{ height: '240px' }}>
-                    {vendor.videos && vendor.videos.length > 0 ? (
-                      <video
-                        src={vendor.videos[0]}
-                        muted
-                        loop
-                        autoPlay
-                        playsInline
-                        preload="auto"
-                        poster={vendor.images[0]}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <img src={vendor.images[0]} alt={vendor.name} />
-                    )}
-                    <div className="card-overlay" />
-                    {vendor.live && (
-                      <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span className="live-dot" />
-                        <span className="num-font">{vendor.whoThere}</span> here now
-                      </div>
-                    )}
-                    <div className="card-content" style={{ position: 'absolute', bottom: '0', left: '0', right: '0' }}>
-                      <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'white' }}>{vendor.name}</h3>
-                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>{formatCategory(vendor.category)}</p>
+                <div className="featured-hero">
+                  {vendor.videos && vendor.videos.length > 0 ? (
+                    <video
+                      src={vendor.videos[0]}
+                      muted
+                      loop
+                      autoPlay={index === activeVideoIndex}
+                      playsInline
+                      preload="metadata"
+                      poster={vendor.images[0]}
+                    />
+                  ) : (
+                    <img src={vendor.images[0]} alt={vendor.name} />
+                  )}
+                  <div className="featured-hero-overlay" />
+                  {vendor.live && (
+                    <div className="featured-hero-badge">
+                      <span className="live-dot" />
+                      <span className="num-font">{vendor.whoThere}</span> here now
                     </div>
+                  )}
+                  <div className="featured-hero-content">
+                    <h2 className="featured-hero-title">{vendor.name}</h2>
+                    <p className="featured-hero-sub">
+                      {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
+                    </p>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
           {featuredVendors.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
               {featuredVendors.map((_, i) => (
                 <div key={i} style={{ width: i === featuredIndex ? '16px' : '4px', height: '4px', borderRadius: '2px', background: i === featuredIndex ? 'var(--rum)' : 'var(--light-grey)', transition: 'all 0.3s ease' }} />
               ))}
@@ -500,7 +476,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Photo Spots - polaroids, proximity filtered */}
+      {/* Photo Spots */}
       {nearbyPhotoSpots.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -539,9 +515,11 @@ export default function HomePage() {
       {/* Moods */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '12px', padding: '0 16px' }}>
-            <span className="section-eyebrow">How We Feelin</span>
-            <h2 className="section-title" style={{ fontSize: '20px', fontWeight: 700, marginTop: '2px' }}>Today?</h2>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', justifyContent: 'center' }}>
+            <div className="section-heading" style={{ alignItems: 'center' }}>
+              <span className="section-eyebrow">YOUR VIBE</span>
+              <span className="section-title">How we feelin today?</span>
+            </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px', justifyContent: 'center' }}>
             {moods.map(mood => (
@@ -558,12 +536,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Experiences - cards directly on background, no nested container */}
+      {/* Experiences */}
       {filteredExperiences.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Curated For You</span>
+              <span className="section-eyebrow">CURATED FOR YOU</span>
               <span className="section-title">Experiences</span>
             </div>
             <Link href="/experiences" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
@@ -573,19 +551,19 @@ export default function HomePage() {
               <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
                 <div className="card" style={{ width: '260px' }}>
                   <div className="card-image" style={{ height: '140px' }}>
-                    <img src={e.imageUrl} alt={e.name} />
+                    <img src={e.imageUrl} alt={e.name} style={{ objectPosition: 'center' }} />
                     <div className="card-overlay" />
                   </div>
                   <div className="card-content">
-                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{e.tagline}</p>
+                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{e.name}</h3>
+                    <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '6px' }}>{e.tagline}</p>
                     {e.rating && (
-                      <div className="rating-text" style={{ marginTop: '4px' }}>
+                      <div className="rating-text" style={{ marginBottom: '6px' }}>
                         ★ <span className="num-font">{e.rating}</span>
                         {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0' }}>
                       <span className="card-price">${e.price}</span>
                       <span className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>
                         {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
@@ -599,12 +577,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Near You Now - cards directly on background, hero card for top rated */}
+      {/* Near You Now */}
       {filteredVendors.length > 0 && (
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Close By</span>
+              <span className="section-eyebrow">CLOSE BY</span>
               <span className="section-title">Near You Now</span>
             </div>
             <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
@@ -626,23 +604,23 @@ export default function HomePage() {
                       {v.live && (
                         <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span className="live-dot" />
-                          <span className="num-font">{v.whoThere}</span> here
+                          <span className="num-font">{v.whoThere}</span> here now
                         </div>
                       )}
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>
                         {formatCategory(v.category)} · {v.neighborhood}
                         {!v.open && ' · Closed'}
                       </p>
                       {v.rating && (
-                        <div className="rating-text" style={{ marginTop: '4px' }}>
+                        <div className="rating-text" style={{ marginBottom: '4px' }}>
                           ★ <span className="num-font">{v.rating}</span>
                           {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                         </div>
                       )}
-                      <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
+                      <p className="price-tier">{v.priceRange}</p>
                     </div>
                   </div>
                 </Link>

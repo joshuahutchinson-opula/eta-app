@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#FBD8B8',
+  themeColor: '#FAF8F5',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -31,10 +31,11 @@ export default function RootLayout({
       </head>
       <body style={{ 
         fontFamily: 'Inter, system-ui, sans-serif',
-        backgroundColor: '#FBD8B8',
+        backgroundColor: '#FAF8F5',
         color: '#0F0E0C',
         margin: 0,
-        padding: 0
+        padding: 0,
+        paddingTop: 'env(safe-area-inset-top)'
       }}>
         <LaunchScreen />
         <main style={{ 
