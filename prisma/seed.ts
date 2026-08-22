@@ -390,7 +390,6 @@ async function main() {
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
       videos: [
-        ,
       ],
       open: true,
       live: true,
