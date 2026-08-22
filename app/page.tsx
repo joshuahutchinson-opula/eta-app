@@ -327,35 +327,38 @@ export default function HomePage() {
         />
       )}
 
-      {/* Stories */}
-      <div className="horizontal-scroll" style={{ padding: '60px 16px 8px' }}>
-        {STORY_EXAMPLES.map(story => (
-          story.type === 'user' ? (
-            <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
-              <div className="story-ring standard">
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="camera" size={18} />
+      {/* Stories with orange line at bottom */}
+      <div className="stories-container" style={{ padding: '60px 0 0' }}>
+        <div className="horizontal-scroll" style={{ padding: '0 16px 16px' }}>
+          {STORY_EXAMPLES.map(story => (
+            story.type === 'user' ? (
+              <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                <div className="story-ring standard">
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed var(--grey)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="camera" size={18} />
+                  </div>
                 </div>
+                <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
               </div>
-              <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
-            </div>
-          ) : (
-            <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
-              <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
-                <img src={story.image} alt={story.name} />
-              </div>
-              <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
-            </Link>
-          )
-        ))}
+            ) : (
+              <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
+                <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
+                  <img src={story.image} alt={story.name} />
+                </div>
+                <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
+              </Link>
+            )
+          ))}
+        </div>
+        {/* Orange separator line */}
+        <div className="stories-separator" />
       </div>
 
-      {/* Featured with rum rule heading */}
+      {/* Featured */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="featured-heading-container">
             <p className="featured-eyebrow">{getTimeEyebrow()}</p>
-            <div className="featured-rule" />
             <h2 className="featured-title">Featured</h2>
           </div>
 
@@ -365,7 +368,7 @@ export default function HomePage() {
             className="horizontal-scroll"
             style={{ padding: '8px 0 16px 0', scrollSnapType: 'x mandatory' }}
           >
-            {featuredVendors.map((vendor) => (
+            {featuredVendors.map((vendor, index) => (
               <Link
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
@@ -374,14 +377,29 @@ export default function HomePage() {
                 <div className="featured-hero">
                   {vendor.videos && vendor.videos.length > 0 ? (
                     <video
-                      key={vendor.videos[0]}
+                      ref={(el) => {
+                        if (el && index === featuredIndex) {
+                          el.muted = true
+                          el.playsInline = true
+                          el.play().catch(() => {})
+                        }
+                      }}
                       src={vendor.videos[0]}
                       muted
                       loop
-                      autoPlay
                       playsInline
                       preload="auto"
                       poster={vendor.images[0]}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        const video = e.currentTarget
+                        if (video.paused) {
+                          video.muted = true
+                          video.play().catch(() => {})
+                        } else {
+                          video.pause()
+                        }
+                      }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
