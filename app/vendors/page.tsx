@@ -1,0 +1,239 @@
+// app/vendors/page.tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import TopBar from '@/components/TopBar'
+import Dock from '@/components/Dock'
+import Icon from '@/lib/icons'
+
+interface Vendor {
+  id: string
+  name: string
+  category: string
+  neighborhood: string
+  city: string
+  priceRange: string
+  description: string
+  images: string[]
+  open: boolean
+  live: boolean
+  isPremium: boolean
+  whoThere: number
+  rating?: number
+  reviewCount?: number
+}
+
+const CATEGORIES = [
+  { name: 'Food', icon: 'food' },
+  { name: 'Drinks', icon: 'drink' },
+  { name: 'Activities', icon: 'activity' },
+  { name: 'Wellness', icon: 'wellness' },
+  { name: 'Beach', icon: 'sun' },
+  { name: 'Transport', icon: 'compass' }
+]
+
+const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
+
+function formatCategory(category: string): string {
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
+
+export default function VendorsPage() {
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY'>('NEGRIL')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState('Recommended')
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
+
+  useEffect(() => {
+    fetchVendors()
+    const savedCity = localStorage.getItem('marketplaceCity')
+    if (savedCity) setCity(savedCity as 'NEGRIL' | 'MONTEGO_BAY')
+    const savedCategory = localStorage.getItem('marketplaceCategory')
+    if (savedCategory) setSelectedCategory(savedCategory)
+    const savedSort = localStorage.getItem('marketplaceSort')
+    if (savedSort) setSortBy(savedSort)
+  }, [])
+
+  const fetchVendors = async () => {
+    try {
+      const res = await fetch('/api/vendors')
+      const data = await res.json()
+      setVendors(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredVendors = vendors
+    .filter(v => !search || 
+      v.name.toLowerCase().includes(search.toLowerCase()) ||
+      v.category.toLowerCase().includes(search.toLowerCase()) ||
+      v.neighborhood.toLowerCase().includes(search.toLowerCase())
+    )
+    .filter(v => !city || v.city === city)
+    .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
+    .sort((a, b) => {
+      if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
+      if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
+      if (sortBy === 'Distance') return (a.neighborhood || '').localeCompare(b.neighborhood || '')
+      return 0
+    })
+
+  if (loading) {
+    return (
+      <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
+        <TopBar />
+        <div style={{ padding: '16px', paddingBottom: '100px' }}>
+          <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
+            <div className="skeleton-image" style={{ height: '100%' }} />
+          </div>
+          <div className="grid-2">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skeleton-image" style={{ height: '120px' }} />
+                <div style={{ padding: '12px' }}>
+                  <div className="skeleton-text" style={{ height: '14px', width: '80%', marginBottom: '8px' }} />
+                  <div className="skeleton-text" style={{ height: '10px', width: '60%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Dock />
+      </main>
+    )
+  }
+
+  return (
+    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+      <TopBar />
+
+      <div style={{ padding: '16px' }}>
+        {/* Search + filter */}
+        <div className="card" style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          padding: '10px 14px',
+          marginBottom: '16px',
+          position: 'sticky',
+          top: '52px',
+          zIndex: 30
+        }}>
+          <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
+          <input
+            type="text"
+            placeholder="Search vendors..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--black)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
+          />
+          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer' }}>
+            <Icon name="filter" size={16} style={{ color: 'var(--grey)' }} />
+          </span>
+        </div>
+
+        {/* Count */}
+        <p style={{ fontSize: '12px', color: 'var(--grey)', marginBottom: '16px' }}>
+          <span className="num-font">{filteredVendors.length}</span> vendors
+          {city && ` in ${city === 'NEGRIL' ? 'Negril' : 'Montego Bay'}`}
+        </p>
+
+        {/* Vendor grid */}
+        <div className="grid-2" style={{ gap: '12px' }}>
+          {filteredVendors.map(v => (
+            <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+              <div className="card">
+                <div className="card-image" style={{ height: '120px' }}>
+                  <img src={v.images[0]} alt={v.name} />
+                  {v.live && (
+                    <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="live-dot" />
+                      <span className="num-font">{v.whoThere}</span> here
+                    </div>
+                  )}
+                </div>
+                <div className="card-content">
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>{v.name}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                    {formatCategory(v.category)} · {v.neighborhood}
+                    {!v.open && ' · Closed'}
+                  </p>
+                  {v.rating && (
+                    <div className="rating-text" style={{ marginTop: '4px' }}>
+                      ★ <span className="num-font">{v.rating}</span>
+                      {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                    </div>
+                  )}
+                  <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter sheet */}
+      <div className={`bottom-sheet-overlay ${showFilterSheet ? 'open' : ''}`} onClick={() => setShowFilterSheet(false)} />
+      <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
+        <div style={{ padding: '20px' }}>
+          <div style={{ width: '36px', height: '4px', background: 'var(--light-grey)', borderRadius: '2px', margin: '0 auto 16px' }} />
+          <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '16px' }}>Filter & Sort</h3>
+          
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Location</p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {['NEGRIL', 'MONTEGO_BAY'].map(c => (
+              <button
+                key={c}
+                onClick={() => setCity(c as 'NEGRIL' | 'MONTEGO_BAY')}
+                className={`chip ${city === c ? 'active' : ''}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Categories</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+                className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
+              >
+                <Icon name={cat.icon as any} size={12} />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Sort By</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {SORT_OPTIONS.map(option => (
+              <button
+                key={option}
+                onClick={() => setSortBy(option)}
+                className={`chip ${sortBy === option ? 'active' : ''}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowFilterSheet(false)}>
+            Done
+          </button>
+        </div>
+      </div>
+
+      <Dock />
+    </main>
+  )
+}

@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
@@ -44,6 +45,8 @@ interface Experience {
   stops?: Array<{ id: string; name: string; type: string }>
   vendor?: { name: string; isPremium?: boolean }
   moods?: Array<{ id: string; name: string; icon: string }>
+  rating?: number
+  reviewCount?: number
 }
 
 interface PhotoSpot {
@@ -60,7 +63,7 @@ interface FlashDeal {
   id: string
   deal: string
   expires: string
-  vendor: { id: string; name: string; images?: string[]; isPremium?: boolean }
+  vendor: { id: string; name: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
 }
 
 interface Mood {
@@ -77,6 +80,7 @@ interface ActiveBooking {
   vendorId?: string
   status: string
   date: string
+  experience?: { name: string; startTime?: string }
 }
 
 const MOOD_ICONS: Record<string, string> = {
@@ -101,7 +105,12 @@ const STORY_EXAMPLES = [
   { id: 'story-5', name: 'Beach', type: 'standard', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100&h=100&fit=crop' }
 ]
 
+function formatCategory(category: string): string {
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
+
 export default function HomePage() {
+  const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [photoSpots, setPhotoSpots] = useState<PhotoSpot[]>([])
@@ -112,12 +121,15 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
+  const [search, setSearch] = useState('')
+  const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
   const featuredScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
     getUserLocation()
     checkActiveBooking()
+    loadRecentlyViewed()
   }, [])
 
   useEffect(() => {
@@ -159,6 +171,15 @@ export default function HomePage() {
         }
       })
       .catch(() => {})
+  }
+
+  const loadRecentlyViewed = () => {
+    const saved = localStorage.getItem('recentlyViewed')
+    if (saved) {
+      try {
+        setRecentlyViewed(JSON.parse(saved).slice(0, 6))
+      } catch {}
+    }
   }
 
   const fetchAll = async () => {
@@ -208,6 +229,14 @@ export default function HomePage() {
   const hour = new Date().getHours()
   const bounce = getBounceSuggestion(null, userLocation, hour)
 
+  const getTimeContext = () => {
+    if (hour >= 6 && hour < 11) return "Here's what's good right now — breakfast spots and morning activities"
+    if (hour >= 11 && hour < 16) return "Here's what's good right now — lunch, beach, and daytime adventures"
+    if (hour >= 16 && hour < 19) return "Here's what's good right now — golden hour and sunset spots"
+    if (hour >= 19 && hour < 23) return "Here's what's good right now — dinner, drinks, and nightlife"
+    return "Here's what's good right now — late night bites and spots still open"
+  }
+
   const calculateDistance = (spotLat?: number, spotLng?: number) => {
     if (!spotLat || !spotLng || !userLocation) return null
     const R = 6371
@@ -215,9 +244,7 @@ export default function HomePage() {
     const dLng = (spotLng - userLocation.lng) * Math.PI / 180
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(spotLat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    const distanceKm = R * c
-    if (distanceKm < 1) return `${Math.round(distanceKm * 1000)}m away`
-    return `${distanceKm.toFixed(1)}km away`
+    return R * c
   }
 
   const formatCountdown = (expires: string) => {
@@ -239,6 +266,12 @@ export default function HomePage() {
     }
   }
 
+  // Filter photo spots by proximity (within 50km)
+  const nearbyPhotoSpots = photoSpots.filter(spot => {
+    const dist = calculateDistance(spot.lat, spot.lng)
+    return dist !== null && dist <= 50
+  })
+
   const filteredExperiences = selectedMood 
     ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
     : experiences
@@ -247,14 +280,34 @@ export default function HomePage() {
     ? vendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
     : vendors
 
+  // Sort vendors by rating for hero card
+  const topRatedVendor = [...filteredVendors].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]
+
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <TopBar />
         <div style={{ padding: '16px', paddingBottom: '100px' }}>
-          <div className="skeleton" style={{ height: '64px', borderRadius: '50%', width: '64px', marginBottom: '8px' }} />
-          <div className="skeleton" style={{ height: '240px', borderRadius: '12px', marginBottom: '24px' }} />
-          <div className="skeleton" style={{ height: '100px', borderRadius: '12px' }} />
+          {/* Skeleton story ring */}
+          <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
+            <div className="skeleton-image" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+          </div>
+          {/* Skeleton featured */}
+          <div className="skeleton-card" style={{ height: '240px', marginBottom: '24px' }}>
+            <div className="skeleton-image" style={{ height: '100%' }} />
+          </div>
+          {/* Skeleton cards */}
+          <div className="grid-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skeleton-image" style={{ height: '120px' }} />
+                <div style={{ padding: '12px' }}>
+                  <div className="skeleton-text" style={{ height: '14px', width: '80%', marginBottom: '8px' }} />
+                  <div className="skeleton-text" style={{ height: '10px', width: '60%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <Dock />
       </main>
@@ -288,12 +341,49 @@ export default function HomePage() {
         ))}
       </div>
 
+      {/* Search bar */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <div className="card" style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          padding: '10px 14px'
+        }}>
+          <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
+          <input
+            type="text"
+            placeholder="Search vendors, experiences, spots..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--black)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
+          />
+        </div>
+      </div>
+
+      {/* Active booking banner */}
+      {activeBooking && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <Link href="/experiences" style={{ textDecoration: 'none' }}>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Icon name="clock" size={20} style={{ color: 'var(--rum)' }} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>
+                  {activeBooking.experience?.name || 'Your experience'} starts soon
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--grey)' }}>Tap to view live plan</p>
+              </div>
+              <Icon name="chevronRight" size={16} style={{ color: 'var(--grey)' }} />
+            </div>
+          </Link>
+        </div>
+      )}
+
       {/* Featured */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Explore Jamaica</span>
+              <span className="section-eyebrow">{getTimeContext()}</span>
               <span className="section-title">Featured</span>
             </div>
           </div>
@@ -329,12 +419,12 @@ export default function HomePage() {
                     {vendor.live && (
                       <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span className="live-dot" />
-                        {vendor.whoThere} here now
+                        <span className="num-font">{vendor.whoThere}</span> here now
                       </div>
                     )}
                     <div className="card-content" style={{ position: 'absolute', bottom: '0', left: '0', right: '0' }}>
                       <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'white' }}>{vendor.name}</h3>
-                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>{vendor.category}</p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>{formatCategory(vendor.category)}</p>
                     </div>
                   </div>
                 </div>
@@ -351,6 +441,33 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Recently Viewed */}
+      {recentlyViewed.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <div className="section-heading">
+              <span className="section-eyebrow">Continue Browsing</span>
+              <span className="section-title">Recently Viewed</span>
+            </div>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+            {recentlyViewed.map(item => (
+              <Link key={item.id} href={`/vendor/${item.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '160px' }}>
+                  <div className="card-image" style={{ height: '100px' }}>
+                    <img src={item.image} alt={item.name} />
+                  </div>
+                  <div className="card-content">
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--black)' }}>{item.name}</p>
+                    <p style={{ fontSize: '10px', color: 'var(--grey)' }}>{item.type}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Flash Deals */}
       {flashDeals.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
@@ -360,33 +477,31 @@ export default function HomePage() {
               <span className="section-title">Flash Deals</span>
             </div>
           </div>
-          <div className="section-content-card">
-            <div className="horizontal-scroll" style={{ padding: '0' }}>
-              {flashDeals.map(fd => (
-                <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div className="card" style={{ width: '200px' }}>
-                    <div className="card-image" style={{ height: '110px' }}>
-                      {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
-                      <div className="card-overlay" />
-                    </div>
-                    <div className="card-content">
-                      <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Icon name="clock" size={12} />
-                        {formatCountdown(fd.expires)}
-                      </p>
-                    </div>
+          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+            {flashDeals.map(fd => (
+              <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '200px' }}>
+                  <div className="card-image" style={{ height: '110px' }}>
+                    {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
+                    <div className="card-overlay" />
                   </div>
-                </Link>
-              ))}
-            </div>
+                  <div className="card-content">
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Icon name="clock" size={12} />
+                      {formatCountdown(fd.expires)}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Photo Spots - polaroids */}
-      {photoSpots.length > 0 && (
+      {/* Photo Spots - polaroids, proximity filtered */}
+      {nearbyPhotoSpots.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
@@ -395,23 +510,28 @@ export default function HomePage() {
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
-            {photoSpots.map((spot) => (
-              <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="polaroid" style={{ width: '180px' }}>
-                  <div className="tape-strip" />
-                  <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderRadius: '4px' }}>
-                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {nearbyPhotoSpots.map((spot) => {
+              const dist = calculateDistance(spot.lat, spot.lng)
+              return (
+                <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="polaroid" style={{ width: '180px' }}>
+                    <div className="tape-strip" />
+                    <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderRadius: '4px' }}>
+                      <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div className="polaroid-caption">{spot.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{spot.bestTime}</span>
+                      {dist !== null && (
+                        <span className="num-font" style={{ fontSize: '10px', color: 'var(--grey)' }}>
+                          {dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="polaroid-caption">{spot.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--grey)', fontWeight: 600 }}>{spot.bestTime}</span>
-                    {calculateDistance(spot.lat, spot.lng) && (
-                      <span style={{ fontSize: '10px', color: 'var(--grey)', fontWeight: 600 }}>{calculateDistance(spot.lat, spot.lng)}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}
@@ -429,10 +549,6 @@ export default function HomePage() {
                 key={mood.id}
                 onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
                 className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
-                style={{
-                  background: selectedMood === mood.id ? 'var(--rum)' : 'var(--card-bg)',
-                  color: selectedMood === mood.id ? 'white' : 'var(--black)'
-                }}
               >
                 <Icon name={mood.icon as any} size={14} />
                 {mood.name}
@@ -442,7 +558,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Experiences */}
+      {/* Experiences - cards directly on background, no nested container */}
       {filteredExperiences.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -452,34 +568,38 @@ export default function HomePage() {
             </div>
             <Link href="/experiences" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
-          <div className="section-content-card">
-            <div className="horizontal-scroll" style={{ padding: '0' }}>
-              {filteredExperiences.slice(0, 4).map(e => (
-                <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div className="card" style={{ width: '260px' }}>
-                    <div className="card-image" style={{ height: '140px' }}>
-                      <img src={e.imageUrl} alt={e.name} />
-                      <div className="card-overlay" />
-                    </div>
-                    <div className="card-content">
-                      <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
-                      <p style={{ fontSize: '12px', color: 'var(--grey)' }}>{e.tagline}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                        <span className="card-price">${e.price}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--grey)' }}>
-                          {e.stops ? `${e.stops.length} stops` : '3 stops'} • {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
-                        </span>
+          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+            {filteredExperiences.slice(0, 4).map(e => (
+              <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '260px' }}>
+                  <div className="card-image" style={{ height: '140px' }}>
+                    <img src={e.imageUrl} alt={e.name} />
+                    <div className="card-overlay" />
+                  </div>
+                  <div className="card-content">
+                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
+                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{e.tagline}</p>
+                    {e.rating && (
+                      <div className="rating-text" style={{ marginTop: '4px' }}>
+                        ★ <span className="num-font">{e.rating}</span>
+                        {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
                       </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                      <span className="card-price">${e.price}</span>
+                      <span className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                        {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
+                      </span>
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Near You Now */}
+      {/* Near You Now - cards directly on background, hero card for top rated */}
       {filteredVendors.length > 0 && (
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -487,28 +607,42 @@ export default function HomePage() {
               <span className="section-eyebrow">Close By</span>
               <span className="section-title">Near You Now</span>
             </div>
-            <Link href="/marketplace" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
+            <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
-          <div className="section-content-card">
-            <div className="grid-2" style={{ gap: '8px' }}>
-              {filteredVendors.slice(0, 4).map(v => (
-                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                  <div className="card">
-                    <div className="card-image" style={{ height: '100px' }}>
+          <div style={{ padding: '0 16px' }}>
+            <div className="grid-2" style={{ gap: '12px' }}>
+              {filteredVendors.slice(0, 4).map((v, i) => (
+                <Link 
+                  key={v.id} 
+                  href={`/vendor/${v.id}`} 
+                  style={{ 
+                    textDecoration: 'none',
+                    gridColumn: i === 0 && v.id === topRatedVendor?.id ? '1 / -1' : 'auto'
+                  }}
+                >
+                  <div className="card" style={i === 0 && v.id === topRatedVendor?.id ? { height: '200px' } : {}}>
+                    <div className="card-image" style={{ height: i === 0 && v.id === topRatedVendor?.id ? '140px' : '100px' }}>
                       <img src={v.images[0]} alt={v.name} />
                       {v.live && (
                         <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span className="live-dot" />
-                          {v.whoThere} here
+                          <span className="num-font">{v.whoThere}</span> here
                         </div>
                       )}
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>{v.name}</p>
                       <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
-                        {v.category}
-                        {!v.open && ' • Closed'}
+                        {formatCategory(v.category)} · {v.neighborhood}
+                        {!v.open && ' · Closed'}
                       </p>
+                      {v.rating && (
+                        <div className="rating-text" style={{ marginTop: '4px' }}>
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                        </div>
+                      )}
+                      <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
                     </div>
                   </div>
                 </Link>

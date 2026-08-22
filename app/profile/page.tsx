@@ -1,131 +1,130 @@
+// app/profile/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
 export default function ProfilePage() {
-  const [settings, setSettings] = useState({
-    bigText: false,
-    patoisMode: true,
-    batterySafe: false
-  })
+  const [darkMode, setDarkMode] = useState(false)
 
-  const points = 1240
-  const streak = 3
-  const discoveries = 4
-  const vibe = 'Adventure'
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    if (saved === 'dark') {
+      setDarkMode(true)
+      document.documentElement.setAttribute('data-theme', 'dark')
+    }
+  }, [])
 
-  const toggleSetting = (key: string) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))
+  const toggleDarkMode = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    document.documentElement.setAttribute('data-theme', newMode ? 'dark' : 'light')
+    localStorage.setItem('theme', newMode ? 'dark' : 'light')
+  }
+
+  const user = {
+    name: 'Jordan',
+    email: 'jordan@eta.app',
+    memberSince: 'January 2025',
+    points: 1240,
+    walletBalance: 250
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '120px' }}>
+    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <TopBar />
 
-      <div style={{ padding: '24px' }}>
-        {/* Profile Header */}
-        <div className="glass" style={{ padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--gradient-rum)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '22px',
-            fontWeight: 700
-          }}>
-            J
+      <div style={{ padding: '16px' }}>
+        {/* Profile header */}
+        <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--light-grey)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <Icon name="user" size={32} />
           </div>
-          <div>
-            <h2 style={{ fontSize: '22px', fontWeight: 700 }}>Jordan</h2>
-            <p style={{ fontSize: '12px', color: 'var(--sand-dim)' }}>
-              {vibe} • {points.toLocaleString()} pts
-            </p>
-          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--black)' }}>{user.name}</h2>
+          <p style={{ fontSize: '13px', color: 'var(--grey)', marginTop: '2px' }}>{user.email}</p>
+          <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px' }}>Member since {user.memberSince}</p>
         </div>
 
         {/* Stats */}
-        <div className="glass" style={{ padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--gold)' }}>{points.toLocaleString()}</div>
-            <div style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>Points</div>
+        <div className="grid-2" style={{ gap: '12px', marginBottom: '24px' }}>
+          <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--rum)' }}>{user.points.toLocaleString()}</p>
+            <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>Points</p>
           </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 800 }}>{discoveries}</div>
-            <div style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>Discoveries</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--rum-bright)' }}>{streak}-day</div>
-            <div style={{ fontSize: '10px', color: 'var(--sand-dim)' }}>Streak</div>
+          <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--black)' }}>${user.walletBalance}</p>
+            <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>Wallet</p>
           </div>
         </div>
 
-        {/* Settings */}
-        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Icon name="settings" size={18} />
-          Settings
-        </h2>
-
-        {[
-          { label: 'Big Text', key: 'bigText' },
-          { label: 'Patois Mode', key: 'patoisMode' },
-          { label: 'Battery-Safe', key: 'batterySafe' },
-        ].map(item => (
-          <div key={item.key} className="glass" style={{ padding: '14px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>{item.label}</span>
-            <div
-              style={{
-                width: '44px',
-                height: '26px',
-                borderRadius: '999px',
-                background: settings[item.key as keyof typeof settings] ? 'var(--rum)' : 'var(--glass-border)',
-                cursor: 'pointer',
-                position: 'relative'
-              }}
-              onClick={() => toggleSetting(item.key)}
-            >
-              <div style={{
-                position: 'absolute',
-                top: '3px',
-                [settings[item.key as keyof typeof settings] ? 'right' : 'left']: '3px',
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                background: 'var(--sand)',
-                transition: 'all 0.2s'
-              }} />
-            </div>
+        {/* Dark mode toggle */}
+        <div className="card" style={{ 
+          padding: '16px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          marginBottom: '16px'
+        }}
+        onClick={toggleDarkMode}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Icon name="moon" size={20} style={{ color: 'var(--grey)' }} />
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--black)' }}>Dark Mode</span>
           </div>
+          <div style={{
+            width: '48px',
+            height: '28px',
+            borderRadius: '999px',
+            background: darkMode ? 'var(--rum)' : 'var(--light-grey)',
+            position: 'relative',
+            transition: 'background 0.2s ease'
+          }}>
+            <div style={{
+              width: '22px',
+              height: '22px',
+              borderRadius: '50%',
+              background: 'white',
+              position: 'absolute',
+              top: '3px',
+              left: darkMode ? '23px' : '3px',
+              transition: 'left 0.2s ease'
+            }} />
+          </div>
+        </div>
+
+        {/* Menu items */}
+        {[
+          { label: 'My Bookings', icon: 'clock', href: '/experiences' },
+          { label: 'Saved Vendors', icon: 'heart', href: '/marketplace' },
+          { label: 'Rewards', icon: 'sparkle', href: '/rewards' },
+          { label: 'Wallet', icon: 'wallet', href: '/wallet' },
+          { label: 'Settings', icon: 'settings', href: '#' }
+        ].map((item, i) => (
+          <Link key={i} href={item.href} style={{ textDecoration: 'none' }}>
+            <div className="card" style={{ 
+              padding: '16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Icon name={item.icon as any} size={20} style={{ color: 'var(--grey)' }} />
+                <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--black)' }}>{item.label}</span>
+              </div>
+              <Icon name="chevronRight" size={16} style={{ color: 'var(--grey)' }} />
+            </div>
+          </Link>
         ))}
 
-        {/* Links */}
-        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', marginTop: '20px' }}>More</h2>
-
-        <Link href="/wallet" className="glass" style={{ padding: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none', color: 'var(--sand)' }}>
-          <Icon name="wallet" size={18} />
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>Wallet</span>
-        </Link>
-
-        <Link href="/login" className="glass" style={{ padding: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none', color: 'var(--sand)' }}>
-          <Icon name="journal" size={18} />
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>Discovery Journal</span>
-        </Link>
-
-        <Link href="/login" className="glass" style={{ padding: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none', color: 'var(--sand)' }}>
-          <Icon name="gift" size={18} />
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>Challenges</span>
-        </Link>
-
-        <Link href="/login" className="glass" style={{ padding: '14px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none', color: 'var(--sand)' }}>
-          <Icon name="user" size={18} />
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>Login / Register</span>
-        </Link>
+        {/* Logout */}
+        <button className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }}>
+          Log Out
+        </button>
       </div>
 
       <Dock />

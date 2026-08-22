@@ -38,15 +38,15 @@ export default function TopBar() {
               border: 'none',
               cursor: 'pointer',
               padding: '4px 8px 4px 0',
-              fontFamily: 'inherit'
+              fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             <Icon name="sparkle" size={14} style={{ color: 'var(--rum)' }} />
-            <span style={{ 
+            <span className="num-font" style={{ 
               fontSize: '14px', 
               fontWeight: 700, 
-              color: 'var(--black)',
-              fontFamily: 'Space Mono, monospace'
+              color: 'var(--black)'
             }}>
               {points.toLocaleString()}
             </span>
@@ -71,15 +71,15 @@ export default function TopBar() {
               border: 'none',
               cursor: 'pointer',
               padding: '4px 8px',
-              fontFamily: 'inherit'
+              fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             <Icon name="wallet" size={14} style={{ color: 'var(--grey)' }} />
-            <span style={{ 
+            <span className="num-font" style={{ 
               fontSize: '14px', 
               fontWeight: 700,
               color: 'var(--black)',
-              fontFamily: 'Space Mono, monospace',
               letterSpacing: walletHidden ? '1px' : '0'
             }}>
               {walletHidden ? '••••' : `$${balance}`}
@@ -98,7 +98,8 @@ export default function TopBar() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            WebkitTapHighlightColor: 'transparent'
           }}>
             <Icon name="user" size={16} />
           </div>
