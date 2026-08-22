@@ -20,7 +20,7 @@ export default function TopBar() {
         justifyContent: 'space-between',
         gap: '16px'
       }}>
-        {/* Status Bar - left side */}
+        {/* Status Bar */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -38,15 +38,14 @@ export default function TopBar() {
               border: 'none',
               cursor: 'pointer',
               padding: '4px 8px 4px 0',
-              fontFamily: 'inherit',
-              transition: 'opacity 0.2s ease'
+              fontFamily: 'inherit'
             }}
           >
-            <Icon name="sparkle" size={16} style={{ color: 'var(--gold)' }} />
+            <Icon name="sparkle" size={14} style={{ color: 'var(--rum)' }} />
             <span style={{ 
-              fontSize: '15px', 
+              fontSize: '14px', 
               fontWeight: 700, 
-              color: 'var(--gold)',
+              color: 'var(--black)',
               fontFamily: 'Space Mono, monospace'
             }}>
               {points.toLocaleString()}
@@ -56,7 +55,7 @@ export default function TopBar() {
           {/* Divider */}
           <div style={{
             width: '1px',
-            height: '20px',
+            height: '16px',
             background: 'var(--light-grey)',
             margin: '0 4px'
           }} />
@@ -72,13 +71,12 @@ export default function TopBar() {
               border: 'none',
               cursor: 'pointer',
               padding: '4px 8px',
-              fontFamily: 'inherit',
-              transition: 'opacity 0.2s ease'
+              fontFamily: 'inherit'
             }}
           >
-            <Icon name="wallet" size={16} style={{ color: 'var(--grey)' }} />
+            <Icon name="wallet" size={14} style={{ color: 'var(--grey)' }} />
             <span style={{ 
-              fontSize: '15px', 
+              fontSize: '14px', 
               fontWeight: 700,
               color: 'var(--black)',
               fontFamily: 'Space Mono, monospace',
@@ -89,7 +87,7 @@ export default function TopBar() {
           </button>
         </div>
 
-        {/* Profile avatar - right */}
+        {/* Profile avatar */}
         <Link href="/profile" style={{ textDecoration: 'none', flexShrink: 0 }}>
           <div style={{
             width: '32px',
@@ -100,11 +98,9 @@ export default function TopBar() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            overflow: 'hidden',
-            border: '2px solid var(--light-grey)',
-            transition: 'all 0.2s ease'
+            overflow: 'hidden'
           }}>
-            <Icon name="user" size={18} />
+            <Icon name="user" size={16} />
           </div>
         </Link>
       </div>

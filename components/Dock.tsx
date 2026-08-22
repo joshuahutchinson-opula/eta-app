@@ -31,13 +31,7 @@ export default function Dock() {
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            <div 
-              className="tab-icon"
-              style={{
-                transition: 'transform 0.2s ease',
-                transform: isActive ? 'scale(1.1)' : 'scale(1)'
-              }}
-            >
+            <div className="tab-icon">
               <Icon name={tab.icon} size={24} />
             </div>
             <span className="tab-label">{tab.name}</span>
