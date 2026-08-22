@@ -115,7 +115,7 @@ async function main() {
     },
   })
 
-  // Create vendors with proper Jamaica-relevant videos
+  // Create vendors with verified Pexels videos
   const pushCart = await prisma.vendor.create({
     data: {
       name: 'Push Cart',
@@ -132,7 +132,7 @@ async function main() {
         'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/3196322/3196322-hd_1920_1080_25fps.mp4',
+        'https://videos.pexels.com/video-files/5134443/5134443-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: true,
@@ -159,9 +159,7 @@ async function main() {
         'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
         'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800',
       ],
-      videos: [
-        'https://videos.pexels.com/video-files/2062922/2062922-hd_1920_1080_30fps.mp4',
-      ],
+      videos: [],
       open: true,
       live: false,
       isPremium: true,
@@ -188,7 +186,7 @@ async function main() {
         'https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/3007542/3007542-hd_1920_1080_30fps.mp4',
+        'https://videos.pexels.com/video-files/35659845/15111600_1920_1080_60fps.mp4',
       ],
       open: true,
       live: true,
@@ -292,9 +290,7 @@ async function main() {
         'https://images.unsplash.com/photo-1544025162-d76694265947?w=800',
         'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
       ],
-      videos: [
-        'https://videos.pexels.com/video-files/4627617/4627617-hd_1920_1080_30fps.mp4',
-      ],
+      videos: [],
       open: true,
       live: true,
       isPremium: true,
@@ -344,7 +340,7 @@ async function main() {
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/2620043/2620043-hd_1920_1080_24fps.mp4',
+        'https://videos.pexels.com/video-files/29641502/12753409_1920_1080_25fps.mp4',
       ],
       open: true,
       live: true,
@@ -394,7 +390,7 @@ async function main() {
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/2169880/2169880-hd_1920_1080_24fps.mp4',
+        'https://videos.pexels.com/video-files/6983517/6983517-hd_1920_1080_24fps.mp4',
       ],
       open: true,
       live: true,

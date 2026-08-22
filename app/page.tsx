@@ -107,11 +107,10 @@ const STORY_EXAMPLES = [
 ]
 
 const EDITORIAL_SUBHEADS: Record<string, string> = {
-  'Rick\'s Café': 'Where the cliffs meet the sunset',
-  'Pork Pit': 'Smoke and spice, the real deal',
-  'Catamaran': 'Where the reef comes alive at sunrise',
-  'Blue Hole': 'Hidden falls, worth the trek',
-  'Beach': 'Soft sand, warm water, no rush'
+  'Push Cart': 'Smoke and spice, the real deal',
+  'Coral Reef Bar': 'Rum punch and good vibes',
+  'MoBay Jerk House': 'The official taste of MoBay',
+  'MoBay Watersports': 'Where the reef comes alive'
 }
 
 function formatCategory(category: string): string {
@@ -131,9 +130,7 @@ export default function HomePage() {
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
-  const [featuredHeadingVisible, setFeaturedHeadingVisible] = useState(false)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
-  const featuredHeadingRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
@@ -142,27 +139,6 @@ export default function HomePage() {
     loadRecentlyViewed()
   }, [])
 
-  // IntersectionObserver for featured heading reveal
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            setFeaturedHeadingVisible(true)
-          }
-        })
-      },
-      { threshold: 0.5 }
-    )
-    
-    if (featuredHeadingRef.current) {
-      observer.observe(featuredHeadingRef.current)
-    }
-    
-    return () => observer.disconnect()
-  }, [])
-
-  // Auto-scroll featured
   useEffect(() => {
     const autoScroll = setInterval(() => {
       const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
@@ -343,7 +319,6 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <FloatingPill />
 
-      {/* Active trip banner */}
       {activeBooking && (
         <ActiveTripBanner 
           tripName={activeBooking.experience?.name || 'Your Experience'}
@@ -375,14 +350,13 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Featured - full-bleed hero with editorial heading */}
+      {/* Featured with rum rule heading */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          {/* Editorial heading with hairline rule */}
-          <div className="featured-heading-container" ref={featuredHeadingRef}>
+          <div className="featured-heading-container">
             <p className="featured-eyebrow">{getTimeEyebrow()}</p>
-            <div className={`featured-rule ${featuredHeadingVisible ? 'visible' : ''}`} />
-            <h2 className={`featured-title ${featuredHeadingVisible ? 'visible' : ''}`}>Featured</h2>
+            <div className="featured-rule" />
+            <h2 className="featured-title">Featured</h2>
           </div>
 
           <div

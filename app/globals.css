@@ -127,7 +127,7 @@ body {
   color: var(--rum);
 }
 
-/* ============ POLAROID (photo spots only) ============ */
+/* ============ POLAROID ============ */
 .polaroid {
   background: var(--white);
   padding: var(--spacing-2) var(--spacing-2) var(--spacing-6);
@@ -435,15 +435,14 @@ body {
 
 .featured-rule {
   width: 100%;
-  height: 1px;
+  height: 2px;
   background: var(--rum);
-  transform-origin: left;
-  transform: scaleX(0);
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: rumDraw 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.featured-rule.visible {
-  transform: scaleX(1);
+@keyframes rumDraw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 .featured-title {
@@ -452,6 +451,13 @@ body {
   letter-spacing: -1px;
   color: var(--black);
   margin-top: 8px;
+  animation: titleSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+  opacity: 0;
+}
+
+@keyframes titleSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============ FEATURED HERO ============ */
