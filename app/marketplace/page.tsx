@@ -159,7 +159,7 @@ export default function MarketplacePage() {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <FloatingPill />
-        <div style={{ padding: '16px', paddingBottom: '100px', paddingTop: '60px' }}>
+        <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>

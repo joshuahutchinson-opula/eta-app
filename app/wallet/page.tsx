@@ -94,7 +94,7 @@ export default function WalletPage() {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
         <FloatingPill />
-        <div style={{ padding: '16px', paddingBottom: '100px', paddingTop: '60px' }}>
+        <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ height: '180px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
@@ -114,7 +114,6 @@ export default function WalletPage() {
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <FloatingPill />
 
-      {/* Confetti */}
       {showConfetti && (
         <>
           {[...Array(20)].map((_, i) => (
@@ -216,7 +215,7 @@ export default function WalletPage() {
           </div>
         )}
 
-        {/* Redeemable Rewards - horizontal scroll */}
+        {/* Redeemable Rewards */}
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header">
             <div className="section-heading">

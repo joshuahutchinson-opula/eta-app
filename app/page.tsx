@@ -130,8 +130,8 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
   const [activeVideoIndex, setActiveVideoIndex] = useState(0)
+  const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
   const featuredScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -295,7 +295,7 @@ export default function HomePage() {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <FloatingPill />
-        <div style={{ padding: '16px', paddingBottom: '100px', paddingTop: '60px' }}>
+        <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
             <div className="skeleton-image" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
           </div>
@@ -422,7 +422,7 @@ export default function HomePage() {
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Continue Browsing</span>
+              <span className="section-eyebrow">CONTINUE BROWSING</span>
               <span className="section-title">Recently Viewed</span>
             </div>
           </div>
@@ -449,7 +449,7 @@ export default function HomePage() {
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Limited Time</span>
+              <span className="section-eyebrow">LIMITED TIME</span>
               <span className="section-title">Flash Deals</span>
             </div>
           </div>
@@ -481,7 +481,7 @@ export default function HomePage() {
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Capture It</span>
+              <span className="section-eyebrow">CAPTURE IT</span>
               <span className="section-title">Photo Spots</span>
             </div>
           </div>
