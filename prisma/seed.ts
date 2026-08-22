@@ -340,7 +340,7 @@ async function main() {
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/29641502/12753409_1920_1080_25fps.mp4',
+        'https://www.w3schools.com/html/mov_bbb.mp4',
       ],
       open: true,
       live: true,
