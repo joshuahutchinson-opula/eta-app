@@ -132,7 +132,7 @@ async function main() {
         'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/35659845/15111600_1920_1080_60fps.mp4',
+        'https://videos.pexels.com/video-files/5134443/5134443-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: true,
@@ -159,7 +159,7 @@ async function main() {
         'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
         'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800',
       ],
-      videos: [],
+      videos: ['https://videos.pexels.com/video-files/5937335/5937335-uhd_3840_2160_25fps.mp4'],
       open: true,
       live: false,
       isPremium: true,
@@ -340,7 +340,7 @@ async function main() {
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
       videos: [
-        'https://videos.pexels.com/video-files/35659845/15111600_1920_1080_60fps.mp4',
+        'https://videos.pexels.com/video-files/29641502/12753409_1920_1080_25fps.mp4',
       ],
       open: true,
       live: true,
@@ -365,7 +365,7 @@ async function main() {
         'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
         'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800',
       ],
-      videos: [],
+      videos: ['https://videos.pexels.com/video-files/5937335/5937335-uhd_3840_2160_25fps.mp4'],
       open: true,
       live: false,
       isPremium: false,
@@ -389,8 +389,8 @@ async function main() {
         'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
-      videos: [
-      ],
+      videos: ['https://videos.pexels.com/video-files/6983517/6983517-hd_1920_1080_24fps.mp4'],
+
       open: true,
       live: true,
       isPremium: true,
