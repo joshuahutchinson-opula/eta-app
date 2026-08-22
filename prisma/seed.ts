@@ -132,7 +132,7 @@ async function main() {
         'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
       ],
       videos: [
-        'https://www.w3schools.com/html/mov_bbb.mp4',
+        'https://videos.pexels.com/video-files/5134443/5134443-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: true,
@@ -340,7 +340,7 @@ async function main() {
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
       videos: [
-        'https://www.w3schools.com/html/mov_bbb.mp4',
+        'https://videos.pexels.com/video-files/29641502/12753409_1920_1080_25fps.mp4',
       ],
       open: true,
       live: true,
@@ -390,7 +390,7 @@ async function main() {
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
       videos: [
-        'https://www.w3schools.com/html/mov_bbb.mp4',
+        'https://videos.pexels.com/video-files/6983517/6983517-hd_1920_1080_24fps.mp4',
       ],
       open: true,
       live: true,
