@@ -130,9 +130,10 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0)
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
+  const [featuredHeadingVisible, setFeaturedHeadingVisible] = useState(false)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
+  const featuredHeadingRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
@@ -141,6 +142,27 @@ export default function HomePage() {
     loadRecentlyViewed()
   }, [])
 
+  // IntersectionObserver for featured heading reveal
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setFeaturedHeadingVisible(true)
+          }
+        })
+      },
+      { threshold: 0.5 }
+    )
+    
+    if (featuredHeadingRef.current) {
+      observer.observe(featuredHeadingRef.current)
+    }
+    
+    return () => observer.disconnect()
+  }, [])
+
+  // Auto-scroll featured
   useEffect(() => {
     const autoScroll = setInterval(() => {
       const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
@@ -151,7 +173,6 @@ export default function HomePage() {
           behavior: 'smooth'
         })
         setFeaturedIndex(nextIndex)
-        setActiveVideoIndex(nextIndex)
       }
     }, 5000)
 
@@ -272,7 +293,6 @@ export default function HomePage() {
       const cardWidth = featuredScrollRef.current.clientWidth
       const newIndex = Math.round(scrollLeft / cardWidth)
       setFeaturedIndex(Math.min(newIndex, featuredVendors.length - 1))
-      setActiveVideoIndex(Math.min(newIndex, featuredVendors.length - 1))
     }
   }
 
@@ -355,22 +375,23 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Featured - full-bleed hero */}
+      {/* Featured - full-bleed hero with editorial heading */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', paddingBottom: '0' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">{getTimeEyebrow()}</span>
-              <span className="section-title">Featured</span>
-            </div>
+          {/* Editorial heading with hairline rule */}
+          <div className="featured-heading-container" ref={featuredHeadingRef}>
+            <p className="featured-eyebrow">{getTimeEyebrow()}</p>
+            <div className={`featured-rule ${featuredHeadingVisible ? 'visible' : ''}`} />
+            <h2 className={`featured-title ${featuredHeadingVisible ? 'visible' : ''}`}>Featured</h2>
           </div>
+
           <div
             ref={featuredScrollRef}
             onScroll={handleFeaturedScroll}
             className="horizontal-scroll"
             style={{ padding: '8px 0 16px 0', scrollSnapType: 'x mandatory' }}
           >
-            {featuredVendors.map((vendor, index) => (
+            {featuredVendors.map((vendor) => (
               <Link
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
@@ -379,16 +400,18 @@ export default function HomePage() {
                 <div className="featured-hero">
                   {vendor.videos && vendor.videos.length > 0 ? (
                     <video
+                      key={vendor.videos[0]}
                       src={vendor.videos[0]}
                       muted
                       loop
-                      autoPlay={index === activeVideoIndex}
+                      autoPlay
                       playsInline
-                      preload="metadata"
+                      preload="auto"
                       poster={vendor.images[0]}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
-                    <img src={vendor.images[0]} alt={vendor.name} />
+                    <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
                   <div className="featured-hero-overlay" />
                   {vendor.live && (

@@ -869,3 +869,45 @@ body {
 .progress-ring {
   transition: stroke-dashoffset 0.3s ease;
 }
+/* ============ FEATURED HEADING ============ */
+.featured-heading-container {
+  padding: 16px 16px 0;
+}
+
+.featured-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-bottom: 8px;
+}
+
+.featured-rule {
+  width: 100%;
+  height: 1px;
+  background: var(--rum);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.featured-rule.visible {
+  transform: scaleX(1);
+}
+
+.featured-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--black);
+  margin-top: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease 0.2s, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+}
+
+.featured-title.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
