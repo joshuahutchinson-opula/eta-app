@@ -42,7 +42,6 @@ body {
     radial-gradient(ellipse at 80% 80%, rgba(255, 184, 0, 0.04) 0%, transparent 50%);
 }
 
-/* Dark theme */
 [data-theme="dark"] {
   --off-white: #0F0E0C;
   --black: #F5EFE6;
@@ -277,13 +276,13 @@ body {
   transform: translateY(-1px);
 }
 
-/* ============ TAB BAR - RUM PUNCH ============ */
+/* ============ TAB BAR - RUM PUNCH - TALLER ============ */
 .tab-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 50px;
+  height: 60px;
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--rum);
   border-top: none;
@@ -297,9 +296,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 6px 8px;
   transition: all 0.15s ease;
 }
 
@@ -312,16 +311,16 @@ body {
 }
 
 .tab-icon {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .tab-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
-/* ============ NAVIGATION ============ */
+/* ============ NAVIGATION - STICKY TOP ============ */
 .nav-bar {
   position: sticky;
   top: 0;
@@ -330,6 +329,7 @@ body {
   border-bottom: 1px solid var(--light-grey);
   padding: 8px 16px;
   backdrop-filter: blur(10px);
+  margin: 0;
 }
 
 /* ============ SECTION HEADERS ============ */
@@ -357,16 +357,7 @@ body {
   gap: 4px;
 }
 
-/* Full width heading card */
-.section-heading-card {
-  background: #FFFFFF;
-  border-radius: 12px;
-  padding: 10px 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  display: block;
-  width: 100%;
-}
-
+/* Plain heading - no white card */
 .section-heading {
   display: flex;
   flex-direction: column;
@@ -440,7 +431,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Featured heading - thin outline */
+/* Featured heading - no outline */
 .featured-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -448,10 +439,9 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: shimmer 3s ease infinite;
-  -webkit-text-stroke: 0.5px #0F0E0C;
 }
 
-/* Moods heading - no outline, centered */
+/* Moods heading */
 .moods-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -460,6 +450,16 @@ body {
   background-clip: text;
   animation: shimmer 3s ease infinite;
   text-align: center;
+}
+
+/* ============ CONTENT CONTAINER (white card behind content) ============ */
+.section-content-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin: 0 16px;
+  overflow: visible;
 }
 
 /* ============ HORIZONTAL SCROLL ============ */

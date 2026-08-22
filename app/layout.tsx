@@ -32,14 +32,18 @@ export default function RootLayout({
       <body style={{ 
         fontFamily: 'Inter, system-ui, sans-serif',
         backgroundColor: '#FBD8B8',
-        color: '#0F0E0C'
+        color: '#0F0E0C',
+        margin: 0,
+        padding: 0
       }}>
         <LaunchScreen />
         <main style={{ 
-          paddingBottom: '70px',
+          paddingBottom: '80px',
           minHeight: '100vh',
           overflowX: 'hidden',
-          overflowY: 'visible'
+          overflowY: 'visible',
+          paddingTop: 0,
+          margin: 0
         }}>
           {children}
         </main>

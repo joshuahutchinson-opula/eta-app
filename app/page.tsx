@@ -72,6 +72,14 @@ interface Mood {
   coverImage: string
 }
 
+interface ActiveBooking {
+  id: string
+  experienceId?: string
+  vendorId?: string
+  status: string
+  date: string
+}
+
 const MOOD_ICONS: Record<string, string> = {
   'R&R': 'wellness',
   'Just The Two Of Us': 'heart',
@@ -268,30 +276,28 @@ export default function HomePage() {
                   <Icon name="camera" size={20} />
                 </div>
               </div>
-              <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>{story.name}</p>
+              <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
             </div>
           ) : (
             <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
               <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
                 <img src={story.image} alt={story.name} />
               </div>
-              <p style={{ fontSize: '10px', color: 'var(--grey)', marginTop: '4px' }}>{story.name}</p>
+              <p style={{ fontSize: '10px', fontWeight: 600, color: 'var(--black)', marginTop: '4px' }}>{story.name}</p>
             </Link>
           )
         ))}
       </div>
 
-      {/* Featured - full width, taller */}
+      {/* Featured - no white container */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading">
-                <span className="section-eyebrow">Explore Jamaica</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title featured-heading-text">Featured</span>
-                </div>
+            <div className="section-heading">
+              <span className="section-eyebrow">Explore Jamaica</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title featured-heading-text">Featured</span>
               </div>
             </div>
           </div>
@@ -365,81 +371,81 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Flash Deals */}
+      {/* Flash Deals - content in white container */}
       {flashDeals.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading section-heading-animate">
-                <span className="section-eyebrow">Limited Time</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title">Flash Deals</span>
-                </div>
+            <div className="section-heading section-heading-animate">
+              <span className="section-eyebrow">Limited Time</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title">Flash Deals</span>
               </div>
             </div>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '10px 16px 30px 16px' }}>
-            {flashDeals.map(fd => (
-              <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '220px' }}>
-                  <div className="card-image" style={{ height: '120px' }}>
-                    {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
-                    <div className="card-overlay" />
-                    <div className="card-badge" style={{ background: 'var(--rum)', color: 'white' }}>DEAL</div>
+          <div className="section-content-card">
+            <div className="horizontal-scroll" style={{ padding: '0' }}>
+              {flashDeals.map(fd => (
+                <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="card" style={{ width: '200px', margin: '0' }}>
+                    <div className="card-image" style={{ height: '120px' }}>
+                      {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
+                      <div className="card-overlay" />
+                      <div className="card-badge" style={{ background: 'var(--rum)', color: 'white' }}>DEAL</div>
+                    </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Icon name="clock" size={12} />
+                        {formatCountdown(fd.expires)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Icon name="clock" size={12} />
-                      {formatCountdown(fd.expires)}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Photo Spots */}
+      {/* Photo Spots - content in white container */}
       {photoSpots.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading section-heading-animate">
-                <span className="section-eyebrow">Capture It</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title">Photo Spots</span>
-                </div>
+            <div className="section-heading section-heading-animate">
+              <span className="section-eyebrow">Capture It</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title">Photo Spots</span>
               </div>
             </div>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '20px 16px 30px 16px' }}>
-            {photoSpots.map((spot) => (
-              <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="polaroid" style={{ width: '200px' }}>
-                  <div className="tape-strip" />
-                  <div style={{ width: '100%', height: '140px', overflow: 'hidden', borderRadius: '4px' }}>
-                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div className="section-content-card">
+            <div className="horizontal-scroll" style={{ padding: '10px 0 20px 0' }}>
+              {photoSpots.map((spot) => (
+                <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="polaroid" style={{ width: '180px' }}>
+                    <div className="tape-strip" />
+                    <div style={{ width: '100%', height: '130px', overflow: 'hidden', borderRadius: '4px' }}>
+                      <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div className="polaroid-caption">{spot.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>Best: {spot.bestTime}</span>
+                      {calculateDistance(spot.lat, spot.lng) && (
+                        <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{calculateDistance(spot.lat, spot.lng)}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="polaroid-caption">{spot.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--rum)', fontWeight: 600 }}>Best: {spot.bestTime}</span>
-                    {calculateDistance(spot.lat, spot.lng) && (
-                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{calculateDistance(spot.lat, spot.lng)}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Moods - centered, "How We Feelin Today?" */}
+      {/* Moods - centered, no white container */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <div style={{ textAlign: 'center', marginBottom: '12px', padding: '0 16px' }}>
@@ -465,96 +471,96 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Experiences */}
+      {/* Experiences - content in white container */}
       {filteredExperiences.length > 0 && (
         <div style={{ marginBottom: '20px', overflow: 'visible' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading section-heading-animate">
-                <span className="section-eyebrow">Curated For You</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title">Experiences</span>
-                </div>
+            <div className="section-heading section-heading-animate">
+              <span className="section-eyebrow">Curated For You</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title">Experiences</span>
               </div>
             </div>
             <Link href="/experiences" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '10px 16px 30px 16px' }}>
-            {filteredExperiences.slice(0, 4).map(e => (
-              <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '280px' }}>
-                  <div className="card-image" style={{ height: '160px' }}>
-                    <img src={e.imageUrl} alt={e.name} />
-                    <div className="card-overlay" />
-                    {e.vendor?.isPremium && (
-                      <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
-                        <Icon name="crown" size={14} />
+          <div className="section-content-card">
+            <div className="horizontal-scroll" style={{ padding: '0' }}>
+              {filteredExperiences.slice(0, 4).map(e => (
+                <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="card" style={{ width: '260px', margin: '0' }}>
+                    <div className="card-image" style={{ height: '150px' }}>
+                      <img src={e.imageUrl} alt={e.name} />
+                      <div className="card-overlay" />
+                      {e.vendor?.isPremium && (
+                        <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                          <Icon name="crown" size={14} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="card-content">
+                      <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
+                      <p style={{ fontSize: '12px', color: 'var(--grey)' }}>{e.tagline}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}</span>
+                        <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}</span>
+                        <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>TRAVEL INCLUDED</span>
                       </div>
-                    )}
-                  </div>
-                  <div className="card-content">
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--black)' }}>{e.name}</h3>
-                    <p style={{ fontSize: '12px', color: 'var(--grey)' }}>{e.tagline}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--sea)', fontWeight: 600 }}>{e.stops ? `${e.stops.length} STOPS` : '3 STOPS'}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{e.totalDuration ? `${e.totalDuration} HRS` : '4 HRS'}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 600 }}>TRAVEL INCLUDED</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                      <span className="card-price">${e.price}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <span className="card-price">${e.price}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Near You Now */}
+      {/* Near You Now - content in white container */}
       {filteredVendors.length > 0 && (
         <div>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading-card">
-              <div className="section-heading section-heading-animate">
-                <span className="section-eyebrow">Close By</span>
-                <div className="section-title-row">
-                  <span className="section-accent-bar" />
-                  <span className="section-title">Near You Now</span>
-                </div>
+            <div className="section-heading section-heading-animate">
+              <span className="section-eyebrow">Close By</span>
+              <div className="section-title-row">
+                <span className="section-accent-bar" />
+                <span className="section-title">Near You Now</span>
               </div>
             </div>
             <Link href="/marketplace" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
           </div>
-          <div className="grid-2" style={{ padding: '0 16px' }}>
-            {filteredVendors.slice(0, 4).map(v => (
-              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card">
-                  <div className="card-image" style={{ height: '120px' }}>
-                    <img src={v.images[0]} alt={v.name} />
-                    {v.isPremium && (
-                      <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 2 }}>
-                        <Icon name="crown" size={12} />
-                      </div>
-                    )}
-                    {v.live && (
-                      <div style={{ position: 'absolute', bottom: '8px', left: '8px', zIndex: 2, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 600, color: '#00C853' }}>
-                        <span className="live-dot" />
-                        {v.whoThere} here now
-                      </div>
-                    )}
+          <div className="section-content-card">
+            <div className="grid-2" style={{ gap: '8px' }}>
+              {filteredVendors.slice(0, 4).map(v => (
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{ margin: '0' }}>
+                    <div className="card-image" style={{ height: '110px' }}>
+                      <img src={v.images[0]} alt={v.name} />
+                      {v.isPremium && (
+                        <div className="premium-crown premium-pulse" style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 2 }}>
+                          <Icon name="crown" size={12} />
+                        </div>
+                      )}
+                      {v.live && (
+                        <div style={{ position: 'absolute', bottom: '8px', left: '8px', zIndex: 2, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 600, color: '#00C853' }}>
+                          <span className="live-dot" />
+                          {v.whoThere} here now
+                        </div>
+                      )}
+                    </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                        {v.category}
+                        {!v.open && ' • Closed'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--black)' }}>{v.name}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>
-                      {v.category}
-                      {!v.open && ' • Closed'}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -562,12 +568,4 @@ export default function HomePage() {
       <Dock />
     </main>
   )
-}
-
-interface ActiveBooking {
-  id: string
-  experienceId?: string
-  vendorId?: string
-  status: string
-  date: string
 }

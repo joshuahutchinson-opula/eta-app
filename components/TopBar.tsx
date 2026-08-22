@@ -14,29 +14,38 @@ export default function TopBar() {
 
   return (
     <header className="nav-bar">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        {/* Points + Wallet merged */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-          {/* Points pill */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        gap: '16px'
+      }}>
+        {/* Status Bar - left side */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0',
+          flex: 1
+        }}>
+          {/* Points */}
           <button
             onClick={() => router.push('/rewards')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '100px',
-              background: 'var(--off-white)',
-              border: '1px solid var(--light-grey)',
+              background: 'none',
+              border: 'none',
               cursor: 'pointer',
+              padding: '4px 8px 4px 0',
               fontFamily: 'inherit',
-              transition: 'all 0.2s ease'
+              transition: 'opacity 0.2s ease'
             }}
           >
-            <Icon name="sparkle" size={14} style={{ color: 'var(--gold)' }} />
+            <Icon name="sparkle" size={16} style={{ color: 'var(--gold)' }} />
             <span style={{ 
-              fontSize: '14px', 
-              fontWeight: 800, 
+              fontSize: '15px', 
+              fontWeight: 700, 
               color: 'var(--gold)',
               fontFamily: 'Space Mono, monospace'
             }}>
@@ -44,26 +53,33 @@ export default function TopBar() {
             </span>
           </button>
 
-          {/* Wallet pill */}
+          {/* Divider */}
+          <div style={{
+            width: '1px',
+            height: '20px',
+            background: 'var(--light-grey)',
+            margin: '0 4px'
+          }} />
+
+          {/* Wallet */}
           <button
             onClick={() => setWalletHidden(!walletHidden)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '100px',
-              background: 'var(--off-white)',
-              border: '1px solid var(--light-grey)',
+              background: 'none',
+              border: 'none',
               cursor: 'pointer',
+              padding: '4px 8px',
               fontFamily: 'inherit',
-              transition: 'all 0.2s ease'
+              transition: 'opacity 0.2s ease'
             }}
           >
-            <Icon name="wallet" size={14} style={{ color: 'var(--grey)' }} />
+            <Icon name="wallet" size={16} style={{ color: 'var(--grey)' }} />
             <span style={{ 
-              fontSize: '14px', 
-              fontWeight: 800,
+              fontSize: '15px', 
+              fontWeight: 700,
               color: 'var(--black)',
               fontFamily: 'Space Mono, monospace',
               letterSpacing: walletHidden ? '1px' : '0'
@@ -73,8 +89,8 @@ export default function TopBar() {
           </button>
         </div>
 
-        {/* Profile avatar */}
-        <Link href="/profile" style={{ textDecoration: 'none' }}>
+        {/* Profile avatar - right */}
+        <Link href="/profile" style={{ textDecoration: 'none', flexShrink: 0 }}>
           <div style={{
             width: '32px',
             height: '32px',
