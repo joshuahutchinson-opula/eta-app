@@ -115,7 +115,7 @@ async function main() {
     },
   })
 
-  // Create vendors with videos for premium vendors
+  // Create vendors with proper Jamaica-relevant videos
   const pushCart = await prisma.vendor.create({
     data: {
       name: 'Push Cart',
@@ -132,7 +132,7 @@ async function main() {
         'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        'https://videos.pexels.com/video-files/3196322/3196322-hd_1920_1080_25fps.mp4',
       ],
       open: true,
       live: true,
@@ -160,7 +160,7 @@ async function main() {
         'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        'https://videos.pexels.com/video-files/2062922/2062922-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: false,
@@ -188,7 +188,7 @@ async function main() {
         'https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+        'https://videos.pexels.com/video-files/3007542/3007542-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: true,
@@ -293,7 +293,7 @@ async function main() {
         'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        'https://videos.pexels.com/video-files/4627617/4627617-hd_1920_1080_30fps.mp4',
       ],
       open: true,
       live: true,
@@ -344,7 +344,7 @@ async function main() {
         'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+        'https://videos.pexels.com/video-files/2620043/2620043-hd_1920_1080_24fps.mp4',
       ],
       open: true,
       live: true,
@@ -394,7 +394,7 @@ async function main() {
         'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
       ],
       videos: [
-        'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+        'https://videos.pexels.com/video-files/2169880/2169880-hd_1920_1080_24fps.mp4',
       ],
       open: true,
       live: true,
