@@ -328,6 +328,7 @@ body {
   background: #FFFFFF;
   border-bottom: 1px solid var(--light-grey);
   padding: 8px 16px;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   margin: 0;
 }
@@ -357,7 +358,6 @@ body {
   gap: 4px;
 }
 
-/* Plain heading - no white card */
 .section-heading {
   display: flex;
   flex-direction: column;
@@ -431,7 +431,6 @@ body {
   100% { opacity: 0; }
 }
 
-/* Featured heading - no outline */
 .featured-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -441,7 +440,6 @@ body {
   animation: shimmer 3s ease infinite;
 }
 
-/* Moods heading */
 .moods-heading-text {
   background: linear-gradient(90deg, var(--gold), var(--rum), var(--gold));
   background-size: 200% 200%;
@@ -452,7 +450,7 @@ body {
   text-align: center;
 }
 
-/* ============ CONTENT CONTAINER (white card behind content) ============ */
+/* ============ CONTENT CONTAINER ============ */
 .section-content-card {
   background: #FFFFFF;
   border-radius: 16px;
