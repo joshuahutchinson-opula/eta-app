@@ -1,8 +1,9 @@
+// app/explore/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import TopBar from '@/components/TopBar'
+import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
@@ -80,10 +81,10 @@ export default function ExplorePage() {
 
   if (!mounted) {
     return (
-      <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-        <TopBar />
+      <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: '#0A1628' }}>
+        <FloatingPill />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: 'var(--sand-dim)' }}>Wull on deh...</p>
+          <p style={{ color: 'rgba(245,239,230,0.6)' }}>Wull on deh...</p>
         </div>
         <Dock />
       </main>
@@ -91,8 +92,8 @@ export default function ExplorePage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-      <TopBar />
+    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: '#0A1628' }}>
+      <FloatingPill />
 
       <div style={{ flex: 1, position: 'relative' }}>
         <MapContainer

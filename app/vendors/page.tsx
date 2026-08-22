@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import TopBar from '@/components/TopBar'
+import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
@@ -88,8 +88,8 @@ export default function VendorsPage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
-        <TopBar />
-        <div style={{ padding: '16px', paddingBottom: '100px' }}>
+        <FloatingPill />
+        <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
@@ -112,9 +112,9 @@ export default function VendorsPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <TopBar />
+      <FloatingPill />
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '60px 16px 16px' }}>
         {/* Search + filter */}
         <div className="card" style={{ 
           display: 'flex', 
@@ -123,7 +123,7 @@ export default function VendorsPage() {
           padding: '10px 14px',
           marginBottom: '16px',
           position: 'sticky',
-          top: '52px',
+          top: '12px',
           zIndex: 30
         }}>
           <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
@@ -155,7 +155,7 @@ export default function VendorsPage() {
                   {v.live && (
                     <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span className="live-dot" />
-                      <span className="num-font">{v.whoThere}</span> here
+                      <span className="num-font">{v.whoThere}</span> here now
                     </div>
                   )}
                 </div>

@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import TopBar from '@/components/TopBar'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
@@ -35,9 +34,7 @@ export default function ProfilePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <TopBar />
-
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '60px 16px 16px' }}>
         {/* Profile header */}
         <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--light-grey)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
@@ -100,8 +97,7 @@ export default function ProfilePage() {
         {[
           { label: 'My Bookings', icon: 'clock', href: '/experiences' },
           { label: 'Saved Vendors', icon: 'heart', href: '/marketplace' },
-          { label: 'Rewards', icon: 'sparkle', href: '/rewards' },
-          { label: 'Wallet', icon: 'wallet', href: '/wallet' },
+          { label: 'Wallet & Rewards', icon: 'sparkle', href: '/wallet' },
           { label: 'Settings', icon: 'settings', href: '#' }
         ].map((item, i) => (
           <Link key={i} href={item.href} style={{ textDecoration: 'none' }}>

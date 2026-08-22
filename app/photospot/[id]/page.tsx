@@ -1,8 +1,8 @@
+// app/photospot/[id]/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import TopBar from '@/components/TopBar'
+import { useParams, useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
@@ -19,6 +19,7 @@ interface PhotoSpot {
 
 export default function PhotoSpotDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const [spot, setSpot] = useState<PhotoSpot | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -55,8 +56,29 @@ export default function PhotoSpotDetailPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '120px' }}>
-      <TopBar />
+    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
+      {/* Back button */}
+      <button
+        onClick={() => router.back()}
+        style={{
+          position: 'absolute',
+          top: '16px',
+          left: '16px',
+          zIndex: 10,
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          background: 'rgba(15,14,12,0.5)',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white'
+        }}
+      >
+        <Icon name="back" size={14} />
+      </button>
 
       <div style={{ position: 'relative', height: '300px' }}>
         <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

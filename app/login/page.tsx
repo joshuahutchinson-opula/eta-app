@@ -1,9 +1,9 @@
+// app/login/page.tsx
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import TopBar from '@/components/TopBar'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
 
@@ -44,8 +44,6 @@ export default function LoginPage() {
 
   return (
     <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-      <TopBar />
-
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px', maxWidth: '400px', margin: '0 auto', width: '100%' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
           {patois.ctaWelcome}
