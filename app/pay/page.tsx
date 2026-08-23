@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { patois } from '@/lib/patois'
 
 type PaymentStatus = 'paid' | 'pending' | 'failed' | 'queued' | 'refunded'
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
@@ -15,7 +16,7 @@ interface TripStop {
   item: string
   price: number
   status: PaymentStatus
-  category: string
+  category: 'FOOD' | 'DRINKS' | 'ACTIVITY' | 'WELLNESS' | 'BEACH' | 'TRANSPORT'
 }
 
 interface CrewMember {
@@ -26,12 +27,7 @@ interface CrewMember {
   isYou: boolean
 }
 
-interface TripPhoto {
-  url: string | null
-  caption: string
-}
-
-interface PassportPage {
+interface TripPage {
   id: string
   destination: string
   date: string
@@ -41,10 +37,12 @@ interface PassportPage {
   isActive: boolean
   isSealed: boolean
   highlight?: string
-  photo?: TripPhoto | null
+  photoUrl?: string
+  photoCaption?: string
+  isMilestone?: boolean
 }
 
-const MOCK_TRIPS: PassportPage[] = [
+const MOCK_TRIPS: TripPage[] = [
   {
     id: 'trip-1',
     destination: 'Full Moon Float',
@@ -53,10 +51,8 @@ const MOCK_TRIPS: PassportPage[] = [
     isActive: true,
     isSealed: false,
     highlight: 'Best bite: Push Cart\'s jerk chicken',
-    photo: {
-      url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop',
-      caption: 'Sunset at the cliffs'
-    },
+    photoUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop',
+    photoCaption: 'Sunset at the cliffs',
     stops: [
       { id: 's1', vendorName: 'Push Cart', item: 'Jerk Chicken Plate', price: 45, status: 'paid', category: 'FOOD' },
       { id: 's2', vendorName: 'Coral Reef Bar', item: 'Rum Punch Flight', price: 30, status: 'paid', category: 'DRINKS' },
@@ -76,10 +72,8 @@ const MOCK_TRIPS: PassportPage[] = [
     isActive: false,
     isSealed: true,
     highlight: 'Lobster was unreal',
-    photo: {
-      url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop',
-      caption: 'Golden hour dinner'
-    },
+    photoUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop',
+    photoCaption: 'Golden hour dinner',
     stops: [
       { id: 's4', vendorName: 'Cliffside Grill', item: 'Lobster Dinner', price: 140, status: 'paid', category: 'FOOD' },
       { id: 's5', vendorName: 'Coral Reef Bar', item: 'Cocktails', price: 70, status: 'paid', category: 'DRINKS' },
@@ -97,6 +91,7 @@ const MOCK_TRIPS: PassportPage[] = [
     isActive: false,
     isSealed: true,
     highlight: 'The pepper sauce is no joke',
+    isMilestone: true,
     stops: [
       { id: 's6', vendorName: 'Push Cart', item: 'Jerk Pork', price: 40, status: 'paid', category: 'FOOD' },
       { id: 's7', vendorName: 'Blue Mahoe', item: 'Coffee Flight', price: 35, status: 'paid', category: 'FOOD' },
@@ -107,7 +102,7 @@ const MOCK_TRIPS: PassportPage[] = [
   },
 ]
 
-const COLLECTION_LIST = [
+const COLLECTION_VENDORS = [
   { name: 'Push Cart', category: 'FOOD', visited: true },
   { name: 'Coral Reef Bar', category: 'DRINKS', visited: true },
   { name: 'Cliffside Grill', category: 'FOOD', visited: true },
@@ -116,6 +111,8 @@ const COLLECTION_LIST = [
   { name: 'Island Wellness', category: 'WELLNESS', visited: false },
   { name: 'Doctor\'s Cave', category: 'BEACH', visited: false },
   { name: 'Rasta Taxi', category: 'TRANSPORT', visited: false },
+  { name: 'Coconut Man', category: 'FOOD', visited: false },
+  { name: 'Negril Watersports', category: 'ACTIVITY', visited: false },
 ]
 
 const MILESTONES = [
@@ -123,6 +120,13 @@ const MILESTONES = [
   { id: 'm2', title: '5 Trips', achieved: false, icon: 'sparkle' },
   { id: 'm3', title: 'Foodie', achieved: true, icon: 'food' },
   { id: 'm4', title: 'Water Baby', achieved: true, icon: 'activity' },
+]
+
+const REGION_STAMPS = [
+  { name: 'Negril', code: 'NE', unlocked: true },
+  { name: 'MoBay', code: 'MB', unlocked: true },
+  { name: 'Ochi', code: 'OR', unlocked: false },
+  { name: 'Kingston', code: 'KN', unlocked: false },
 ]
 
 function getStampClass(category: string): string {
@@ -144,15 +148,97 @@ function getStampIcon(category: string): string {
     case 'ACTIVITY': return 'activity'
     case 'WELLNESS': return 'wellness'
     case 'BEACH': return 'sun'
-    case 'TRANSPORT': return 'compass'
+    case 'TRANSPORT': return 'route'
     default: return 'sparkle'
   }
+}
+
+function Leaf({ index, currentIndex, total, children, back, registerRef }: {
+  index: number
+  currentIndex: number
+  total: number
+  children: React.ReactNode
+  back?: React.ReactNode
+  registerRef: (index: number, el: HTMLDivElement | null) => void
+}) {
+  const turned = index < currentIndex
+  return (
+    <div
+      ref={el => registerRef(index, el)}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        transformStyle: 'preserve-3d',
+        transformOrigin: 'left center',
+        transition: 'transform 0.7s cubic-bezier(0.45, 0.05, 0.35, 1)',
+        transform: turned ? 'rotateY(-176deg)' : 'rotateY(0deg)',
+        zIndex: turned ? index + 1 : total - index + 10,
+      }}
+    >
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        borderRadius: '2px 10px 10px 2px',
+        overflow: 'hidden'
+      }}>
+        {children}
+      </div>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(180deg)',
+        borderRadius: '2px 10px 10px 2px',
+        overflow: 'hidden',
+        background: '#F3ECDD'
+      }}>
+        {back}
+      </div>
+    </div>
+  )
+}
+
+function PaperPage({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      background: 'linear-gradient(160deg, #FEFBF6 0%, #F3ECDD 100%)',
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px)',
+        pointerEvents: 'none'
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        right: '12px',
+        bottom: '12px',
+        border: '1px solid rgba(255, 75, 43, 0.25)',
+        borderRadius: '4px',
+        pointerEvents: 'none'
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '20px 16px' }}>
+        {children}
+      </div>
+    </div>
+  )
 }
 
 export default function PayPage() {
   const router = useRouter()
   const [view, setView] = useState<'passport' | 'scan'>('passport')
-  const [pageIndex, setPageIndex] = useState(1) // Start on bio page, not cover
+  const [pageIndex, setPageIndex] = useState(1)
   const [turning, setTurning] = useState(false)
   const [sheenActive, setSheenActive] = useState(false)
   const [amount, setAmount] = useState('')
@@ -165,10 +251,16 @@ export default function PayPage() {
   const [flashOn, setFlashOn] = useState(false)
   const [manualCode, setManualCode] = useState(false)
   const [manualInput, setManualInput] = useState('')
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
+  const bookRef = useRef<HTMLDivElement>(null)
+  const leafRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']
+  const registerRef = (index: number, el: HTMLDivElement | null) => {
+    if (el) leafRefs.current.set(index, el)
+    else leafRefs.current.delete(index)
+  }
 
-  const totalLeaves = 1 + 1 + MOCK_TRIPS.length + 1 + 1 // Cover + Bio + Trips + Collection + Milestones
+  const totalLeaves = 1 + 1 + MOCK_TRIPS.length + 1 + 1
 
   const turnPage = (direction: 'next' | 'prev') => {
     if (turning) return
@@ -183,6 +275,22 @@ export default function PayPage() {
     }, 350)
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX
+    if (Math.abs(dx) > 40) {
+      if (dx > 0) turnPage('prev')
+      else turnPage('next')
+    }
+    setTouchStartX(null)
+  }
+
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']
+
   const handleKeypad = (key: string) => {
     if (key === '⌫') {
       setAmount(amount.slice(0, -1))
@@ -193,9 +301,7 @@ export default function PayPage() {
     }
   }
 
-  const simulateScan = () => {
-    setCheckoutOpen(true)
-  }
+  const simulateScan = () => setCheckoutOpen(true)
 
   const processPayment = () => {
     setCheckoutOpen(false)
@@ -214,19 +320,7 @@ export default function PayPage() {
     setTimeout(() => setNudgeCooldown(false), 60000)
   }
 
-  const handleSwipe = (e: React.TouchEvent) => {
-    const touch = e.touches[0]
-    const startX = touch.clientX
-    const handleMove = (ev: TouchEvent) => {
-      const dx = ev.touches[0].clientX - startX
-      if (dx > 50) turnPage('prev')
-      if (dx < -50) turnPage('next')
-      document.removeEventListener('touchmove', handleMove)
-    }
-    document.addEventListener('touchmove', handleMove, { once: true })
-  }
-
-  const currentTripIndex = pageIndex - 2 // After cover(0) and bio(1)
+  const currentTripIndex = pageIndex - 2
   const isCover = pageIndex === 0
   const isBio = pageIndex === 1
   const isCollection = pageIndex === 2 + MOCK_TRIPS.length
@@ -236,17 +330,10 @@ export default function PayPage() {
     : null
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      {/* Segmented Control */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <div style={{ 
-          display: 'flex', 
-          background: 'var(--light-grey)', 
-          borderRadius: '10px', 
-          padding: '2px', 
-          gap: '2px',
-          marginBottom: '20px'
-        }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--off-white)' }}>
+      <div style={{ padding: '16px 16px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Segmented control */}
+        <div style={{ flexShrink: 0, display: 'flex', background: 'var(--light-grey)', borderRadius: '10px', padding: '2px', gap: '2px', marginBottom: '16px' }}>
           {(['passport', 'scan'] as const).map(v => (
             <button
               key={v}
@@ -270,73 +357,86 @@ export default function PayPage() {
           ))}
         </div>
 
-        {view === 'passport' && (
-          <div className="passport-book" onTouchStart={handleSwipe}>
-            {/* Spine */}
-            <div className="passport-spine">
-              <div className="passport-stitch" />
-            </div>
+        {/* Content area with Dock clearance */}
+        <div style={{ flex: 1, minHeight: 0, paddingBottom: 90, display: 'flex', flexDirection: 'column' }}>
+          {view === 'passport' && (
+            <div
+              ref={bookRef}
+              className="passport-book"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              style={{ flex: 1 }}
+            >
+              {/* Spine */}
+              <div className="passport-spine">
+                <div className="passport-stitch" />
+              </div>
 
-            {/* Page edge */}
-            <div className="passport-page-edge" />
+              {/* Page edge */}
+              <div className="passport-page-edge" />
 
-            {/* Sheen */}
-            {sheenActive && <div className="passport-sheen" />}
+              {/* Sheen overlay */}
+              {sheenActive && <div className="passport-sheen" style={{ opacity: 1 }} />}
 
-            {/* Stamp animation */}
-            {stampAnimating && (
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                zIndex: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
+              {/* Stamp animation */}
+              {stampAnimating && (
                 <div style={{
-                  width: '90px',
-                  height: '90px',
-                  borderRadius: '50%',
-                  border: '4px solid var(--gold)',
-                  background: 'rgba(255, 184, 0, 0.1)',
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 30,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: 'rotate(-12deg)',
-                  animation: 'stampLand 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                  boxShadow: '0 0 12px rgba(255,184,0,0.4), inset 0 0 8px rgba(255,184,0,0.2)'
+                  pointerEvents: 'none'
                 }}>
-                  <Icon name="sparkle" size={36} style={{ color: 'var(--gold)' }} />
+                  <div style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    border: '4px solid var(--gold)',
+                    background: 'rgba(255, 184, 0, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: 'stampLand 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                    boxShadow: '0 0 20px rgba(255,184,0,0.4), inset 0 0 10px rgba(255,184,0,0.2)'
+                  }}>
+                    <Icon name="sparkle" size={40} style={{ color: 'var(--gold)' }} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* COVER */}
-            <div className={`passport-leaf ${pageIndex === 0 ? '' : 'turned'}`} style={{ zIndex: pageIndex === 0 ? 10 : 1 }}>
-              <div className="passport-face front">
+              {/* LEAF 0: COVER */}
+              <Leaf index={0} currentIndex={pageIndex} total={totalLeaves} registerRef={registerRef} back={<div />}>
                 <div style={{
-                  minHeight: '520px',
-                  background: 'linear-gradient(155deg, #9c2812, #6e1a0c 55%, #4d1207)',
-                  borderRadius: 'var(--radius-card)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(155deg, #9c2812 0%, #6e1a0c 55%, #4d1207 100%)',
                   position: 'relative',
                   overflow: 'hidden',
-                  padding: '32px 24px',
-                  textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  padding: '32px 24px'
                 }}>
-                  {/* Grain texture */}
+                  {/* SVG grain filter */}
+                  <svg width="0" height="0" style={{ position: 'absolute' }}>
+                    <defs>
+                      <filter id="leatherGrain">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n" />
+                        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0" />
+                      </filter>
+                    </defs>
+                  </svg>
                   <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.3) 0%, transparent 50%), repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 2px, transparent 2px, transparent 4px)',
+                    filter: 'url(#leatherGrain)',
                     pointerEvents: 'none'
                   }} />
 
-                  {/* Inset frame */}
+                  {/* Gold inset frame */}
                   <div style={{
                     position: 'absolute',
                     top: '16px',
@@ -358,7 +458,7 @@ export default function PayPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '20px',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 20px rgba(255,184,0,0.2)'
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 24px rgba(255,184,0,0.25)'
                   }}>
                     <Icon name="sparkle" size={36} style={{ color: 'var(--gold)' }} />
                   </div>
@@ -370,7 +470,7 @@ export default function PayPage() {
                     fontWeight: 700,
                     letterSpacing: '6px',
                     color: 'var(--gold)',
-                    textShadow: '0 1px 0 rgba(0,0,0,0.6), 0 0 20px rgba(255,184,0,0.3)',
+                    textShadow: '0 1px 0 rgba(0,0,0,0.7), 0 0 20px rgba(255,184,0,0.35)',
                     marginBottom: '8px'
                   }}>
                     ETA
@@ -397,24 +497,25 @@ export default function PayPage() {
                     Member since January 2025
                   </p>
 
-                  {/* Region stamps border */}
+                  {/* Region stamps */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '16px' }}>
-                    {['Negril', 'Montego Bay', 'Ocho Rios'].map(region => (
-                      <div key={region} style={{
-                        width: '36px',
-                        height: '36px',
+                    {REGION_STAMPS.map(region => (
+                      <div key={region.name} style={{
+                        width: '38px',
+                        height: '38px',
                         borderRadius: '50%',
-                        border: region === 'Negril' ? '2px solid var(--gold)' : '2px dashed rgba(255,255,255,0.2)',
+                        border: region.unlocked ? '2px solid var(--gold)' : '2px dashed rgba(255,255,255,0.25)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '7px',
+                        fontSize: '8px',
                         fontWeight: 700,
-                        color: region === 'Negril' ? 'var(--gold)' : 'rgba(255,255,255,0.3)',
+                        color: region.unlocked ? 'var(--gold)' : 'rgba(255,255,255,0.35)',
                         textTransform: 'uppercase',
-                        fontFamily: 'Georgia, serif'
+                        fontFamily: 'Georgia, serif',
+                        background: region.unlocked ? 'rgba(255,184,0,0.08)' : 'transparent'
                       }}>
-                        {region.slice(0, 2)}
+                        {region.code}
                       </div>
                     ))}
                   </div>
@@ -423,647 +524,470 @@ export default function PayPage() {
                   <div style={{
                     fontFamily: 'Space Mono, monospace',
                     fontSize: '9px',
-                    color: 'rgba(255, 255, 255, 0.3)',
+                    color: 'rgba(255, 255, 255, 0.35)',
                     letterSpacing: '2px',
                     marginTop: '8px'
                   }}>
                     PASSPORT No. ETA-2026-0042
                   </div>
                 </div>
-              </div>
-              <div className="passport-face back">
-                <div style={{ minHeight: '520px', background: '#FBF5EC', borderRadius: 'var(--radius-card)' }} />
-              </div>
-            </div>
+              </Leaf>
 
-            {/* BIO PAGE */}
-            <div className={`passport-leaf ${pageIndex <= 1 ? '' : 'turned'}`} style={{ zIndex: pageIndex <= 1 ? 5 : 1 }}>
-              <div className="passport-face front">
-                <div style={{
-                  minHeight: '520px',
-                  background: '#FBF5EC',
-                  borderRadius: 'var(--radius-card)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  padding: '24px 20px'
-                }}>
-                  {/* Paper texture */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px)',
-                    pointerEvents: 'none'
-                  }} />
-
-                  {/* Red rum border */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    right: '12px',
-                    bottom: '12px',
-                    border: '1px solid rgba(255, 75, 43, 0.3)',
-                    borderRadius: '4px',
-                    pointerEvents: 'none'
-                  }} />
-
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                      {/* Photo */}
-                      <div style={{
-                        width: '64px',
-                        height: '64px',
-                        borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.08)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 8px',
-                        overflow: 'hidden'
-                      }}>
-                        <Icon name="user" size={28} style={{ color: 'var(--grey)' }} />
-                      </div>
-                      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700, color: '#0F0E0C' }}>
-                        Jordan Hutchinson
-                      </h2>
-                      <div style={{
-                        display: 'inline-block',
-                        marginTop: '6px',
-                        padding: '4px 10px',
-                        borderRadius: '999px',
-                        background: 'var(--rum)',
-                        color: 'white',
-                        fontSize: '9px',
-                        fontWeight: 700,
-                        letterSpacing: '1px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Gold Member
-                      </div>
-                    </div>
-
-                    {/* Lifetime stats */}
+              {/* LEAF 1: BIO PAGE */}
+              <Leaf index={1} currentIndex={pageIndex} total={totalLeaves} registerRef={registerRef} back={<div />}>
+                <PaperPage>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                     <div style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.08)',
                       display: 'flex',
-                      justifyContent: 'space-around',
-                      textAlign: 'center',
-                      marginBottom: '20px',
-                      padding: '12px 0',
-                      borderTop: '1px dashed rgba(0,0,0,0.1)',
-                      borderBottom: '1px dashed rgba(0,0,0,0.1)'
-                    }}>
-                      <div>
-                        <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>3</p>
-                        <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Trips</p>
-                      </div>
-                      <div>
-                        <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>5</p>
-                        <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Vendors</p>
-                      </div>
-                      <div>
-                        <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum)' }}>$470</p>
-                        <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Spent</p>
-                      </div>
-                    </div>
-
-                    {/* Mission line */}
-                    <p style={{
-                      fontFamily: 'Georgia, serif',
-                      fontStyle: 'italic',
-                      fontSize: '11px',
-                      color: 'var(--grey)',
-                      textAlign: 'center',
-                      marginBottom: '20px'
-                    }}>
-                      $470 spent · 5 local vendors supported
-                    </p>
-
-                    {/* Payment medallions */}
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
-                      {['JAM-DEX', 'Lynk', 'Stripe'].map(method => (
-                        <div key={method} style={{
-                          padding: '6px 10px',
-                          borderRadius: '999px',
-                          background: 'rgba(0,0,0,0.05)',
-                          fontSize: '9px',
-                          fontWeight: 600,
-                          color: 'var(--grey)'
-                        }}>
-                          {method}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Dummy QR */}
-                    <div style={{
-                      width: '120px',
-                      height: '120px',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       margin: '0 auto 8px',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(10, 1fr)',
-                      gap: '1px',
-                      padding: '10px',
-                      background: 'white',
-                      borderRadius: '8px',
-                      boxShadow: 'var(--card-shadow)',
-                      border: '1px solid var(--light-grey)'
+                      overflow: 'hidden'
                     }}>
-                      {[...Array(100)].map((_, i) => (
-                        <div key={i} style={{
-                          background: (i * 7 + i * i) % 3 === 0 ? '#0F0E0C' : 'transparent',
-                          borderRadius: '1px'
-                        }} />
-                      ))}
+                      <Icon name="user" size={28} style={{ color: 'var(--grey)' }} />
                     </div>
-                    <p style={{
-                      fontFamily: 'Georgia, serif',
-                      fontStyle: 'italic',
+                    <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700, color: '#0F0E0C' }}>
+                      Jordan Hutchinson
+                    </h2>
+                    <div style={{
+                      display: 'inline-block',
+                      marginTop: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      background: 'var(--rum)',
+                      color: 'white',
                       fontSize: '9px',
-                      color: 'var(--grey)',
-                      textAlign: 'center'
-                    }}>
-                      Vendors scan this — they'll see you're a Gold Member
-                    </p>
-
-                    {/* MRZ line */}
-                    <div style={{
-                      fontFamily: 'Space Mono, monospace',
-                      fontSize: '7px',
-                      color: 'rgba(0,0,0,0.3)',
+                      fontWeight: 700,
                       letterSpacing: '1px',
-                      textAlign: 'center',
-                      marginTop: '16px'
+                      textTransform: 'uppercase'
                     }}>
-                      P&lt;JAMHUTCHINSON&lt;&lt;JORDAN&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+                      Gold Member
                     </div>
                   </div>
-                </div>
-              </div>
-              <div className="passport-face back">
-                <div style={{ minHeight: '520px', background: '#FBF5EC', borderRadius: 'var(--radius-card)' }} />
-              </div>
-            </div>
 
-            {/* TRIP PAGES */}
-            {MOCK_TRIPS.map((trip, index) => {
-              const leafIndex = 2 + index
-              const isActiveLeaf = pageIndex === leafIndex
-              return (
-                <div 
-                  key={trip.id} 
-                  className={`passport-leaf ${pageIndex <= leafIndex ? '' : 'turned'}`} 
-                  style={{ zIndex: pageIndex <= leafIndex ? 3 : 1 }}
-                >
-                  <div className="passport-face front">
-                    <div style={{
-                      minHeight: '520px',
-                      background: '#FBF5EC',
-                      borderRadius: 'var(--radius-card)',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      padding: '24px 20px'
-                    }}>
-                      {/* Paper texture */}
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px)',
-                        pointerEvents: 'none'
-                      }} />
-
-                      {/* Red rum border */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '12px',
-                        left: '12px',
-                        right: '12px',
-                        bottom: '12px',
-                        border: '1px solid rgba(255, 75, 43, 0.3)',
-                        borderRadius: '4px',
-                        pointerEvents: 'none'
-                      }} />
-
-                      <div style={{ position: 'relative', zIndex: 1 }}>
-                        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                          <p style={{
-                            fontFamily: 'Georgia, serif',
-                            fontSize: '9px',
-                            letterSpacing: '2px',
-                            color: trip.isActive ? 'var(--rum)' : 'rgba(0,150,60,0.6)',
-                            textTransform: 'uppercase',
-                            marginBottom: '4px'
-                          }}>
-                            {trip.isActive ? 'In Progress' : 'Sealed'}
-                          </p>
-                          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>
-                            {trip.destination}
-                          </h3>
-                          <p className="caption-font" style={{ fontSize: '10px', color: 'var(--grey)' }}>
-                            {trip.date}
-                          </p>
-                        </div>
-
-                        {/* Crew avatars */}
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '16px' }}>
-                          {trip.crew.map(member => (
-                            <div key={member.id} style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              background: member.isYou ? 'var(--rum)' : 'rgba(0,0,0,0.08)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              color: member.isYou ? 'white' : '#0F0E0C'
-                            }}>
-                              {member.name[0]}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Trip photo polaroid */}
-                        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
-                          {trip.photo?.url ? (
-                            <div className="polaroid" style={{ width: '120px', transform: 'rotate(-3deg)' }}>
-                              <div className="tape-strip" />
-                              <img src={trip.photo.url} alt={trip.photo.caption} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '2px' }} />
-                              <div className="polaroid-caption" style={{ fontSize: '9px' }}>{trip.photo.caption}</div>
-                            </div>
-                          ) : (
-                            <div className="polaroid" style={{ width: '120px', transform: 'rotate(-3deg)', opacity: 0.5 }}>
-                              <div className="tape-strip" />
-                              <div style={{ width: '100%', height: '80px', borderRadius: '2px', border: '2px dashed rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name="camera" size={20} style={{ color: 'rgba(0,0,0,0.3)' }} />
-                              </div>
-                              <div className="polaroid-caption" style={{ fontSize: '9px' }}>Add a photo</div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Highlight */}
-                        {trip.highlight && (
-                          <p className="caption-font" style={{
-                            fontSize: '11px',
-                            color: 'var(--grey)',
-                            textAlign: 'center',
-                            marginBottom: '16px',
-                            fontStyle: 'italic'
-                          }}>
-                            "{trip.highlight}"
-                          </p>
-                        )}
-
-                        {/* Stamps */}
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '16px' }}>
-                          {trip.stops.map(stop => (
-                            <button
-                              key={stop.id}
-                              className={getStampClass(stop.category)}
-                              onClick={() => router.push(`/vendor/${stop.vendorName.toLowerCase().replace(/[^a-z]/g, '-')}`)}
-                              style={{
-                                width: '44px',
-                                height: '44px',
-                                border: '2px solid rgba(255, 75, 43, 0.5)',
-                                background: 'rgba(255, 75, 43, 0.04)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Icon name={getStampIcon(stop.category) as any} size={18} style={{ color: 'rgba(255, 75, 43, 0.6)' }} />
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Active trip details */}
-                        {trip.isActive && (
-                          <div>
-                            <div style={{ marginBottom: '12px' }}>
-                              {trip.stops.map(stop => (
-                                <div key={stop.id} style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  padding: '6px 0',
-                                  borderBottom: '1px dashed rgba(0,0,0,0.08)'
-                                }}>
-                                  <div>
-                                    <p style={{ fontSize: '11px', fontWeight: 600, color: '#0F0E0C', fontFamily: 'Georgia, serif' }}>{stop.vendorName}</p>
-                                    <p style={{ fontSize: '9px', color: 'var(--grey)', fontStyle: 'italic' }}>{stop.item}</p>
-                                  </div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span className="num-font" style={{ fontSize: '10px', fontWeight: 700, color: '#0F0E0C' }}>${stop.price}</span>
-                                    <span style={{
-                                      fontSize: '7px',
-                                      fontWeight: 700,
-                                      padding: '2px 5px',
-                                      border: '1.5px solid',
-                                      borderColor: stop.status === 'paid' ? 'rgba(0,200,83,0.5)' : stop.status === 'queued' ? 'rgba(255,184,0,0.5)' : 'rgba(0,229,204,0.5)',
-                                      borderRadius: '2px',
-                                      transform: 'rotate(-5deg)',
-                                      color: stop.status === 'paid' ? 'rgba(0,150,60,0.7)' : stop.status === 'queued' ? 'rgba(200,140,0,0.7)' : '#00E5CC',
-                                      textTransform: 'uppercase',
-                                      letterSpacing: '0.5px',
-                                      fontFamily: 'Georgia, serif'
-                                    }}>
-                                      {stop.status}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Crew split */}
-                            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                              {trip.crew.map(member => (
-                                <div key={member.id} style={{ textAlign: 'center', flexShrink: 0 }}>
-                                  <div style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    background: member.isYou ? 'var(--rum)' : 'rgba(0,0,0,0.08)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    color: member.isYou ? 'white' : '#0F0E0C',
-                                    border: member.paid ? '2px solid rgba(0,150,60,0.6)' : '2px dashed rgba(0,0,0,0.3)'
-                                  }}>
-                                    {member.name[0]}
-                                  </div>
-                                  <p style={{ fontSize: '7px', fontWeight: 600, color: '#0F0E0C', marginTop: '2px', fontFamily: 'Georgia, serif' }}>{member.name}</p>
-                                  <p className="num-font" style={{ fontSize: '8px', color: member.paid ? 'rgba(0,150,60,0.7)' : 'var(--grey)' }}>
-                                    {member.paid ? 'Paid' : `$${member.amount}`}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-
-                            <button className="btn btn-primary" style={{ width: '100%', height: '40px', marginBottom: '6px', fontSize: '13px' }}>
-                              Pay Your Share
-                            </button>
-                            <button 
-                              className="btn" 
-                              onClick={nudgeUnpaid}
-                              disabled={nudgeCooldown}
-                              style={{ 
-                                width: '100%', 
-                                background: nudged ? 'var(--rum)' : 'rgba(0,0,0,0.05)',
-                                color: nudged ? 'white' : nudgeCooldown ? 'rgba(0,0,0,0.3)' : 'var(--grey)',
-                                height: '36px',
-                                fontSize: '12px',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              {nudged ? 'Nudged!' : nudgeCooldown ? 'Nudge sent' : 'Nudge Unpaid'}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Total for sealed trips */}
-                        {trip.isSealed && (
-                          <p className="num-font" style={{ fontSize: '12px', fontWeight: 700, color: '#0F0E0C', textAlign: 'center', fontFamily: 'Georgia, serif' }}>
-                            Total: ${trip.totalSpent}
-                          </p>
-                        )}
-                      </div>
+                  {/* Lifetime stats */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-around',
+                    textAlign: 'center',
+                    marginBottom: '16px',
+                    padding: '12px 0',
+                    borderTop: '1px dashed rgba(0,0,0,0.1)',
+                    borderBottom: '1px dashed rgba(0,0,0,0.1)'
+                  }}>
+                    <div>
+                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>3</p>
+                      <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Trips</p>
+                    </div>
+                    <div>
+                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>5</p>
+                      <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Vendors</p>
+                    </div>
+                    <div>
+                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum)' }}>$470</p>
+                      <p style={{ fontSize: '8px', color: 'var(--grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Spent</p>
                     </div>
                   </div>
-                  <div className="passport-face back">
-                    <div style={{ minHeight: '520px', background: '#FBF5EC', borderRadius: 'var(--radius-card)' }} />
+
+                  {/* Mission line */}
+                  <p className="caption-font" style={{
+                    fontSize: '11px',
+                    color: 'var(--grey)',
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    $470 spent · 5 local vendors supported
+                  </p>
+
+                  {/* Dummy QR */}
+                  <div style={{
+                    width: '120px',
+                    height: '120px',
+                    margin: '0 auto 8px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(10, 1fr)',
+                    gap: '1px',
+                    padding: '10px',
+                    background: 'white',
+                    borderRadius: '8px',
+                    boxShadow: 'var(--card-shadow)',
+                    border: '2px solid var(--gold)'
+                  }}>
+                    {[...Array(100)].map((_, i) => (
+                      <div key={i} style={{
+                        background: (i * 7 + i * i) % 3 === 0 ? '#0F0E0C' : 'transparent',
+                        borderRadius: '1px'
+                      }} />
+                    ))}
                   </div>
-                </div>
-              )
-            })}
+                  <p className="caption-font" style={{
+                    fontSize: '9px',
+                    color: 'var(--grey)',
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    Vendors scan this — they'll see you're a Gold Member
+                  </p>
 
-            {/* COLLECTION PAGE */}
-            <div className={`passport-leaf ${pageIndex <= 2 + MOCK_TRIPS.length ? '' : 'turned'}`} style={{ zIndex: pageIndex <= 2 + MOCK_TRIPS.length ? 2 : 1 }}>
-              <div className="passport-face front">
-                <div style={{
-                  minHeight: '520px',
-                  background: '#FBF5EC',
-                  borderRadius: 'var(--radius-card)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  padding: '24px 20px'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px)',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    right: '12px',
-                    bottom: '12px',
-                    border: '1px solid rgba(255, 75, 43, 0.3)',
-                    borderRadius: '4px',
-                    pointerEvents: 'none'
-                  }} />
-
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                      <p style={{
-                        fontFamily: 'Georgia, serif',
+                  {/* Payment medallions */}
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px' }}>
+                    {['JAM-DEX', 'Lynk', 'Stripe'].map(method => (
+                      <div key={method} style={{
+                        padding: '6px 10px',
+                        borderRadius: '999px',
+                        background: 'rgba(0,0,0,0.05)',
                         fontSize: '9px',
-                        letterSpacing: '2px',
-                        color: 'var(--rum)',
-                        textTransform: 'uppercase',
-                        marginBottom: '4px'
+                        fontWeight: 600,
+                        color: 'var(--grey)'
                       }}>
-                        Collection
-                      </p>
-                      <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>
-                        Negril Spots
-                      </h3>
-                      <p className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>
-                        5/8 collected
-                      </p>
-                    </div>
+                        {method}
+                      </div>
+                    ))}
+                  </div>
 
-                    <div style={{ marginBottom: '16px' }}>
-                      {COLLECTION_LIST.map(item => (
-                        <div key={item.name} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '8px 0',
-                          borderBottom: '1px dashed rgba(0,0,0,0.08)',
-                          opacity: item.visited ? 1 : 0.4
+                  {/* Home currency */}
+                  <p className="caption-font" style={{
+                    fontSize: '10px',
+                    color: 'var(--grey)',
+                    textAlign: 'center',
+                    marginBottom: '8px'
+                  }}>
+                    JMD · Split equally
+                  </p>
+
+                  {/* Points link */}
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <span
+                      onClick={() => router.push('/wallet')}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        border: '1px dashed var(--rum)',
+                        borderRadius: '999px',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 700
+                      }}
+                    >
+                      <Icon name="sparkle" size={14} style={{ color: 'var(--rum)' }} />
+                      <span className="num-font" style={{ color: '#0F0E0C' }}>1,240 pts</span>
+                    </span>
+                  </div>
+
+                  {/* MRZ line */}
+                  <div style={{
+                    fontFamily: 'Space Mono, monospace',
+                    fontSize: '7px',
+                    color: 'rgba(0,0,0,0.25)',
+                    letterSpacing: '1px',
+                    textAlign: 'center',
+                    marginTop: 'auto'
+                  }}>
+                    P&lt;JAMHUTCHINSON&lt;&lt;JORDAN&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+                  </div>
+                </PaperPage>
+              </Leaf>
+
+              {/* LEAF 2+: TRIP PAGES */}
+              {MOCK_TRIPS.map((trip, index) => {
+                const leafIndex = 2 + index
+                return (
+                  <Leaf key={trip.id} index={leafIndex} currentIndex={pageIndex} total={totalLeaves} registerRef={registerRef} back={<div />}>
+                    <PaperPage>
+                      <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                        <p style={{
+                          fontFamily: 'Georgia, serif',
+                          fontSize: '9px',
+                          letterSpacing: '2px',
+                          color: trip.isActive ? 'var(--rum)' : 'var(--live)',
+                          textTransform: 'uppercase',
+                          marginBottom: '4px'
                         }}>
-                          <div className={getStampClass(item.category)} style={{
-                            width: '32px',
-                            height: '32px',
-                            border: item.visited ? '2px solid rgba(255, 75, 43, 0.6)' : '2px dashed rgba(0,0,0,0.2)',
-                            background: item.visited ? 'rgba(255, 75, 43, 0.05)' : 'transparent',
+                          {trip.isActive ? 'In Progress' : 'Sealed'}
+                        </p>
+                        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '17px', fontWeight: 700, color: '#0F0E0C' }}>
+                          {trip.destination}
+                        </h3>
+                        <p className="caption-font" style={{ fontSize: '10px', color: 'var(--grey)' }}>
+                          {trip.date}
+                        </p>
+                      </div>
+
+                      {/* Crew avatars */}
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginBottom: '12px' }}>
+                        {trip.crew.map(member => (
+                          <div key={member.id} style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '50%',
+                            background: member.isYou ? 'var(--rum)' : 'rgba(0,0,0,0.08)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            flexShrink: 0
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            color: member.isYou ? 'white' : '#0F0E0C',
+                            border: member.paid ? '1.5px solid var(--live)' : '1.5px dashed rgba(0,0,0,0.3)'
                           }}>
-                            <Icon name={getStampIcon(item.category) as any} size={14} style={{ color: item.visited ? 'rgba(255, 75, 43, 0.6)' : 'rgba(0,0,0,0.2)' }} />
+                            {member.name[0]}
                           </div>
-                          <div>
-                            <p style={{ fontSize: '12px', fontWeight: 600, color: '#0F0E0C', fontFamily: 'Georgia, serif' }}>{item.name}</p>
-                            <p style={{ fontSize: '9px', color: 'var(--grey)' }}>{item.category}</p>
+                        ))}
+                      </div>
+
+                      {/* Photo polaroid */}
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                        {trip.photoUrl ? (
+                          <div className="polaroid" style={{ width: '100px', transform: 'rotate(-3deg)' }}>
+                            <div className="tape-strip" />
+                            <img src={trip.photoUrl} alt={trip.photoCaption || trip.destination} style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '2px' }} />
+                            <div className="polaroid-caption" style={{ fontSize: '8px' }}>{trip.photoCaption}</div>
                           </div>
-                          {item.visited && (
-                            <Icon name="check" size={14} style={{ color: 'rgba(0,150,60,0.6)', marginLeft: 'auto' }} />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="passport-face back">
-                <div style={{ minHeight: '520px', background: '#FBF5EC', borderRadius: 'var(--radius-card)' }} />
-              </div>
-            </div>
+                        ) : (
+                          <div className="polaroid" style={{ width: '100px', transform: 'rotate(-3deg)', opacity: 0.5 }}>
+                            <div className="tape-strip" />
+                            <div style={{ width: '100%', height: '70px', borderRadius: '2px', border: '2px dashed rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Icon name="camera" size={18} style={{ color: 'rgba(0,0,0,0.3)' }} />
+                            </div>
+                            <div className="polaroid-caption" style={{ fontSize: '8px' }}>Add a photo</div>
+                          </div>
+                        )}
+                      </div>
 
-            {/* MILESTONE PAGE */}
-            <div className={`passport-leaf ${pageIndex <= 3 + MOCK_TRIPS.length ? '' : 'turned'}`} style={{ zIndex: pageIndex <= 3 + MOCK_TRIPS.length ? 1 : 1 }}>
-              <div className="passport-face front">
-                <div style={{
-                  minHeight: '520px',
-                  background: '#FBF5EC',
-                  borderRadius: 'var(--radius-card)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  padding: '24px 20px'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px)',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    right: '12px',
-                    bottom: '12px',
-                    border: '1px solid rgba(255, 75, 43, 0.3)',
-                    borderRadius: '4px',
-                    pointerEvents: 'none'
-                  }} />
-
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                      <p style={{
-                        fontFamily: 'Georgia, serif',
-                        fontSize: '9px',
-                        letterSpacing: '2px',
-                        color: 'var(--gold)',
-                        textTransform: 'uppercase',
-                        marginBottom: '4px'
-                      }}>
-                        Milestones
-                      </p>
-                      <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C' }}>
-                        Achievements
-                      </h3>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      {MILESTONES.map(m => (
-                        <div key={m.id} className={m.achieved ? 'milestone-stamp' : ''} style={{
-                          padding: '16px',
+                      {/* Highlight */}
+                      {trip.highlight && (
+                        <p className="caption-font" style={{
+                          fontSize: '10px',
+                          color: 'var(--grey)',
                           textAlign: 'center',
-                          borderRadius: '50%',
-                          width: '100px',
-                          height: '100px',
-                          margin: '0 auto',
+                          marginBottom: '12px'
+                        }}>
+                          "{trip.highlight}"
+                        </p>
+                      )}
+
+                      {/* Stamps */}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '12px' }}>
+                        {trip.stops.map(stop => (
+                          <button
+                            key={stop.id}
+                            onClick={() => router.push(`/vendor/${stop.vendorName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`)}
+                            className={`${getStampClass(stop.category)} ${trip.isMilestone ? 'milestone-stamp' : ''}`}
+                            style={{
+                              width: '38px',
+                              height: '38px',
+                              border: trip.isMilestone ? '3px solid var(--gold)' : '2px solid rgba(255, 75, 43, 0.5)',
+                              background: trip.isMilestone ? 'rgba(255, 184, 0, 0.06)' : 'rgba(255, 75, 43, 0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Icon name={getStampIcon(stop.category) as any} size={16} style={{ color: trip.isMilestone ? 'var(--gold)' : 'rgba(255, 75, 43, 0.6)' }} />
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Active trip details */}
+                      {trip.isActive && (
+                        <div>
+                          <div style={{ marginBottom: '10px' }}>
+                            {trip.stops.map(stop => (
+                              <div key={stop.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '6px 0',
+                                borderBottom: '1px dashed rgba(0,0,0,0.08)'
+                              }}>
+                                <div>
+                                  <p style={{ fontSize: '10px', fontWeight: 600, color: '#0F0E0C', fontFamily: 'Georgia, serif' }}>{stop.vendorName}</p>
+                                  <p style={{ fontSize: '8px', color: 'var(--grey)', fontStyle: 'italic' }}>{stop.item}</p>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span className="num-font" style={{ fontSize: '9px', fontWeight: 700, color: '#0F0E0C' }}>${stop.price}</span>
+                                  <span style={{
+                                    fontSize: '6px',
+                                    fontWeight: 700,
+                                    padding: '2px 4px',
+                                    border: '1px solid',
+                                    borderColor: stop.status === 'paid' ? 'var(--live)' : stop.status === 'queued' ? 'var(--gold)' : 'rgba(255, 184, 0, 0.5)',
+                                    borderRadius: '2px',
+                                    transform: 'rotate(-5deg)',
+                                    color: stop.status === 'paid' ? 'var(--live)' : stop.status === 'queued' ? 'var(--gold)' : 'rgba(200,140,0,0.7)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    fontFamily: 'Georgia, serif'
+                                  }}>
+                                    {stop.status}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <button className="btn btn-primary" style={{ width: '100%', height: '38px', marginBottom: '6px', fontSize: '12px' }}>
+                            Pay Your Share
+                          </button>
+                          <button 
+                            className="btn" 
+                            onClick={nudgeUnpaid}
+                            disabled={nudgeCooldown}
+                            style={{ 
+                              width: '100%', 
+                              background: nudged ? 'var(--rum)' : 'rgba(0,0,0,0.05)',
+                              color: nudged ? 'white' : nudgeCooldown ? 'rgba(0,0,0,0.3)' : 'var(--grey)',
+                              height: '34px',
+                              fontSize: '11px',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            {nudged ? 'Nudged!' : nudgeCooldown ? 'Nudge sent (60s)' : 'Nudge Unpaid'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Total for sealed */}
+                      {trip.isSealed && (
+                        <p className="num-font" style={{ fontSize: '11px', fontWeight: 700, color: '#0F0E0C', textAlign: 'center', fontFamily: 'Georgia, serif' }}>
+                          Total: ${trip.totalSpent}
+                        </p>
+                      )}
+                    </PaperPage>
+                  </Leaf>
+                )
+              })}
+
+              {/* COLLECTION PAGE */}
+              <Leaf index={2 + MOCK_TRIPS.length} currentIndex={pageIndex} total={totalLeaves} registerRef={registerRef} back={<div />}>
+                <PaperPage>
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <p style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: '9px',
+                      letterSpacing: '2px',
+                      color: 'var(--rum)',
+                      textTransform: 'uppercase',
+                      marginBottom: '4px'
+                    }}>
+                      Collection
+                    </p>
+                    <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '17px', fontWeight: 700, color: '#0F0E0C' }}>
+                      Negril Spots
+                    </h3>
+                    <p className="num-font" style={{ fontSize: '10px', color: 'var(--grey)' }}>
+                      5/10 collected
+                    </p>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div style={{ height: '4px', borderRadius: '2px', background: 'var(--light-grey)', overflow: 'hidden', marginBottom: '12px' }}>
+                    <div className="progress-fill" style={{ width: '50%', height: '100%', background: 'var(--rum)' }} />
+                  </div>
+
+                  {/* Vendor checklist */}
+                  <div>
+                    {COLLECTION_VENDORS.map(vendor => (
+                      <div key={vendor.name} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 0',
+                        borderBottom: '1px dashed rgba(0,0,0,0.06)',
+                        opacity: vendor.visited ? 1 : 0.4
+                      }}>
+                        <div className={getStampClass(vendor.category)} style={{
+                          width: '28px',
+                          height: '28px',
+                          border: vendor.visited ? '2px solid rgba(255, 75, 43, 0.5)' : '2px dashed rgba(0,0,0,0.2)',
+                          background: vendor.visited ? 'rgba(255, 75, 43, 0.04)' : 'transparent',
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          opacity: m.achieved ? 1 : 0.4,
-                          border: m.achieved ? '4px solid var(--gold)' : '2px dashed rgba(0,0,0,0.2)'
+                          flexShrink: 0
                         }}>
-                          <Icon name={m.icon as any} size={24} style={{ color: m.achieved ? 'var(--gold)' : 'rgba(0,0,0,0.3)' }} />
-                          <p style={{ fontSize: '8px', fontWeight: 700, color: m.achieved ? '#0F0E0C' : 'var(--grey)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            {m.title}
-                          </p>
+                          <Icon name={getStampIcon(vendor.category) as any} size={12} style={{ color: vendor.visited ? 'rgba(255, 75, 43, 0.5)' : 'rgba(0,0,0,0.2)' }} />
                         </div>
-                      ))}
-                    </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: '10px', fontWeight: 600, color: '#0F0E0C', fontFamily: 'Georgia, serif' }}>{vendor.name}</p>
+                        </div>
+                        {vendor.visited && (
+                          <Icon name="check" size={12} style={{ color: 'var(--live)' }} />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </div>
-              <div className="passport-face back">
-                <div style={{ minHeight: '520px', background: '#FBF5EC', borderRadius: 'var(--radius-card)' }} />
-              </div>
-            </div>
+                </PaperPage>
+              </Leaf>
 
-            {/* Navigation arrows */}
-            <div style={{ position: 'absolute', bottom: '-48px', left: '0', right: '0', display: 'flex', justifyContent: 'space-between', zIndex: 30 }}>
-              <button 
-                onClick={() => turnPage('prev')} 
-                disabled={pageIndex === 0}
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  borderRadius: '50%', 
-                  background: pageIndex === 0 ? 'var(--light-grey)' : 'var(--rum)', 
-                  border: 'none', 
-                  cursor: pageIndex === 0 ? 'default' : 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  color: pageIndex === 0 ? 'var(--grey)' : 'white' 
-                }}
-              >
-                <Icon name="back" size={18} />
-              </button>
-              <button 
-                onClick={() => turnPage('next')} 
-                disabled={pageIndex === totalLeaves}
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  borderRadius: '50%', 
-                  background: pageIndex === totalLeaves ? 'var(--light-grey)' : 'var(--rum)', 
-                  border: 'none', 
-                  cursor: pageIndex === totalLeaves ? 'default' : 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  color: pageIndex === totalLeaves ? 'var(--grey)' : 'white' 
-                }}
-              >
-                <Icon name="chevronRight" size={18} />
-              </button>
-            </div>
-          </div>
-        )}
+              {/* MILESTONE PAGE */}
+              <Leaf index={3 + MOCK_TRIPS.length} currentIndex={pageIndex} total={totalLeaves} registerRef={registerRef} back={<div />}>
+                <PaperPage>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <p style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: '9px',
+                      letterSpacing: '2px',
+                      color: 'var(--gold)',
+                      textTransform: 'uppercase',
+                      marginBottom: '4px'
+                    }}>
+                      Milestones
+                    </p>
+                    <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '17px', fontWeight: 700, color: '#0F0E0C' }}>
+                      Achievements
+                    </h3>
+                  </div>
 
-        {view === 'scan' && (
-          <div>
-            <div style={{ textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {MILESTONES.map(m => (
+                      <div key={m.id} className={m.achieved ? 'milestone-stamp' : ''} style={{
+                        padding: '14px',
+                        textAlign: 'center',
+                        borderRadius: '50%',
+                        width: '90px',
+                        height: '90px',
+                        margin: '0 auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: m.achieved ? 1 : 0.35,
+                        border: m.achieved ? '4px solid var(--gold)' : '2px dashed rgba(0,0,0,0.2)',
+                        boxShadow: m.achieved ? '0 0 12px rgba(255,184,0,0.3)' : 'none'
+                      }}>
+                        <Icon name={m.icon as any} size={22} style={{ color: m.achieved ? 'var(--gold)' : 'rgba(0,0,0,0.3)' }} />
+                        <p style={{ fontSize: '7px', fontWeight: 700, color: m.achieved ? '#0F0E0C' : 'var(--grey)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                          {m.title}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </PaperPage>
+              </Leaf>
+            </div>
+          )}
+
+          {view === 'scan' && (
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <div style={{
-                width: '100%',
-                height: '320px',
+                flex: 1,
+                minHeight: 0,
                 background: '#1a1530',
-                borderRadius: '12px',
+                borderRadius: 'var(--radius-card)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 position: 'relative',
                 overflow: 'hidden',
-                marginBottom: '16px'
+                marginBottom: '12px'
               }}>
                 <div style={{
                   width: '200px',
@@ -1072,9 +996,11 @@ export default function PayPage() {
                   borderRadius: '16px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  background: flashOn ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  transition: 'background 0.2s ease'
                 }}>
-                  <Icon name="camera" size={48} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <Icon name="camera" size={48} style={{ color: flashOn ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)' }} />
                 </div>
 
                 {/* Splitting badge */}
@@ -1086,13 +1012,14 @@ export default function PayPage() {
                   padding: '6px 12px',
                   borderRadius: '999px',
                   background: 'rgba(0,0,0,0.6)',
-                  color: '#00E5CC',
+                  color: 'var(--live)',
                   fontSize: '10px',
                   fontWeight: 600
                 }}>
                   Splitting with 2 others
                 </div>
 
+                {/* Flash toggle */}
                 <button
                   onClick={() => setFlashOn(!flashOn)}
                   style={{
@@ -1136,7 +1063,7 @@ export default function PayPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--radius-card)',
                     border: '1px solid var(--light-grey)',
                     background: 'var(--card-bg)',
                     fontSize: '14px',
@@ -1148,8 +1075,8 @@ export default function PayPage() {
                 />
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Checkout Sheet */}
@@ -1168,7 +1095,7 @@ export default function PayPage() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--light-grey)', background: 'var(--card-bg)', fontSize: '20px', fontWeight: 700, fontFamily: 'Space Mono, monospace', color: 'var(--black)', outline: 'none', marginBottom: '8px' }}
+                style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-card)', border: '1px solid var(--light-grey)', background: 'var(--card-bg)', fontSize: '20px', fontWeight: 700, fontFamily: 'Space Mono, monospace', color: 'var(--black)', outline: 'none', marginBottom: '8px' }}
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                 {keys.map(k => (
@@ -1198,7 +1125,7 @@ export default function PayPage() {
                 {autoRouting ? 'Auto-routing' : 'Paying via'}
               </p>
               {autoRouting ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#00E5CC', fontSize: '12px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--live)', fontSize: '12px', fontWeight: 600 }}>
                   <Icon name="sparkle" size={14} />
                   JAM-DEX → Lynk → Stripe
                   <button onClick={() => setAutoRouting(false)} style={{ background: 'none', border: 'none', color: 'var(--rum)', cursor: 'pointer', fontSize: '11px', fontWeight: 600, marginLeft: 'auto' }}>
@@ -1227,7 +1154,7 @@ export default function PayPage() {
             </div>
 
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment}>
-              Confirm Payment
+              {patois.ctaConfirm}
             </button>
           </div>
         )}
