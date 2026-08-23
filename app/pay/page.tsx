@@ -41,7 +41,7 @@ interface PassportPage {
   isActive: boolean
   isSealed: boolean
   highlight?: string
-  photo?: TripPhoto
+  photo?: TripPhoto | null
 }
 
 const MOCK_TRIPS: PassportPage[] = [
@@ -97,7 +97,6 @@ const MOCK_TRIPS: PassportPage[] = [
     isActive: false,
     isSealed: true,
     highlight: 'The pepper sauce is no joke',
-    photo: null,
     stops: [
       { id: 's6', vendorName: 'Push Cart', item: 'Jerk Pork', price: 40, status: 'paid', category: 'FOOD' },
       { id: 's7', vendorName: 'Blue Mahoe', item: 'Coffee Flight', price: 35, status: 'paid', category: 'FOOD' },
