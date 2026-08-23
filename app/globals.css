@@ -9,6 +9,7 @@
   --rum: #FF4B2B;
   --rum-dark: #E03A1C;
   --deep-rum: #C9301A;
+  --gold: #FFB800;
   --card-bg: #FFFFFF;
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -934,9 +935,135 @@ body[data-theme="dark"] {
   z-index: 1;
 }
 
+/* ============ PASSPORT 3D FLIP ============ */
+.passport-book {
+  position: relative;
+  perspective: 1200px;
+  width: 100%;
+  min-height: 520px;
+}
+
+.passport-leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.passport-leaf.turned {
+  transform: rotateY(-176deg);
+}
+
+.passport-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.passport-face.front {
+  z-index: 2;
+}
+
+.passport-face.back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+.passport-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(90deg, #4d1207, #6e1a0c 50%, #4d1207);
+  z-index: 3;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.passport-stitch {
+  width: 2px;
+  height: 90%;
+  border-left: 2px dashed rgba(255, 184, 0, 0.4);
+}
+
+.passport-page-edge {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 184, 0, 0.4) 0px,
+    rgba(255, 184, 0, 0.4) 2px,
+    rgba(255, 255, 255, 0.6) 2px,
+    rgba(255, 255, 255, 0.6) 4px
+  );
+  border-radius: 0 3px 3px 0;
+  z-index: 1;
+}
+
+.passport-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 55%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.3s ease;
+}
+
+.passport-leaf.turning .passport-sheen {
+  opacity: 1;
+}
+
+/* ============ STAMP SHAPES ============ */
+.stamp-food {
+  border-radius: 50%;
+}
+
+.stamp-drinks {
+  border-radius: 4px;
+  transform: rotate(-8deg);
+}
+
+.stamp-activity {
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+
+.stamp-wellness {
+  border-radius: 50%;
+  border-style: double;
+}
+
+.stamp-beach {
+  border-radius: 2px;
+  transform: rotate(6deg);
+}
+
+.stamp-transport {
+  border-radius: 0;
+  transform: rotate(-4deg);
+}
+
+/* ============ MILESTONE STAMP ============ */
+.milestone-stamp {
+  border: 4px solid var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255, 184, 0, 0.4), inset 0 0 8px rgba(255, 184, 0, 0.2);
+  background: rgba(255, 184, 0, 0.05);
+}
+
 /* ============ STAMP ANIMATION ============ */
 @keyframes stampLand {
-  0% { transform: scale(2); opacity: 0; }
-  50% { transform: scale(0.9); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale(2) rotate(-12deg); opacity: 0; }
+  50% { transform: scale(0.9) rotate(-12deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-12deg); opacity: 1; }
 }
