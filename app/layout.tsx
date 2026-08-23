@@ -34,8 +34,7 @@ export default function RootLayout({
         backgroundColor: '#FAF8F5',
         color: '#0F0E0C',
         margin: 0,
-        padding: 0,
-        paddingTop: 'env(safe-area-inset-top)'
+        padding: 0
       }}>
         <LaunchScreen />
         <main style={{ 

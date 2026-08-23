@@ -181,11 +181,12 @@ export default function MarketplacePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
-        <div className="logo-top-left">
-          <img src="/logo.png" alt="ETA" />
+        <div className="logo-container" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" className="logo-light" />
+          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
         </div>
         <FloatingPill />
-        <div style={{ padding: '60px 16px 100px' }}>
+        <div style={{ padding: '16px 16px 100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
@@ -211,12 +212,13 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <div className="logo-top-left" onClick={() => router.push('/')}>
-        <img src="/logo.png" alt="ETA" />
+      <div className="logo-container" onClick={() => router.push('/')}>
+        <img src="/logo.png" alt="ETA" className="logo-light" />
+        <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
       </div>
       <FloatingPill />
 
-      <div style={{ padding: '60px 16px 16px' }}>
+      <div style={{ padding: '16px 16px 16px' }}>
         {/* Search bar */}
         <div className="card" style={{ 
           display: 'flex', 
@@ -241,7 +243,7 @@ export default function MarketplacePage() {
           </span>
         </div>
 
-        {/* Flash Deals - moved from Home */}
+        {/* Flash Deals */}
         {flashDeals.length > 0 && (
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">

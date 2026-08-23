@@ -238,8 +238,9 @@ export default function HomePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
-        <div className="logo-top-left">
-          <img src="/logo.png" alt="ETA" />
+        <div className="logo-container" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" className="logo-light" />
+          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
         </div>
         <FloatingPill />
         <div style={{ padding: '60px 16px 100px' }}>
@@ -268,8 +269,9 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <div className="logo-top-left" onClick={() => router.push('/')}>
-        <img src="/logo.png" alt="ETA" />
+      <div className="logo-container" onClick={() => router.push('/')}>
+        <img src="/logo.png" alt="ETA" className="logo-light" />
+        <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
       </div>
       <FloatingPill />
 
@@ -282,7 +284,7 @@ export default function HomePage() {
       )}
 
       {/* Stories */}
-      <div className="stories-section" style={{ padding: '60px 0 0' }}>
+      <div className="stories-section" style={{ padding: '16px 0 0' }}>
         <div className="horizontal-scroll" style={{ padding: '0 16px 16px' }}>
           {STORY_EXAMPLES.map(story => (
             story.type === 'user' ? (
@@ -307,13 +309,9 @@ export default function HomePage() {
         <div className="stories-separator" />
       </div>
 
-      {/* Featured */}
+      {/* Featured Cards - no heading */}
       {featuredVendors.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <div className="featured-heading-container">
-            <h2 className="featured-title">Featured</h2>
-          </div>
-
+        <div style={{ marginBottom: '32px', paddingTop: '16px' }}>
           <div
             ref={featuredScrollRef}
             onScroll={handleFeaturedScroll}

@@ -263,11 +263,12 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-top-left" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" />
+        <div className="logo-container" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" className="logo-light" />
+          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
         </div>
         <FloatingPill />
-        <div style={{ padding: '60px 16px 16px' }}>
+        <div style={{ padding: '16px 16px 16px' }}>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
               <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--light-grey)', transition: 'background 0.3s ease' }} />
@@ -455,8 +456,9 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-top-left" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" />
+        <div className="logo-container" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" className="logo-light" />
+          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
         </div>
         <FloatingPill />
 
@@ -468,7 +470,7 @@ export default function ExperiencesPage() {
           </>
         )}
 
-        <div style={{ padding: '60px 16px 16px' }}>
+        <div style={{ padding: '16px 16px 16px' }}>
           <div style={{ marginBottom: '24px' }}>
             <p className="section-eyebrow">CURATED FOR YOU</p>
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginTop: '2px' }}>Yuh vibe, bundled.</h2>
@@ -553,8 +555,9 @@ export default function ExperiencesPage() {
   if (screen === 'detail' && selectedBundle) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-top-left" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" />
+        <div className="logo-container" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" className="logo-light" />
+          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
         </div>
         <FloatingPill />
         <div style={{ height: '200px', position: 'relative', overflow: 'hidden', marginBottom: '16px' }}>
