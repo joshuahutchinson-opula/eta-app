@@ -272,10 +272,8 @@ export default function HomePage() {
     }
   }
 
-  const nearbyPhotoSpots = photoSpots.filter(spot => {
-    const dist = calculateDistance(spot.lat, spot.lng)
-    return dist !== null && dist <= 50
-  })
+  // Show all photo spots — fixed proximity filter
+  const displayPhotoSpots = photoSpots
 
   const filteredExperiences = selectedMood 
     ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
@@ -327,8 +325,8 @@ export default function HomePage() {
         />
       )}
 
-      {/* Stories with orange line at bottom */}
-      <div className="stories-container" style={{ padding: '60px 0 0' }}>
+      {/* Stories with shadow and separator */}
+      <div className="stories-section" style={{ padding: '60px 0 0' }}>
         <div className="horizontal-scroll" style={{ padding: '0 16px 16px' }}>
           {STORY_EXAMPLES.map(story => (
             story.type === 'user' ? (
@@ -350,7 +348,6 @@ export default function HomePage() {
             )
           ))}
         </div>
-        {/* Orange separator line */}
         <div className="stories-separator" />
       </div>
 
@@ -358,8 +355,11 @@ export default function HomePage() {
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="featured-heading-container">
-            <p className="featured-eyebrow">{getTimeEyebrow()}</p>
-            <h2 className="featured-title">Featured</h2>
+            <div className="featured-heading-row">
+              <h2 className="featured-title">Featured</h2>
+              <span className="featured-eyebrow">— {getTimeEyebrow()}</span>
+            </div>
+            <div className="featured-underline" />
           </div>
 
           <div
@@ -491,8 +491,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Photo Spots */}
-      {nearbyPhotoSpots.length > 0 && (
+      {/* Photo Spots - showing all spots, fixed */}
+      {displayPhotoSpots.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
@@ -501,31 +501,26 @@ export default function HomePage() {
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
-            {nearbyPhotoSpots.map((spot) => {
-              const dist = calculateDistance(spot.lat, spot.lng)
-              return (
-                <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div className="polaroid" style={{ width: '180px' }}>
-                    <div className="tape-strip" />
-                    <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderRadius: '4px' }}>
-                      <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div className="polaroid-caption">{spot.name}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{spot.bestTime}</span>
-                      {dist !== null && (
-                        <span className="num-font" style={{ fontSize: '10px', color: 'var(--grey)' }}>
-                          {dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`}
-                        </span>
-                      )}
-                    </div>
+            {displayPhotoSpots.map((spot) => (
+              <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="polaroid" style={{ width: '180px' }}>
+                  <div className="tape-strip" />
+                  <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderRadius: '4px' }}>
+                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                </Link>
-              )
-            })}
+                  <div className="polaroid-caption">{spot.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{spot.bestTime}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Rum divider */}
+      <div className="section-divider" />
 
       {/* Moods */}
       {moods.length > 0 && (
@@ -533,7 +528,7 @@ export default function HomePage() {
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', justifyContent: 'center' }}>
             <div className="section-heading" style={{ alignItems: 'center' }}>
               <span className="section-eyebrow">YOUR VIBE</span>
-              <span className="section-title">How we feelin today?</span>
+              <span className="section-title">How We Feelin Today?</span>
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px', justifyContent: 'center' }}>

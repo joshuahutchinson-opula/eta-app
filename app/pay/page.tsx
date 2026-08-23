@@ -89,9 +89,7 @@ export default function PayPage() {
       {step === 'receipt' && (
         <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass" style={{ width: '100%', maxWidth: '340px', padding: '24px', textAlign: 'center' }}>
-            <p style={{ fontSize: '18px', fontWeight: 800 }}>
-              ET<span style={{ color: 'var(--rum)' }}>A</span>
-            </p>
+            <img src="/logo.png" alt="ETA" style={{ width: '60px', height: 'auto', margin: '0 auto 8px' }} />
             <p style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>Push Cart</p>
             <div style={{ borderTop: '1px solid var(--glass-border)', margin: '12px 0', paddingTop: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>

@@ -32,26 +32,15 @@ export default function LaunchScreen() {
         transition: 'opacity 0.4s ease-in-out'
       }}
     >
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '16px'
-      }}>
-        <div className="launch-logo">
-          ET<span>A</span>
-        </div>
-        <div style={{
-          fontSize: '12px',
-          color: 'var(--grey)',
-          fontWeight: 500,
-          letterSpacing: '2px',
-          textTransform: 'uppercase',
+      <img 
+        src="/logo.png" 
+        alt="ETA" 
+        style={{ 
+          width: '120px', 
+          height: 'auto',
           animation: 'pulse 1.5s ease-in-out infinite'
-        }}>
-          Experience Travel Adventure
-        </div>
-      </div>
+        }} 
+      />
     </div>
   )
 }

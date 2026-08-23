@@ -49,7 +49,6 @@ export default function WalletPage() {
 
   const fetchWalletData = async () => {
     try {
-      // Mock data — will connect to API
       setPoints(1240)
       setRewards([
         { id: 'r1', name: 'Free Jerk Plate', pointsCost: 500, icon: 'food', available: true },
@@ -136,9 +135,7 @@ export default function WalletPage() {
         <div className="wallet-branded-card" style={{ marginBottom: '24px' }}>
           <div className="wallet-branded-card-content">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '-0.5px' }}>
-                ET<span style={{ color: 'var(--rum)' }}>A</span>
-              </span>
+              <img src="/logo.png" alt="ETA" style={{ width: '60px', height: 'auto' }} />
               <span style={{ 
                 fontSize: '10px', 
                 fontWeight: 700, 
@@ -161,7 +158,6 @@ export default function WalletPage() {
               <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>points</span>
             </div>
 
-            {/* Progress ring */}
             <div style={{ marginTop: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
