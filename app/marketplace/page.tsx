@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
@@ -37,6 +38,13 @@ interface Accommodation {
   vetted?: boolean
 }
 
+interface FlashDeal {
+  id: string
+  deal: string
+  expires: string
+  vendor: { id: string; name: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
+}
+
 const CATEGORIES = [
   { name: 'Food', icon: 'food' },
   { name: 'Drinks', icon: 'drink' },
@@ -53,8 +61,10 @@ function formatCategory(category: string): string {
 }
 
 export default function MarketplacePage() {
+  const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
+  const [flashDeals, setFlashDeals] = useState<FlashDeal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY'>('NEGRIL')
@@ -79,16 +89,19 @@ export default function MarketplacePage() {
 
   const fetchData = async () => {
     try {
-      const [vendorsRes, accomRes] = await Promise.all([
+      const [vendorsRes, accomRes, flashDealsRes] = await Promise.all([
         fetch('/api/vendors'),
-        fetch('/api/accommodations')
+        fetch('/api/accommodations'),
+        fetch('/api/flashdeals')
       ])
 
       const vendorsData = await vendorsRes.json()
       const accomData = await accomRes.json()
+      const flashDealsData = await flashDealsRes.json()
 
       setVendors(Array.isArray(vendorsData) ? vendorsData : [])
       setAccommodations(Array.isArray(accomData) ? accomData : [])
+      setFlashDeals(Array.isArray(flashDealsData) ? flashDealsData : [])
       
       const foodVendors = Array.isArray(vendorsData) ? vendorsData.filter((v: Vendor) => v.category === 'FOOD').slice(0, 3) : []
       const mockDishes = foodVendors.map((v: Vendor, i: number) => ({
@@ -132,6 +145,16 @@ export default function MarketplacePage() {
     localStorage.setItem('marketplaceSort', sort)
   }
 
+  const formatCountdown = (expires: string) => {
+    const now = new Date()
+    const expiry = new Date(expires)
+    const diffMs = expiry.getTime() - now.getTime()
+    if (diffMs <= 0) return 'Ended'
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 60) return `Ends in ${diffMin}m`
+    return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
+  }
+
   const premiumVendors = vendors.filter(v => v.isPremium)
 
   const filteredVendors = vendors
@@ -158,6 +181,9 @@ export default function MarketplacePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
+        <div className="logo-top-left">
+          <img src="/logo.png" alt="ETA" />
+        </div>
         <FloatingPill />
         <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
@@ -185,6 +211,9 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+      <div className="logo-top-left" onClick={() => router.push('/')}>
+        <img src="/logo.png" alt="ETA" />
+      </div>
       <FloatingPill />
 
       <div style={{ padding: '60px 16px 16px' }}>
@@ -211,6 +240,38 @@ export default function MarketplacePage() {
             <Icon name="filter" size={16} style={{ color: 'var(--grey)' }} />
           </span>
         </div>
+
+        {/* Flash Deals - moved from Home */}
+        {flashDeals.length > 0 && (
+          <div style={{ marginBottom: '32px' }}>
+            <div className="section-header">
+              <div className="section-heading">
+                <span className="section-eyebrow">LIMITED TIME</span>
+                <span className="section-title">Flash Deals</span>
+              </div>
+            </div>
+            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
+              {flashDeals.map(fd => (
+                <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="card" style={{ width: '200px' }}>
+                    <div className="card-image" style={{ height: '110px' }}>
+                      {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
+                      <div className="card-overlay" />
+                    </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Icon name="clock" size={12} />
+                        {formatCountdown(fd.expires)}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Dish Of The Day */}
         {dishesOfDay.length > 0 && (
@@ -254,7 +315,7 @@ export default function MarketplacePage() {
               </div>
               <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
             </div>
-            <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
               {premiumVendors.map((v) => (
                 <Link 
                   key={v.id} 
@@ -298,7 +359,7 @@ export default function MarketplacePage() {
               </div>
               <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
             </div>
-            <div style={{ display: 'flex', gap: '8px', padding: '0 16px 12px' }}>
+            <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px' }}>
               {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
                 <button
                   key={type}
@@ -309,7 +370,7 @@ export default function MarketplacePage() {
                 </button>
               ))}
             </div>
-            <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
+            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
               {filteredAccommodations.map(a => (
                 <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '220px' }}>
                   <div className="card">
@@ -346,48 +407,46 @@ export default function MarketplacePage() {
               <p style={{ fontSize: '13px' }}>Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div style={{ padding: '0 16px' }}>
-              <div className="grid-2" style={{ gap: '12px' }}>
-                {filteredVendors.map(v => (
-                  <div key={v.id}>
-                    <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                      <div className="card">
-                        <div className="card-image" style={{ height: '120px' }}>
-                          <img src={v.images[0]} alt={v.name} />
-                          {v.live && (
-                            <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span className="live-dot" />
-                              <span className="num-font">{v.whoThere}</span> here now
-                            </div>
-                          )}
-                        </div>
-                        <div className="card-content">
-                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
-                              <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                              {v.rating && (
-                                <div className="rating-text" style={{ marginBottom: '4px' }}>
-                                  ★ <span className="num-font">{v.rating}</span>
-                                  {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              className="heart-btn"
-                              onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                              style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--grey)' }}
-                            >
-                              <Icon name="heart" size={14} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                            </button>
+            <div className="grid-2" style={{ gap: '12px' }}>
+              {filteredVendors.map(v => (
+                <div key={v.id}>
+                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                    <div className="card">
+                      <div className="card-image" style={{ height: '120px' }}>
+                        <img src={v.images[0]} alt={v.name} />
+                        {v.live && (
+                          <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="live-dot" />
+                            <span className="num-font">{v.whoThere}</span> here now
                           </div>
-                          <p className="price-tier">{v.priceRange}</p>
-                        </div>
+                        )}
                       </div>
-                    </Link>
-                  </div>
-                ))}
-              </div>
+                      <div className="card-content">
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
+                            <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                            {v.rating && (
+                              <div className="rating-text" style={{ marginBottom: '4px' }}>
+                                ★ <span className="num-font">{v.rating}</span>
+                                {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            className="heart-btn"
+                            onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
+                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--grey)' }}
+                          >
+                            <Icon name="heart" size={14} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                          </button>
+                        </div>
+                        <p className="price-tier">{v.priceRange}</p>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
 import Dock from '@/components/Dock'
@@ -57,15 +58,15 @@ function avatarColor(name: string): string {
   return AV_COLORS[Math.abs(h) % AV_COLORS.length]
 }
 
-// Video URLs for mood tiles
 const MOOD_VIDEOS: Record<string, string> = {
-  party: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  water: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-  food: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  rr: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+  party: 'https://www.w3schools.com/html/mov_bbb.mp4',
+  water: 'https://www.w3schools.com/html/movie.mp4',
+  food: 'https://www.w3schools.com/html/mov_bbb.mp4',
+  rr: 'https://www.w3schools.com/html/movie.mp4'
 }
 
 export default function ExperiencesPage() {
+  const router = useRouter()
   const [screen, setScreen] = useState<'survey' | 'loading' | 'results' | 'detail' | 'active'>('survey')
   const [surveyStep, setSurveyStep] = useState(0)
   const [survey, setSurvey] = useState<SurveyState>({ time: null, crew: [], mood: [], budget: 2, occasion: null })
@@ -86,13 +87,11 @@ export default function ExperiencesPage() {
   const [selectAnim, setSelectAnim] = useState<string | null>(null)
   const [revealStagger, setRevealStagger] = useState(false)
   const [planningPoints, setPlanningPoints] = useState(0)
-  const [hasActiveTrip, setHasActiveTrip] = useState(false)
 
   const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
 
   useEffect(() => {
     if (screen === 'active') {
-      setHasActiveTrip(true)
       const etaTimer = setInterval(() => {
         setEtaSeconds(prev => prev > 60 ? prev - 15 : prev)
       }, 2500)
@@ -264,18 +263,14 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+        <div className="logo-top-left" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" />
+        </div>
         <FloatingPill />
         <div style={{ padding: '60px 16px 16px' }}>
-          {/* Progress bar */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
-              <div key={i} style={{ 
-                flex: 1, 
-                height: '4px', 
-                borderRadius: '2px', 
-                background: i < surveyStep ? 'var(--rum)' : 'var(--light-grey)',
-                transition: 'background 0.3s ease'
-              }} />
+              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--light-grey)', transition: 'background 0.3s ease' }} />
             ))}
           </div>
 
@@ -297,7 +292,7 @@ export default function ExperiencesPage() {
                       loop
                       autoPlay
                       playsInline
-                      preload="metadata"
+                      preload="auto"
                     />
                     <div className="mood-video-tile-overlay" />
                     <div className="mood-video-tile-label">
@@ -460,6 +455,9 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+        <div className="logo-top-left" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" />
+        </div>
         <FloatingPill />
 
         {showConfetti && (
@@ -479,7 +477,6 @@ export default function ExperiencesPage() {
             </p>
           </div>
 
-          {/* Best Match Hero */}
           {bestMatch && (
             <div 
               onClick={() => openBundle(bestMatch)} 
@@ -517,7 +514,6 @@ export default function ExperiencesPage() {
             </div>
           )}
 
-          {/* Secondary bundles */}
           {others.map((bundle, index) => (
             <div 
               key={bundle.id} 
@@ -557,6 +553,9 @@ export default function ExperiencesPage() {
   if (screen === 'detail' && selectedBundle) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+        <div className="logo-top-left" onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="ETA" />
+        </div>
         <FloatingPill />
         <div style={{ height: '200px', position: 'relative', overflow: 'hidden', marginBottom: '16px' }}>
           <img src={selectedBundle.hero} alt={selectedBundle.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -631,7 +630,6 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: '#1a1530', paddingBottom: '0', overflow: 'hidden', position: 'relative' }}>
-        {/* Active trip banner */}
         <ActiveTripBanner 
           tripName={selectedBundle?.title || 'Your Experience'}
           etaMinutes={etaMin}

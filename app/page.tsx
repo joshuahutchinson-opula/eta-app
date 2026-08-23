@@ -50,23 +50,6 @@ interface Experience {
   reviewCount?: number
 }
 
-interface PhotoSpot {
-  id: string
-  name: string
-  description: string
-  officialPhoto: string
-  bestTime: string
-  lat?: number
-  lng?: number
-}
-
-interface FlashDeal {
-  id: string
-  deal: string
-  expires: string
-  vendor: { id: string; name: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
-}
-
 interface Mood {
   id: string
   name: string
@@ -121,8 +104,6 @@ export default function HomePage() {
   const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
-  const [photoSpots, setPhotoSpots] = useState<PhotoSpot[]>([])
-  const [flashDeals, setFlashDeals] = useState<FlashDeal[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -131,6 +112,7 @@ export default function HomePage() {
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
   const featuredScrollRef = useRef<HTMLDivElement>(null)
+  const moodPickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
@@ -191,11 +173,9 @@ export default function HomePage() {
 
   const fetchAll = async () => {
     try {
-      const [vendorsRes, experiencesRes, photoSpotsRes, flashDealsRes, moodsRes] = await Promise.allSettled([
+      const [vendorsRes, experiencesRes, moodsRes] = await Promise.allSettled([
         fetch('/api/vendors'),
         fetch('/api/experiences'),
-        fetch('/api/photospots'),
-        fetch('/api/flashdeals'),
         fetch('/api/moods')
       ])
 
@@ -206,14 +186,6 @@ export default function HomePage() {
       if (experiencesRes.status === 'fulfilled' && experiencesRes.value.ok) {
         const data = await experiencesRes.value.json()
         setExperiences(Array.isArray(data) ? data : [])
-      }
-      if (photoSpotsRes.status === 'fulfilled' && photoSpotsRes.value.ok) {
-        const data = await photoSpotsRes.value.json()
-        setPhotoSpots(Array.isArray(data) ? data : [])
-      }
-      if (flashDealsRes.status === 'fulfilled' && flashDealsRes.value.ok) {
-        const data = await flashDealsRes.value.json()
-        setFlashDeals(Array.isArray(data) ? data : [])
       }
       if (moodsRes.status === 'fulfilled' && moodsRes.value.ok) {
         const data = await moodsRes.value.json()
@@ -233,35 +205,6 @@ export default function HomePage() {
   }
 
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
-  const hour = new Date().getHours()
-
-  const getTimeEyebrow = () => {
-    if (hour >= 6 && hour < 11) return 'MORNING PICKS'
-    if (hour >= 11 && hour < 16) return 'MIDDAY PICKS'
-    if (hour >= 16 && hour < 19) return 'SUNSET PICKS'
-    if (hour >= 19 && hour < 23) return 'NIGHT PICKS'
-    return 'LATE NIGHT'
-  }
-
-  const calculateDistance = (spotLat?: number, spotLng?: number) => {
-    if (!spotLat || !spotLng || !userLocation) return null
-    const R = 6371
-    const dLat = (spotLat - userLocation.lat) * Math.PI / 180
-    const dLng = (spotLng - userLocation.lng) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(spotLat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
-  }
-
-  const formatCountdown = (expires: string) => {
-    const now = new Date()
-    const expiry = new Date(expires)
-    const diffMs = expiry.getTime() - now.getTime()
-    if (diffMs <= 0) return 'Ended'
-    const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 60) return `Ends in ${diffMin}m`
-    return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
-  }
 
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
@@ -272,8 +215,15 @@ export default function HomePage() {
     }
   }
 
-  // Show all photo spots — fixed proximity filter
-  const displayPhotoSpots = photoSpots
+  const snapMoodToCentre = (moodId: string) => {
+    setSelectedMood(selectedMood === moodId ? null : moodId)
+    if (moodPickerRef.current) {
+      const pill = moodPickerRef.current.querySelector(`[data-mood="${moodId}"]`)
+      if (pill) {
+        pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }
+    }
+  }
 
   const filteredExperiences = selectedMood 
     ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
@@ -288,6 +238,9 @@ export default function HomePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
+        <div className="logo-top-left">
+          <img src="/logo.png" alt="ETA" />
+        </div>
         <FloatingPill />
         <div style={{ padding: '60px 16px 100px' }}>
           <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
@@ -315,6 +268,9 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
+      <div className="logo-top-left" onClick={() => router.push('/')}>
+        <img src="/logo.png" alt="ETA" />
+      </div>
       <FloatingPill />
 
       {activeBooking && (
@@ -325,7 +281,7 @@ export default function HomePage() {
         />
       )}
 
-      {/* Stories with shadow and separator */}
+      {/* Stories */}
       <div className="stories-section" style={{ padding: '60px 0 0' }}>
         <div className="horizontal-scroll" style={{ padding: '0 16px 16px' }}>
           {STORY_EXAMPLES.map(story => (
@@ -355,11 +311,7 @@ export default function HomePage() {
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="featured-heading-container">
-            <div className="featured-heading-row">
-              <h2 className="featured-title">Featured</h2>
-              <span className="featured-eyebrow">— {getTimeEyebrow()}</span>
-            </div>
-            <div className="featured-underline" />
+            <h2 className="featured-title">Featured</h2>
           </div>
 
           <div
@@ -459,70 +411,10 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Flash Deals */}
-      {flashDeals.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">LIMITED TIME</span>
-              <span className="section-title">Flash Deals</span>
-            </div>
-          </div>
-          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
-            {flashDeals.map(fd => (
-              <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '200px' }}>
-                  <div className="card-image" style={{ height: '110px' }}>
-                    {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
-                    <div className="card-overlay" />
-                  </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Icon name="clock" size={12} />
-                      {formatCountdown(fd.expires)}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Photo Spots - showing all spots, fixed */}
-      {displayPhotoSpots.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">CAPTURE IT</span>
-              <span className="section-title">Photo Spots</span>
-            </div>
-          </div>
-          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px' }}>
-            {displayPhotoSpots.map((spot) => (
-              <Link key={spot.id} href={`/photospot/${spot.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="polaroid" style={{ width: '180px' }}>
-                  <div className="tape-strip" />
-                  <div style={{ width: '100%', height: '120px', overflow: 'hidden', borderRadius: '4px' }}>
-                    <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div className="polaroid-caption">{spot.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 4px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--grey)' }}>{spot.bestTime}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Rum divider */}
+      {/* Faded divider */}
       <div className="section-divider" />
 
-      {/* Moods */}
+      {/* Moods with centre-focus picker */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', justifyContent: 'center' }}>
@@ -531,14 +423,15 @@ export default function HomePage() {
               <span className="section-title">How We Feelin Today?</span>
             </div>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '8px 16px 16px 16px', justifyContent: 'center' }}>
+          <div className="mood-picker" ref={moodPickerRef}>
             {moods.map(mood => (
               <button
                 key={mood.id}
-                onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
-                className={`chip ${selectedMood === mood.id ? 'active' : ''}`}
+                data-mood={mood.id}
+                onClick={() => snapMoodToCentre(mood.id)}
+                className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}
               >
-                <Icon name={mood.icon as any} size={14} />
+                <Icon name={mood.icon as any} size={selectedMood === mood.id ? 16 : 14} />
                 {mood.name}
               </button>
             ))}
