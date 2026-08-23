@@ -87,10 +87,13 @@ export default function ExperiencesPage() {
   const [selectAnim, setSelectAnim] = useState<string | null>(null)
   const [revealStagger, setRevealStagger] = useState(false)
   const [planningPoints, setPlanningPoints] = useState(0)
+  const [darkMode, setDarkMode] = useState(false)
 
   const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    setDarkMode(savedTheme === 'dark')
     if (screen === 'active') {
       const etaTimer = setInterval(() => {
         setEtaSeconds(prev => prev > 60 ? prev - 15 : prev)
@@ -252,6 +255,16 @@ export default function ExperiencesPage() {
 
   const statusLabel = (s: string) => s === 'arrived' ? 'Arrived' : s === 'enroute' ? 'En route' : 'Not started'
 
+  const logoElement = (
+    <div className="logo-container" onClick={() => router.push('/')}>
+      {darkMode ? (
+        <img src="/logo-dark.png" alt="ETA" />
+      ) : (
+        <img src="/logo.png" alt="ETA" />
+      )}
+    </div>
+  )
+
   // ============ SURVEY ============
   if (screen === 'survey') {
     const moodOptions = [
@@ -263,10 +276,7 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-container" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" className="logo-light" />
-          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
-        </div>
+        {logoElement}
         <FloatingPill />
         <div style={{ padding: '16px 16px 16px' }}>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
@@ -456,10 +466,7 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-container" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" className="logo-light" />
-          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
-        </div>
+        {logoElement}
         <FloatingPill />
 
         {showConfetti && (
@@ -555,10 +562,7 @@ export default function ExperiencesPage() {
   if (screen === 'detail' && selectedBundle) {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        <div className="logo-container" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" className="logo-light" />
-          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
-        </div>
+        {logoElement}
         <FloatingPill />
         <div style={{ height: '200px', position: 'relative', overflow: 'hidden', marginBottom: '16px' }}>
           <img src={selectedBundle.hero} alt={selectedBundle.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

@@ -74,6 +74,7 @@ export default function MarketplacePage() {
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string }>>([])
+  const [darkMode, setDarkMode] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -85,6 +86,8 @@ export default function MarketplacePage() {
     if (savedCategory) setSelectedCategory(savedCategory)
     const savedSort = localStorage.getItem('marketplaceSort')
     if (savedSort) setSortBy(savedSort)
+    const savedTheme = localStorage.getItem('theme')
+    setDarkMode(savedTheme === 'dark')
   }, [])
 
   const fetchData = async () => {
@@ -182,8 +185,11 @@ export default function MarketplacePage() {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <div className="logo-container" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" className="logo-light" />
-          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
+          {darkMode ? (
+            <img src="/logo-dark.png" alt="ETA" />
+          ) : (
+            <img src="/logo.png" alt="ETA" />
+          )}
         </div>
         <FloatingPill />
         <div style={{ padding: '16px 16px 100px' }}>
@@ -213,8 +219,11 @@ export default function MarketplacePage() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <div className="logo-container" onClick={() => router.push('/')}>
-        <img src="/logo.png" alt="ETA" className="logo-light" />
-        <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
+        {darkMode ? (
+          <img src="/logo-dark.png" alt="ETA" />
+        ) : (
+          <img src="/logo.png" alt="ETA" />
+        )}
       </div>
       <FloatingPill />
 

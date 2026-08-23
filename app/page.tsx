@@ -8,7 +8,6 @@ import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { getBounceSuggestion } from '@/lib/context-engine'
 
 interface Vendor {
   id: string
@@ -111,6 +110,7 @@ export default function HomePage() {
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [recentlyViewed, setRecentlyViewed] = useState<Array<{ id: string; name: string; image: string; type: string }>>([])
+  const [darkMode, setDarkMode] = useState(false)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
 
@@ -119,6 +119,8 @@ export default function HomePage() {
     getUserLocation()
     checkActiveBooking()
     loadRecentlyViewed()
+    const savedTheme = localStorage.getItem('theme')
+    setDarkMode(savedTheme === 'dark')
   }, [])
 
   useEffect(() => {
@@ -239,8 +241,11 @@ export default function HomePage() {
     return (
       <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
         <div className="logo-container" onClick={() => router.push('/')}>
-          <img src="/logo.png" alt="ETA" className="logo-light" />
-          <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
+          {darkMode ? (
+            <img src="/logo-dark.png" alt="ETA" />
+          ) : (
+            <img src="/logo.png" alt="ETA" />
+          )}
         </div>
         <FloatingPill />
         <div style={{ padding: '60px 16px 100px' }}>
@@ -270,8 +275,11 @@ export default function HomePage() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
       <div className="logo-container" onClick={() => router.push('/')}>
-        <img src="/logo.png" alt="ETA" className="logo-light" />
-        <img src="/logo-dark.png" alt="ETA" className="logo-dark" />
+        {darkMode ? (
+          <img src="/logo-dark.png" alt="ETA" />
+        ) : (
+          <img src="/logo.png" alt="ETA" />
+        )}
       </div>
       <FloatingPill />
 
@@ -418,7 +426,7 @@ export default function HomePage() {
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px', justifyContent: 'center' }}>
             <div className="section-heading" style={{ alignItems: 'center' }}>
               <span className="section-eyebrow">YOUR VIBE</span>
-              <span className="section-title">How We Feelin Today?</span>
+              <span className="section-title" style={{ fontSize: '20px' }}>How We Feelin Today?</span>
             </div>
           </div>
           <div className="mood-picker" ref={moodPickerRef}>

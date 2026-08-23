@@ -49,24 +49,19 @@ html {
   background: #FAF8F5;
 }
 
-[data-theme="dark"] html {
+html[data-theme="dark"] {
   background: #0F0E0C;
-}
-
-html, body {
-  height: 100%;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--off-white);
-  color: var(--black);
 }
 
 body {
   background: #FAF8F5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--black);
 }
 
-[data-theme="dark"] body {
+body[data-theme="dark"] {
   background: #0F0E0C;
 }
 
@@ -325,18 +320,6 @@ body {
 .logo-container img {
   width: 72px;
   height: auto;
-  display: block;
-}
-
-.logo-dark {
-  display: none;
-}
-
-[data-theme="dark"] .logo-light {
-  display: none;
-}
-
-[data-theme="dark"] .logo-dark {
   display: block;
 }
 
@@ -949,4 +932,11 @@ body {
 .wallet-branded-card-content {
   position: relative;
   z-index: 1;
+}
+
+/* ============ STAMP ANIMATION ============ */
+@keyframes stampLand {
+  0% { transform: scale(2); opacity: 0; }
+  50% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
