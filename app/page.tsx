@@ -107,7 +107,6 @@ export default function HomePage() {
     fetchAll()
   }, [])
 
-  // Auto-scroll featured
   useEffect(() => {
     const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
     if (featuredList.length <= 1) return
@@ -263,7 +262,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Featured Cards */}
+        {/* Featured Cards - NO LongPressCard wrapper, simple Link */}
         {featuredVendors.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <div
@@ -273,58 +272,47 @@ export default function HomePage() {
               style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}
             >
               {featuredVendors.map((vendor, index) => (
-                <LongPressCard
+                <Link
                   key={vendor.id}
-                  onPress={() => router.push(`/vendor/${vendor.id}`)}
-                  preview={
-                    <div>
-                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{vendor.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(vendor.category)} · {vendor.neighborhood}</p>
-                    </div>
-                  }
+                  href={`/vendor/${vendor.id}`}
+                  style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
                 >
-                  <Link
-                    href={`/vendor/${vendor.id}`}
-                    style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
-                  >
-                    <div className="featured-hero" style={{ margin: '0 4px' }}>
-                      {vendor.videos && vendor.videos.length > 0 ? (
-                        <video
-                          ref={(el) => {
-                            if (el && index === featuredIndex) {
-                              el.muted = true
-                              el.playsInline = true
-                              el.play().catch(() => {})
-                            }
-                          }}
-                          src={vendor.videos[0]}
-                          muted
-                          loop
-                          playsInline
-                          preload="auto"
-                          poster={vendor.images[0]}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      )}
-                      <div className="featured-hero-overlay" />
-                      {vendor.live && (
-                        <div className="featured-hero-badge">
-                          <span className="live-dot" />
-                          <span className="num-font">{vendor.whoThere}</span> here now
-                        </div>
-                      )}
-                      <div className="featured-hero-content">
-                        <h2 className="featured-hero-title">{vendor.name}</h2>
-                        <p className="featured-hero-sub">
-                          {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
-                        </p>
+                  <div className="featured-hero" style={{ margin: '0 4px' }}>
+                    {vendor.videos && vendor.videos.length > 0 ? (
+                      <video
+                        ref={(el) => {
+                          if (el && index === featuredIndex) {
+                            el.muted = true
+                            el.playsInline = true
+                            el.play().catch(() => {})
+                          }
+                        }}
+                        src={vendor.videos[0]}
+                        muted
+                        loop
+                        playsInline
+                        preload="auto"
+                        poster={vendor.images[0]}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                    <div className="featured-hero-overlay" />
+                    {vendor.live && (
+                      <div className="featured-hero-badge">
+                        <span className="live-dot" />
+                        <span className="num-font">{vendor.whoThere}</span> here now
                       </div>
+                    )}
+                    <div className="featured-hero-content">
+                      <h2 className="featured-hero-title">{vendor.name}</h2>
+                      <p className="featured-hero-sub">
+                        {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
+                      </p>
                     </div>
-                  </Link>
-                </LongPressCard>
+                  </div>
+                </Link>
               ))}
             </div>
             {featuredVendors.length > 1 && (
@@ -348,35 +336,23 @@ export default function HomePage() {
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
               {trendingVendors.map(v => (
-                <LongPressCard
-                  key={v.id}
-                  onPress={() => router.push(`/vendor/${v.id}`)}
-                  preview={
-                    <div>
-                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="card" style={{ width: '180px' }}>
+                    <div className="card-image" style={{ height: '110px' }}>
+                      <img src={v.images[0]} alt={v.name} />
+                      {v.live && (
+                        <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className="live-dot" />
+                          <span className="num-font">{v.whoThere}</span> here now
+                        </div>
+                      )}
                     </div>
-                  }
-                >
-                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                    <div className="card" style={{ width: '180px' }}>
-                      <div className="card-image" style={{ height: '110px' }}>
-                        <img src={v.images[0]} alt={v.name} />
-                        {v.live && (
-                          <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="live-dot" />
-                            <span className="num-font">{v.whoThere}</span> here now
-                          </div>
-                        )}
-                      </div>
-                      <div className="card-content">
-                        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                      </div>
+                    <div className="card-content">
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                     </div>
-                  </Link>
-                </LongPressCard>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -421,42 +397,30 @@ export default function HomePage() {
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
               {filteredExperiences.slice(0, 4).map(e => (
-                <LongPressCard
-                  key={e.id}
-                  onPress={() => router.push('/experiences')}
-                  preview={
-                    <div>
-                      <img src={e.imageUrl} alt={e.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{e.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{e.tagline}</p>
+                <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="card" style={{ width: '260px' }}>
+                    <div className="card-image" style={{ height: '140px' }}>
+                      <img src={e.imageUrl} alt={e.name} />
+                      <div className="card-overlay" />
                     </div>
-                  }
-                >
-                  <Link href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                    <div className="card" style={{ width: '260px' }}>
-                      <div className="card-image" style={{ height: '140px' }}>
-                        <img src={e.imageUrl} alt={e.name} />
-                        <div className="card-overlay" />
-                      </div>
-                      <div className="card-content">
-                        <h3 style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{e.name}</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '6px' }}>{e.tagline}</p>
-                        {e.rating && (
-                          <div className="rating-text" style={{ marginBottom: '6px' }}>
-                            ★ <span className="num-font">{e.rating}</span>
-                            {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="card-price">${e.price}</span>
-                          <span className="num-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
-                            {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
-                          </span>
+                    <div className="card-content">
+                      <h3 style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{e.name}</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '6px' }}>{e.tagline}</p>
+                      {e.rating && (
+                        <div className="rating-text" style={{ marginBottom: '6px' }}>
+                          ★ <span className="num-font">{e.rating}</span>
+                          {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
                         </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="card-price">${e.price}</span>
+                        <span className="num-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
+                          {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
+                        </span>
                       </div>
                     </div>
-                  </Link>
-                </LongPressCard>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -474,55 +438,43 @@ export default function HomePage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredVendors.slice(0, 5).map(v => (
-                <LongPressCard
-                  key={v.id}
-                  onPress={() => router.push(`/vendor/${v.id}`)}
-                  preview={
-                    <div>
-                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                    <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                  }
-                >
-                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                      <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                        <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                          {formatCategory(v.category)} · {v.neighborhood}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          {v.open ? (
-                            <>
-                              <span className="open-dot" />
-                              <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="closed-dot" />
-                              <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
-                            </>
-                          )}
-                          {v.live && (
-                            <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
-                              · {v.whoThere} here now
-                            </span>
-                          )}
-                        </div>
-                        {v.rating && (
-                          <div className="rating-text">
-                            ★ <span className="num-font">{v.rating}</span>
-                            {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                          </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                        {formatCategory(v.category)} · {v.neighborhood}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        {v.open ? (
+                          <>
+                            <span className="open-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="closed-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
+                          </>
+                        )}
+                        {v.live && (
+                          <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
+                            · {v.whoThere} here now
+                          </span>
                         )}
                       </div>
+                      {v.rating && (
+                        <div className="rating-text">
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                        </div>
+                      )}
                     </div>
-                  </Link>
-                </LongPressCard>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>

@@ -370,17 +370,6 @@ body[data-theme="dark"] {
     inset 0 -2px 4px rgba(255, 255, 255, 0.4);
 }
 
-/* Sliding accent indicator */
-.tab-indicator {
-  position: absolute;
-  bottom: 4px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--rum);
-  transition: left 0.3s var(--spring-standard);
-}
-
 /* ============ SECTION HEADERS ============ */
 .section-header {
   display: flex;

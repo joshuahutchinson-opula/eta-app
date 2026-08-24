@@ -1,7 +1,7 @@
 // components/Dock.tsx
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 
@@ -9,8 +9,6 @@ export default function Dock() {
   const pathname = usePathname()
   const router = useRouter()
   const [darkMode, setDarkMode] = useState(false)
-  const [indicatorPosition, setIndicatorPosition] = useState(0)
-  const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const tabs = [
     { name: 'Home', href: '/', icon: 'home', type: 'icon' },
@@ -45,34 +43,13 @@ export default function Dock() {
     }
   }, [])
 
-  // Update indicator position when tab changes
-  useEffect(() => {
-    const activeTab = tabs.find(tab => tab.href === pathname)
-    if (activeTab) {
-      const activeElement = tabRefs.current.get(activeTab.href)
-      if (activeElement) {
-        setIndicatorPosition(activeElement.offsetLeft + activeElement.offsetWidth / 2 - 2)
-      }
-    }
-  }, [pathname, tabs])
-
   return (
     <nav className="tab-bar">
-      {/* Sliding accent indicator */}
-      <div
-        className="tab-indicator"
-        style={{ left: `${indicatorPosition}px` }}
-      />
-
       {tabs.map(tab => {
         const isActive = pathname === tab.href
         return (
           <div
             key={tab.href}
-            ref={(el) => {
-              if (el) tabRefs.current.set(tab.href, el)
-              else tabRefs.current.delete(tab.href)
-            }}
             className={`tab-item ${isActive ? 'active' : 'inactive'}`}
             onClick={() => router.push(tab.href)}
             style={{

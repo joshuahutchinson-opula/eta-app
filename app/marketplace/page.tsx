@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
-import LongPressCard from '@/components/LongPressCard'
 import BrandedRefresh from '@/components/BrandedRefresh'
 import { hapticSaved } from '@/lib/haptics'
 
@@ -55,12 +54,30 @@ interface FlashDeal {
   vendor: { id: string; name: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
 }
 
-const CATEGORIES = [
-  { name: 'Food', icon: 'food' },
-  { name: 'Drinks', icon: 'glass' },
-  { name: 'Activities', icon: 'party' },
-  { name: 'Wellness', icon: 'spa' },
-  { name: 'Beach', icon: 'wave' }
+const MOOD_ICONS: Record<string, string> = {
+  'R&R': 'spa',
+  'Just The Two Of Us': 'heart',
+  'Party Time': 'party',
+  'Sunset Chaser': 'sun',
+  'Water Life': 'wave',
+  'Street Food Crawl': 'food',
+  'Hangover Cures': 'recharge',
+  'Solo Missions': 'user',
+  'Family Day': 'users',
+  'Rum & Bass': 'glass'
+}
+
+const MOOD_NAMES = [
+  'R&R',
+  'Just The Two Of Us',
+  'Party Time',
+  'Sunset Chaser',
+  'Water Life',
+  'Street Food Crawl',
+  'Hangover Cures',
+  'Solo Missions',
+  'Family Day',
+  'Rum & Bass'
 ]
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
@@ -99,7 +116,7 @@ export default function MarketplacePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY'>('NEGRIL')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
@@ -115,8 +132,8 @@ export default function MarketplacePage() {
     if (saved) setSavedVendors(JSON.parse(saved))
     const savedCity = localStorage.getItem('marketplaceCity')
     if (savedCity) setCity(savedCity as 'NEGRIL' | 'MONTEGO_BAY')
-    const savedCategory = localStorage.getItem('marketplaceCategory')
-    if (savedCategory) setSelectedCategory(savedCategory)
+    const savedMood = localStorage.getItem('marketplaceMood')
+    if (savedMood) setSelectedMood(savedMood)
     const savedSort = localStorage.getItem('marketplaceSort')
     if (savedSort) setSortBy(savedSort)
     if (navigator.geolocation) {
@@ -181,10 +198,10 @@ export default function MarketplacePage() {
     localStorage.setItem('marketplaceCity', c)
   }
 
-  const handleCategoryChange = (cat: string | null) => {
-    setSelectedCategory(cat)
-    if (cat) localStorage.setItem('marketplaceCategory', cat)
-    else localStorage.removeItem('marketplaceCategory')
+  const handleMoodChange = (mood: string | null) => {
+    setSelectedMood(mood)
+    if (mood) localStorage.setItem('marketplaceMood', mood)
+    else localStorage.removeItem('marketplaceMood')
   }
 
   const handleSortChange = (sort: string) => {
@@ -211,7 +228,7 @@ export default function MarketplacePage() {
       v.neighborhood.toLowerCase().includes(search.toLowerCase())
     )
     .filter(v => !city || v.city === city)
-    .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
+    .filter(v => !selectedMood || v.category === selectedMood.toUpperCase() || v.neighborhood === selectedMood)
     .filter(v => !showSavedOnly || savedVendors.includes(v.id))
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
@@ -327,7 +344,7 @@ export default function MarketplacePage() {
           </button>
         </div>
 
-        {/* Vibe pill filters */}
+        {/* Mood pills - same as homepage + Saved */}
         <div className="mood-picker" style={{ padding: '4px 0 12px' }}>
           <button
             onClick={() => setShowSavedOnly(!showSavedOnly)}
@@ -336,14 +353,14 @@ export default function MarketplacePage() {
             <Icon name="heart" size={16} className={showSavedOnly ? 'filled' : ''} />
             Saved
           </button>
-          {CATEGORIES.map(cat => (
+          {MOOD_NAMES.map(mood => (
             <button
-              key={cat.name}
-              onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
-              className={`mood-pill ${selectedCategory === cat.name ? 'centre' : ''}`}
+              key={mood}
+              onClick={() => handleMoodChange(selectedMood === mood ? null : mood)}
+              className={`mood-pill ${selectedMood === mood ? 'centre' : ''}`}
             >
-              <Icon name={cat.icon as any} size={16} />
-              {cat.name}
+              <Icon name={MOOD_ICONS[mood] as any} size={16} />
+              {mood}
             </button>
           ))}
         </div>
@@ -415,7 +432,7 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Flash Deals - below Dish of Day */}
+        {/* Flash Deals */}
         {flashDeals.length > 0 && viewMode === 'list' && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
@@ -547,65 +564,53 @@ export default function MarketplacePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredVendors.slice(0, 5).map(v => (
-                <LongPressCard
-                  key={v.id}
-                  onPress={() => router.push(`/vendor/${v.id}`)}
-                  preview={
-                    <div>
-                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                    <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                  }
-                >
-                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                      <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                        <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                        <button
+                          className="heart-btn"
+                          onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
+                          style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
+                        >
+                          <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                        </button>
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                          <button
-                            className="heart-btn"
-                            onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
-                          >
-                            <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                          </button>
-                        </div>
-                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                          {formatCategory(v.category)} · {v.neighborhood}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          {v.open ? (
-                            <>
-                              <span className="open-dot" />
-                              <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="closed-dot" />
-                              <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
-                            </>
-                          )}
-                          {v.live && (
-                            <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
-                              · {v.whoThere} here now
-                            </span>
-                          )}
-                        </div>
-                        {v.rating && (
-                          <div className="rating-text">
-                            ★ <span className="num-font">{v.rating}</span>
-                            {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                          </div>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                        {formatCategory(v.category)} · {v.neighborhood}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        {v.open ? (
+                          <>
+                            <span className="open-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="closed-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
+                          </>
                         )}
-                        <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
+                        {v.live && (
+                          <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
+                            · {v.whoThere} here now
+                          </span>
+                        )}
                       </div>
+                      {v.rating && (
+                        <div className="rating-text">
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                        </div>
+                      )}
+                      <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
                     </div>
-                  </Link>
-                </LongPressCard>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
