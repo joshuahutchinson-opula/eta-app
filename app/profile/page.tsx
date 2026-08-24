@@ -26,7 +26,6 @@ export default function ProfilePage() {
     document.documentElement.setAttribute('data-theme', newMode ? 'dark' : 'light')
     localStorage.setItem('theme', newMode ? 'dark' : 'light')
     
-    // Update themeColor dynamically
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) {
       meta.setAttribute('content', newMode ? '#000000' : '#F2F2F7')
@@ -70,10 +69,10 @@ export default function ProfilePage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
-        {/* Profile header */}
         <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
           <div
             onClick={handleProfilePicUpload}
+            className="tappable"
             style={{
               width: '72px',
               height: '72px',
@@ -99,7 +98,6 @@ export default function ProfilePage() {
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px' }}>Member since {user.memberSince}</p>
         </div>
 
-        {/* Stats */}
         <div className="grid-2" style={{ gap: '12px', marginBottom: '24px' }}>
           <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
             <p className="num-font" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--rum)' }}>{user.points.toLocaleString()}</p>
@@ -111,7 +109,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Dark mode toggle */}
         <div className="card" style={{ 
           padding: '16px', 
           display: 'flex', 
@@ -147,7 +144,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Menu items - black text */}
         {menuItems.map((item, i) => (
           <Link key={i} href={item.href} style={{ textDecoration: 'none' }}>
             <div className="card" style={{ 
@@ -167,7 +163,6 @@ export default function ProfilePage() {
           </Link>
         ))}
 
-        {/* Logout */}
         <button className="btn btn-secondary" style={{ width: '100%', marginTop: '16px' }}>
           Log Out
         </button>

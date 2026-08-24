@@ -30,9 +30,7 @@ export default function PayPage() {
     }
   }
 
-  const simulateScan = () => {
-    setCheckoutOpen(true)
-  }
+  const simulateScan = () => setCheckoutOpen(true)
 
   const processPayment = () => {
     setCheckoutOpen(false)
@@ -42,7 +40,6 @@ export default function PayPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px 16px 0' }}>
-        {/* Toggle */}
         <div style={{ 
           display: 'flex', 
           background: 'var(--system-bg-secondary)', 
@@ -55,6 +52,7 @@ export default function PayPage() {
             <button
               key={v}
               onClick={() => setView(v)}
+              className="tappable"
               style={{
                 flex: 1,
                 padding: '10px',
@@ -104,6 +102,7 @@ export default function PayPage() {
               </div>
               <button
                 onClick={() => setFlashOn(!flashOn)}
+                className="tappable"
                 style={{
                   position: 'absolute',
                   top: '12px',
@@ -202,7 +201,6 @@ export default function PayPage() {
         )}
       </div>
 
-      {/* Checkout Sheet */}
       {checkoutOpen && (
         <div className="bottom-sheet-overlay open" onClick={() => setCheckoutOpen(false)} />
       )}
@@ -224,6 +222,7 @@ export default function PayPage() {
                   <button
                     key={k}
                     onClick={() => handleKeypad(k)}
+                    className="tappable"
                     style={{
                       padding: '12px',
                       borderRadius: '10px',

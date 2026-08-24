@@ -1,11 +1,11 @@
 // app/experiences/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { hapticSurveyStepComplete } from '@/lib/haptics'
+import { hapticSurveyStepComplete, hapticSaved } from '@/lib/haptics'
 
 interface BundleStop {
   type: 'activity' | 'food' | 'transport'
@@ -85,6 +85,8 @@ export default function ExperiencesPage() {
   const [showConfetti, setShowConfetti] = useState(false)
   const [selectAnim, setSelectAnim] = useState<string | null>(null)
   const [planningPoints, setPlanningPoints] = useState(0)
+  const [quickActionsBundle, setQuickActionsBundle] = useState<string | null>(null)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
 
   const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
 
@@ -238,6 +240,46 @@ export default function ExperiencesPage() {
   }
 
   const statusLabel = (s: string) => s === 'arrived' ? 'Arrived' : s === 'enroute' ? 'En route' : 'Not started'
+
+  // Long-press quick actions for bundle cards
+  const startBundleLongPress = (bundleId: string) => {
+    longPressTimer.current = setTimeout(() => {
+      setQuickActionsBundle(bundleId)
+    }, 450)
+  }
+
+  const cancelBundleLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  const dismissQuickActions = () => {
+    setQuickActionsBundle(null)
+  }
+
+  const handleSaveBundle = (bundle: Bundle) => {
+    hapticSaved()
+    const saved = localStorage.getItem('savedBundles')
+    const savedBundles = saved ? JSON.parse(saved) : []
+    const updated = savedBundles.includes(bundle.id)
+      ? savedBundles.filter((id: string) => id !== bundle.id)
+      : [...savedBundles, bundle.id]
+    localStorage.setItem('savedBundles', JSON.stringify(updated))
+    dismissQuickActions()
+  }
+
+  const handleShareBundle = (bundle: Bundle) => {
+    if (navigator.share) {
+      navigator.share({
+        title: bundle.title,
+        text: `${bundle.title} — ${bundle.meta.join(' · ')}`,
+        url: window.location.href
+      }).catch(() => {})
+    }
+    dismissQuickActions()
+  }
 
   // SURVEY
   if (screen === 'survey') {
@@ -414,7 +456,7 @@ export default function ExperiencesPage() {
     )
   }
 
-  // RESULTS
+  // RESULTS with long-press quick actions
   if (screen === 'results') {
     const bestMatch = bundles[0]
     const others = bundles.slice(1)
@@ -439,7 +481,19 @@ export default function ExperiencesPage() {
 
           {bestMatch && (
             <div 
-              onClick={() => openBundle(bestMatch)} 
+              onTouchStart={() => startBundleLongPress(bestMatch.id)}
+              onTouchEnd={cancelBundleLongPress}
+              onTouchMove={cancelBundleLongPress}
+              onMouseDown={() => startBundleLongPress(bestMatch.id)}
+              onMouseUp={cancelBundleLongPress}
+              onMouseLeave={cancelBundleLongPress}
+              onClick={() => {
+                if (quickActionsBundle === bestMatch.id) {
+                  dismissQuickActions()
+                  return
+                }
+                openBundle(bestMatch)
+              }}
               className="card" 
               style={{ position: 'relative', height: '280px', cursor: 'pointer', marginBottom: '16px' }}
             >
@@ -448,6 +502,62 @@ export default function ExperiencesPage() {
               <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--rum)', color: 'white', fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '999px' }}>
                 Best Match
               </div>
+
+              {/* Quick actions overlay */}
+              {quickActionsBundle === bestMatch.id && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  zIndex: 10,
+                  display: 'flex',
+                  gap: '6px'
+                }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveBundle(bestMatch) }}
+                    className="tappable"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      background: 'rgba(255,255,255,0.95)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--rum)',
+                      minHeight: '44px'
+                    }}
+                  >
+                    <Icon name="heart" size={14} />
+                    Save
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleShareBundle(bestMatch) }}
+                    className="tappable"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      background: 'rgba(255,255,255,0.95)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--rum)',
+                      minHeight: '44px'
+                    }}
+                  >
+                    <Icon name="share" size={14} />
+                    Share
+                  </button>
+                </div>
+              )}
+
               <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '20px', color: 'white' }}>
                 <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{bestMatch.title}</h3>
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>{bestMatch.meta.join(' · ')}</p>
@@ -464,13 +574,81 @@ export default function ExperiencesPage() {
 
           {others.map(bundle => (
             <div 
-              key={bundle.id} 
-              onClick={() => openBundle(bundle)} 
+              key={bundle.id}
+              onTouchStart={() => startBundleLongPress(bundle.id)}
+              onTouchEnd={cancelBundleLongPress}
+              onTouchMove={cancelBundleLongPress}
+              onMouseDown={() => startBundleLongPress(bundle.id)}
+              onMouseUp={cancelBundleLongPress}
+              onMouseLeave={cancelBundleLongPress}
+              onClick={() => {
+                if (quickActionsBundle === bundle.id) {
+                  dismissQuickActions()
+                  return
+                }
+                openBundle(bundle)
+              }}
               className="card" 
               style={{ position: 'relative', height: '180px', cursor: 'pointer', marginBottom: '12px' }}
             >
               <img src={bundle.hero} alt={bundle.title} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.75))' }} />
+
+              {/* Quick actions overlay */}
+              {quickActionsBundle === bundle.id && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  zIndex: 10,
+                  display: 'flex',
+                  gap: '6px'
+                }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSaveBundle(bundle) }}
+                    className="tappable"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      background: 'rgba(255,255,255,0.95)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--rum)',
+                      minHeight: '44px'
+                    }}
+                  >
+                    <Icon name="heart" size={14} />
+                    Save
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleShareBundle(bundle) }}
+                    className="tappable"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      background: 'rgba(255,255,255,0.95)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--rum)',
+                      minHeight: '44px'
+                    }}
+                  >
+                    <Icon name="share" size={14} />
+                    Share
+                  </button>
+                </div>
+              )}
+
               <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
                 <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '2px' }}>{bundle.title}</h3>
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{bundle.socialProof}</p>
