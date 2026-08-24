@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import LongPressCard from '@/components/LongPressCard'
+import BrandedRefresh from '@/components/BrandedRefresh'
+import { hapticSaved } from '@/lib/haptics'
 
 interface Vendor {
   id: string
@@ -95,6 +98,7 @@ export default function HomePage() {
   const [moods, setMoods] = useState<Mood[]>([])
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
@@ -103,7 +107,7 @@ export default function HomePage() {
     fetchAll()
   }, [])
 
-  // Auto-scroll featured every 5 seconds
+  // Auto-scroll featured
   useEffect(() => {
     const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
     if (featuredList.length <= 1) return
@@ -155,6 +159,12 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchAll()
+    setRefreshing(false)
   }
 
   const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
@@ -209,260 +219,315 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      {/* Stories */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <div className="horizontal-scroll" style={{ padding: '0 0 12px' }}>
-          {STORY_EXAMPLES.map(story => (
-            story.type === 'user' ? (
-              <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
-                <div className="story-ring standard">
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed var(--label-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="camera" size={18} />
-                  </div>
-                </div>
-                <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--label-secondary)', marginTop: '4px' }}>{story.name}</p>
-              </div>
-            ) : (
-              <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
-                <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
-                  <img src={story.image} alt={story.name} />
-                </div>
-                <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--label-secondary)', marginTop: '4px' }}>{story.name}</p>
-              </Link>
-            )
-          ))}
+      <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
+
+      <div className="content-fade-in">
+        {/* Greeting */}
+        <div style={{ padding: '16px 16px 0' }}>
+          <h1 className="greeting-text">Wah Gwan, Jordan</h1>
         </div>
-      </div>
 
-      {/* Divider below stories */}
-      <div className="divider-faded" />
-
-      {/* Featured / Destinations header */}
-      <div style={{ padding: '0 16px 12px' }}>
-        <div className="section-heading">
-          <span className="section-eyebrow">Featured</span>
-          <span className="section-title">Destinations</span>
-        </div>
-      </div>
-
-      {/* Featured Cards with autoplay + auto-scroll */}
-      {featuredVendors.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div
-            ref={featuredScrollRef}
-            onScroll={handleFeaturedScroll}
-            className="horizontal-scroll"
-            style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}
-          >
-            {featuredVendors.map((vendor, index) => (
-              <Link
-                key={vendor.id}
-                href={`/vendor/${vendor.id}`}
-                style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
-              >
-                <div className="featured-hero" style={{ margin: '0 4px' }}>
-                  {vendor.videos && vendor.videos.length > 0 ? (
-                    <video
-                      ref={(el) => {
-                        if (el && index === featuredIndex) {
-                          el.muted = true
-                          el.playsInline = true
-                          el.play().catch(() => {})
-                        }
-                      }}
-                      src={vendor.videos[0]}
-                      muted
-                      loop
-                      playsInline
-                      preload="auto"
-                      poster={vendor.images[0]}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                  <div className="featured-hero-overlay" />
-                  {vendor.live && (
-                    <div className="featured-hero-badge">
-                      <span className="live-dot" />
-                      <span className="num-font">{vendor.whoThere}</span> here now
+        {/* Stories */}
+        <div style={{ padding: '8px 16px 0' }}>
+          <div className="horizontal-scroll" style={{ padding: '0 0 12px' }}>
+            {STORY_EXAMPLES.map(story => (
+              story.type === 'user' ? (
+                <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                  <div className="story-ring standard">
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed var(--label-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="camera" size={18} />
                     </div>
-                  )}
-                  <div className="featured-hero-content">
-                    <h2 className="featured-hero-title">{vendor.name}</h2>
-                    <p className="featured-hero-sub">
-                      {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
-                    </p>
                   </div>
+                  <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--label-secondary)', marginTop: '4px' }}>{story.name}</p>
                 </div>
-              </Link>
+              ) : (
+                <Link key={story.id} href="/stories" style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }}>
+                  <div className={`story-ring ${story.type === 'premium' ? 'premium' : 'standard'}`}>
+                    <img src={story.image} alt={story.name} />
+                  </div>
+                  <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--label-secondary)', marginTop: '4px' }}>{story.name}</p>
+                </Link>
+              )
             ))}
           </div>
-          {featuredVendors.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-              {featuredVendors.map((_, i) => (
-                <div key={i} style={{ width: i === featuredIndex ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', transition: 'all 0.3s ease' }} />
+        </div>
+
+        {/* Divider */}
+        <div className="divider-faded" />
+
+        {/* Featured / Destinations */}
+        <div style={{ padding: '0 16px 12px' }}>
+          <div className="section-heading">
+            <span className="section-eyebrow">Featured</span>
+            <span className="section-title">Destinations</span>
+          </div>
+        </div>
+
+        {/* Featured Cards */}
+        {featuredVendors.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div
+              ref={featuredScrollRef}
+              onScroll={handleFeaturedScroll}
+              className="horizontal-scroll"
+              style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}
+            >
+              {featuredVendors.map((vendor, index) => (
+                <LongPressCard
+                  key={vendor.id}
+                  onPress={() => router.push(`/vendor/${vendor.id}`)}
+                  preview={
+                    <div>
+                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{vendor.name}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(vendor.category)} · {vendor.neighborhood}</p>
+                    </div>
+                  }
+                >
+                  <Link
+                    href={`/vendor/${vendor.id}`}
+                    style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
+                  >
+                    <div className="featured-hero" style={{ margin: '0 4px' }}>
+                      {vendor.videos && vendor.videos.length > 0 ? (
+                        <video
+                          ref={(el) => {
+                            if (el && index === featuredIndex) {
+                              el.muted = true
+                              el.playsInline = true
+                              el.play().catch(() => {})
+                            }
+                          }}
+                          src={vendor.videos[0]}
+                          muted
+                          loop
+                          playsInline
+                          preload="auto"
+                          poster={vendor.images[0]}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                      <div className="featured-hero-overlay" />
+                      {vendor.live && (
+                        <div className="featured-hero-badge">
+                          <span className="live-dot" />
+                          <span className="num-font">{vendor.whoThere}</span> here now
+                        </div>
+                      )}
+                      <div className="featured-hero-content">
+                        <h2 className="featured-hero-title">{vendor.name}</h2>
+                        <p className="featured-hero-sub">
+                          {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </LongPressCard>
               ))}
             </div>
-          )}
-        </div>
-      )}
+            {featuredVendors.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                {featuredVendors.map((_, i) => (
+                  <div key={i} style={{ width: i === featuredIndex ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', transition: 'all 0.3s ease' }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Trending / Promotions */}
-      {trendingVendors.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">Promotions</span>
-              <span className="section-title">Try Something New!</span>
+        {/* Trending / Promotions */}
+        {trendingVendors.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+              <div className="section-heading">
+                <span className="section-eyebrow">Promotions</span>
+                <span className="section-title">Try Something New!</span>
+              </div>
             </div>
-          </div>
-          <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
-            {trendingVendors.map(v => (
-              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '180px' }}>
-                  <div className="card-image" style={{ height: '110px' }}>
-                    <img src={v.images[0]} alt={v.name} />
-                    {v.live && (
-                      <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span className="live-dot" />
-                        <span className="num-font">{v.whoThere}</span> here now
-                      </div>
-                    )}
-                  </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Divider above moods */}
-      <div className="divider-faded" />
-
-      {/* Moods */}
-      {moods.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
-            <p className="section-eyebrow" style={{ marginBottom: '2px' }}>Your Vibe</p>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)' }}>
-              How We Feelin Today?
-            </h2>
-          </div>
-          <div className="mood-picker" ref={moodPickerRef}>
-            {moods.map(mood => (
-              <button
-                key={mood.id}
-                data-mood={mood.id}
-                onClick={() => snapMoodToCentre(mood.id)}
-                className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}
-              >
-                <Icon name={mood.icon as any} size={16} />
-                {mood.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Experiences */}
-      {filteredExperiences.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-            <div className="section-heading">
-              <span className="section-eyebrow">Curated for You</span>
-              <span className="section-title">Experiences</span>
-            </div>
-            <Link href="/experiences" className="section-link">See All</Link>
-          </div>
-          <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
-            {filteredExperiences.slice(0, 4).map(e => (
-              <Link key={e.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                <div className="card" style={{ width: '260px' }}>
-                  <div className="card-image" style={{ height: '140px' }}>
-                    <img src={e.imageUrl} alt={e.name} />
-                    <div className="card-overlay" />
-                  </div>
-                  <div className="card-content">
-                    <h3 style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{e.name}</h3>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '6px' }}>{e.tagline}</p>
-                    {e.rating && (
-                      <div className="rating-text" style={{ marginBottom: '6px' }}>
-                        ★ <span className="num-font">{e.rating}</span>
-                        {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="card-price">${e.price}</span>
-                      <span className="num-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
-                        {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
-                      </span>
+            <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
+              {trendingVendors.map(v => (
+                <LongPressCard
+                  key={v.id}
+                  onPress={() => router.push(`/vendor/${v.id}`)}
+                  preview={
+                    <div>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                     </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Vendor list */}
-      {filteredVendors.length > 0 && (
-        <div style={{ padding: '0 16px' }}>
-          <div className="section-header">
-            <div className="section-heading">
-              <span className="section-eyebrow">Close By</span>
-              <span className="section-title">Near You Now</span>
-            </div>
-            <Link href="/vendors" className="section-link">See All</Link>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {filteredVendors.slice(0, 5).map(v => (
-              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                  <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                      {formatCategory(v.category)} · {v.neighborhood}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      {v.open ? (
-                        <>
-                          <span className="open-dot" />
-                          <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="closed-dot" />
-                          <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
-                        </>
-                      )}
-                      {v.live && (
-                        <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
-                          · {v.whoThere} here now
-                        </span>
-                      )}
-                    </div>
-                    {v.rating && (
-                      <div className="rating-text">
-                        ★ <span className="num-font">{v.rating}</span>
-                        {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                  }
+                >
+                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                    <div className="card" style={{ width: '180px' }}>
+                      <div className="card-image" style={{ height: '110px' }}>
+                        <img src={v.images[0]} alt={v.name} />
+                        {v.live && (
+                          <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="live-dot" />
+                            <span className="num-font">{v.whoThere}</span> here now
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+                      <div className="card-content">
+                        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                      </div>
+                    </div>
+                  </Link>
+                </LongPressCard>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Divider */}
+        <div className="divider-faded" />
+
+        {/* Moods */}
+        {moods.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)' }}>
+                Choose Your Vibe
+              </h2>
+            </div>
+            <div className="mood-picker" ref={moodPickerRef}>
+              {moods.map(mood => (
+                <button
+                  key={mood.id}
+                  data-mood={mood.id}
+                  onClick={() => snapMoodToCentre(mood.id)}
+                  className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}
+                >
+                  <Icon name={mood.icon as any} size={16} />
+                  {mood.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Experiences */}
+        {filteredExperiences.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+              <div className="section-heading">
+                <span className="section-eyebrow">Curated for You</span>
+                <span className="section-title">Experiences</span>
+              </div>
+              <Link href="/experiences" className="section-link">See All</Link>
+            </div>
+            <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
+              {filteredExperiences.slice(0, 4).map(e => (
+                <LongPressCard
+                  key={e.id}
+                  onPress={() => router.push('/experiences')}
+                  preview={
+                    <div>
+                      <img src={e.imageUrl} alt={e.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{e.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{e.tagline}</p>
+                    </div>
+                  }
+                >
+                  <Link href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                    <div className="card" style={{ width: '260px' }}>
+                      <div className="card-image" style={{ height: '140px' }}>
+                        <img src={e.imageUrl} alt={e.name} />
+                        <div className="card-overlay" />
+                      </div>
+                      <div className="card-content">
+                        <h3 style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{e.name}</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '6px' }}>{e.tagline}</p>
+                        {e.rating && (
+                          <div className="rating-text" style={{ marginBottom: '6px' }}>
+                            ★ <span className="num-font">{e.rating}</span>
+                            {e.reviewCount && <span> · <span className="num-font">{e.reviewCount}</span></span>}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="card-price">${e.price}</span>
+                          <span className="num-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
+                            {e.stops ? `${e.stops.length} stops` : '3 stops'} · {e.totalDuration ? `${e.totalDuration} hrs` : '4 hrs'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </LongPressCard>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vendor list */}
+        {filteredVendors.length > 0 && (
+          <div style={{ padding: '0 16px' }}>
+            <div className="section-header">
+              <div className="section-heading">
+                <span className="section-eyebrow">Close By</span>
+                <span className="section-title">Near You Now</span>
+              </div>
+              <Link href="/vendors" className="section-link">See All</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {filteredVendors.slice(0, 5).map(v => (
+                <LongPressCard
+                  key={v.id}
+                  onPress={() => router.push(`/vendor/${v.id}`)}
+                  preview={
+                    <div>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                    </div>
+                  }
+                >
+                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                    <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                      <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                          {formatCategory(v.category)} · {v.neighborhood}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          {v.open ? (
+                            <>
+                              <span className="open-dot" />
+                              <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="closed-dot" />
+                              <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
+                            </>
+                          )}
+                          {v.live && (
+                            <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
+                              · {v.whoThere} here now
+                            </span>
+                          )}
+                        </div>
+                        {v.rating && (
+                          <div className="rating-text">
+                            ★ <span className="num-font">{v.rating}</span>
+                            {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </LongPressCard>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       <Dock />
     </main>

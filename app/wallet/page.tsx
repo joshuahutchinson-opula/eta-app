@@ -1,10 +1,11 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { hapticRewardRedeemed } from '@/lib/haptics'
+import SuccessAnimation from '@/components/SuccessAnimation'
 
 interface PaymentCard {
   id: string
@@ -53,17 +54,24 @@ const MOCK_REWARDS: Reward[] = [
 const NEXT_REWARD_THRESHOLD = 2000
 
 export default function WalletPage() {
-  const router = useRouter()
   const [points] = useState(1240)
   const [balance] = useState(250)
   const [passportOpen, setPassportOpen] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const progressPercent = Math.min(100, Math.round((points / NEXT_REWARD_THRESHOLD) * 100))
   const pointsToNext = Math.max(0, NEXT_REWARD_THRESHOLD - points)
 
+  const handleRedeem = (rewardName: string) => {
+    hapticRewardRedeemed()
+    setShowSuccess(true)
+  }
+
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      <div style={{ padding: '16px' }}>
+      <SuccessAnimation show={showSuccess} onComplete={() => setShowSuccess(false)} />
+
+      <div className="content-fade-in" style={{ padding: '16px' }}>
         {/* WALLET SECTION */}
         <div style={{ marginBottom: '24px' }}>
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Wallet</p>
@@ -123,6 +131,7 @@ export default function WalletPage() {
           {!passportOpen ? (
             <div 
               onClick={() => setPassportOpen(true)}
+              className="tappable"
               style={{
                 minHeight: '200px',
                 borderRadius: '14px',
@@ -250,7 +259,12 @@ export default function WalletPage() {
           </div>
           <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
             {MOCK_REWARDS.map(reward => (
-              <div key={reward.id} className="card" style={{ width: '160px', flexShrink: 0, opacity: reward.available ? 1 : 0.5 }}>
+              <div 
+                key={reward.id} 
+                className="card" 
+                style={{ width: '160px', flexShrink: 0, opacity: reward.available ? 1 : 0.5 }}
+                onClick={() => handleRedeem(reward.name)}
+              >
                 <div className="card-image" style={{ height: '100px' }}>
                   <img src={reward.image} alt={reward.name} />
                 </div>

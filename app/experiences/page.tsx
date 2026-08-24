@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { hapticSurveyStepComplete } from '@/lib/haptics'
 
 interface BundleStop {
   type: 'activity' | 'food' | 'transport'
@@ -157,6 +158,7 @@ export default function ExperiencesPage() {
   }
 
   const nextStep = () => {
+    hapticSurveyStepComplete()
     if (surveyStep >= surveySteps.length - 1) {
       setScreen('loading')
       setPlanningPoints(25)
