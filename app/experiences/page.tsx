@@ -48,7 +48,7 @@ const OCCASION_META: Record<string, { label: string; emoji: string }> = {
   none: { label: 'Surprise me', emoji: '🙅' }
 }
 
-const AV_COLORS = ['#FF4B2B', '#FFB800', '#00E5CC', '#007AFF']
+const AV_COLORS = ['#B82010', '#FFB800', '#00E5CC', '#007AFF']
 
 function avatarColor(name: string): string {
   let h = 0
@@ -237,7 +237,7 @@ export default function ExperiencesPage() {
 
   const statusLabel = (s: string) => s === 'arrived' ? 'Arrived' : s === 'enroute' ? 'En route' : 'Not started'
 
-  // ============ SURVEY ============
+  // SURVEY
   if (screen === 'survey') {
     const moodOptions = [
       { id: 'party', name: 'Party Time', emoji: '🎶' },
@@ -249,7 +249,6 @@ export default function ExperiencesPage() {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
         <div style={{ padding: '16px' }}>
-          {/* Progress */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
               <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--separator)', transition: 'background 0.3s ease' }} />
@@ -402,7 +401,7 @@ export default function ExperiencesPage() {
     )
   }
 
-  // ============ LOADING ============
+  // LOADING
   if (screen === 'loading') {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', paddingBottom: '80px' }}>
@@ -413,7 +412,7 @@ export default function ExperiencesPage() {
     )
   }
 
-  // ============ RESULTS ============
+  // RESULTS
   if (screen === 'results') {
     const bestMatch = bundles[0]
     const others = bundles.slice(1)
@@ -423,11 +422,10 @@ export default function ExperiencesPage() {
         {showConfetti && (
           <>
             {[...Array(20)].map((_, i) => (
-              <div key={i} className="confetti-piece" style={{ left: `${Math.random() * 100}%`, top: '-10px', background: ['#FF4B2B', '#FFB800', '#00E5CC', '#007AFF'][i % 4], animationDelay: `${Math.random() * 0.3}s` }} />
+              <div key={i} className="confetti-piece" style={{ left: `${Math.random() * 100}%`, top: '-10px', background: ['#B82010', '#FFB800', '#00E5CC', '#007AFF'][i % 4], animationDelay: `${Math.random() * 0.3}s` }} />
             ))}
           </>
         )}
-
         <div style={{ padding: '16px' }}>
           <div style={{ marginBottom: '24px' }}>
             <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>Curated for You</p>
@@ -450,12 +448,8 @@ export default function ExperiencesPage() {
               </div>
               <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '20px', color: 'white' }}>
                 <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{bestMatch.title}</h3>
-                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>
-                  {bestMatch.meta.join(' · ')}
-                </p>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>
-                  {bestMatch.socialProof}
-                </p>
+                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>{bestMatch.meta.join(' · ')}</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>{bestMatch.socialProof}</p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span className="num-font" style={{ fontSize: '18px', fontWeight: 700 }}>${bestMatch.price}</span>
                   <span style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -493,7 +487,7 @@ export default function ExperiencesPage() {
     )
   }
 
-  // ============ DETAIL ============
+  // DETAIL
   if (screen === 'detail' && selectedBundle) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
@@ -560,7 +554,7 @@ export default function ExperiencesPage() {
     )
   }
 
-  // ============ ACTIVE ============
+  // ACTIVE
   if (screen === 'active') {
     const realStopsList = realStops()
     const nextStop = realStopsList[currentStopIndex]
@@ -583,7 +577,7 @@ export default function ExperiencesPage() {
             {[...Array(18)].map((_, i) => <line key={i} x1="0" y1={i * 50} x2="500" y2={i * 50} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />)}
             <path d="M 80 620 Q 180 480 260 500 T 400 260" fill="none" stroke="#00E5CC" strokeWidth="3" strokeDasharray="6 6" opacity="0.8" />
             <circle cx="400" cy="260" r="8" fill="#FFB800" />
-            <circle cx="80" cy="620" r="9" fill="#FF4B2B" />
+            <circle cx="80" cy="620" r="9" fill="#B82010" />
           </svg>
         </div>
 
@@ -609,7 +603,7 @@ export default function ExperiencesPage() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', marginBottom: '16px' }}>
               {realStopsList.map((stop, i) => (
-                <div key={i} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', background: i < currentStopIndex ? 'rgba(0,229,204,0.1)' : i === currentStopIndex ? 'rgba(255,75,43,0.2)' : 'rgba(255,255,255,0.06)', color: i < currentStopIndex ? '#00E5CC' : i === currentStopIndex ? '#FF4B2B' : 'rgba(255,255,255,0.5)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
+                <div key={i} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', background: i < currentStopIndex ? 'rgba(0,229,204,0.1)' : i === currentStopIndex ? 'rgba(184,32,16,0.2)' : 'rgba(255,255,255,0.06)', color: i < currentStopIndex ? '#00E5CC' : i === currentStopIndex ? '#B82010' : 'rgba(255,255,255,0.5)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                   {stop.name}
                 </div>
               ))}
@@ -640,7 +634,7 @@ export default function ExperiencesPage() {
                     <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: avatarColor(p.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'white' }}>{p.name[0].toUpperCase()}</span>
                     <span style={{ fontSize: '15px', fontWeight: 500, color: 'white' }}>{p.name}</span>
                   </div>
-                  <span onClick={() => togglePaid(i)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 10px', borderRadius: '999px', cursor: 'pointer', background: p.paid ? 'rgba(0,229,204,0.15)' : 'rgba(255,75,43,0.2)', color: p.paid ? '#00E5CC' : '#FF4B2B', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
+                  <span onClick={() => togglePaid(i)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 10px', borderRadius: '999px', cursor: 'pointer', background: p.paid ? 'rgba(0,229,204,0.15)' : 'rgba(184,32,16,0.2)', color: p.paid ? '#00E5CC' : '#B82010', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                     {p.paid ? 'Paid' : `$${p.amount}`}
                   </span>
                 </div>
@@ -671,7 +665,7 @@ export default function ExperiencesPage() {
               <div style={{ width: '36px', height: '5px', background: 'rgba(255,255,255,0.2)', borderRadius: '3px', margin: '0 auto 16px' }} />
               <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>Change your plan</h3>
               {['Sunset Catamaran', 'Blue Hole Falls', 'Jerk Pit Crawl'].map(name => (
-                <div key={name} onClick={() => setSwapSelection(name)} style={{ padding: '14px', borderRadius: '14px', cursor: 'pointer', marginBottom: '8px', background: swapSelection === name ? 'rgba(255,75,43,0.15)' : 'rgba(255,255,255,0.06)', border: swapSelection === name ? '1px solid #FF4B2B' : '1px solid rgba(255,255,255,0.1)', minHeight: '44px' }}>
+                <div key={name} onClick={() => setSwapSelection(name)} style={{ padding: '14px', borderRadius: '14px', cursor: 'pointer', marginBottom: '8px', background: swapSelection === name ? 'rgba(184,32,16,0.15)' : 'rgba(255,255,255,0.06)', border: swapSelection === name ? '1px solid #B82010' : '1px solid rgba(255,255,255,0.1)', minHeight: '44px' }}>
                   <p style={{ fontSize: '17px', fontWeight: 600, color: 'white' }}>{name}</p>
                 </div>
               ))}

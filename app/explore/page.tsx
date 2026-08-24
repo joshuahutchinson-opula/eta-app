@@ -3,34 +3,13 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
-const MapContainer = dynamic(
-  () => import('react-leaflet').then(mod => mod.MapContainer),
-  { ssr: false }
-)
-
-const TileLayer = dynamic(
-  () => import('react-leaflet').then(mod => mod.TileLayer),
-  { ssr: false }
-)
-
-const Marker = dynamic(
-  () => import('react-leaflet').then(mod => mod.Marker),
-  { ssr: false }
-)
-
-const Popup = dynamic(
-  () => import('react-leaflet').then(mod => mod.Popup),
-  { ssr: false }
-)
-
-const CircleMarker = dynamic(
-  () => import('react-leaflet').then(mod => mod.CircleMarker),
-  { ssr: false }
-)
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
+const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false })
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
 
 interface Vendor {
   id: string
@@ -68,10 +47,8 @@ export default function ExplorePage() {
         fetch('/api/vendors'),
         fetch('/api/photospots')
       ])
-
       const vendorsData = await vendorsRes.json()
       const spotsData = await spotsRes.json()
-
       setVendors(vendorsData.filter((v: Vendor) => v.visibleOnMap && !v.isTransport))
       setPhotoSpots(spotsData)
     } catch (error) {
@@ -81,10 +58,9 @@ export default function ExplorePage() {
 
   if (!mounted) {
     return (
-      <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: '#0A1628' }}>
-        <FloatingPill />
+      <main style={{ minHeight: '100dvh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: 'rgba(245,239,230,0.6)' }}>Wull on deh...</p>
+          <p style={{ color: 'rgba(255,255,255,0.6)' }}>Wull on deh...</p>
         </div>
         <Dock />
       </main>
@@ -92,9 +68,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: '#0A1628' }}>
-      <FloatingPill />
-
+    <main style={{ minHeight: '100dvh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, position: 'relative' }}>
         <MapContainer
           center={[18.27, -78.35]}
@@ -104,73 +78,50 @@ export default function ExplorePage() {
         >
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution='&copy; OpenStreetMap &copy; CARTO'
           />
-
-          {/* Vendor Markers */}
           {vendors.map(v => (
             <CircleMarker
               key={v.id}
               center={[v.lat, v.lng]}
               radius={v.isPremium ? 10 : 7}
               pathOptions={{
-                color: v.isPremium ? '#FFB800' : '#F5EFE6',
-                fillColor: v.isPremium ? '#FFB800' : '#F5EFE6',
+                color: v.isPremium ? '#B82010' : '#FFFFFF',
+                fillColor: v.isPremium ? '#B82010' : '#FFFFFF',
                 fillOpacity: 0.8,
                 weight: 2
               }}
             >
               <Popup>
-                <div style={{ background: '#0F0E0C', padding: '8px', borderRadius: '8px' }}>
-                  <p style={{ fontWeight: 700, fontSize: '14px', color: '#F5EFE6' }}>
-                    {v.name}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'rgba(245,239,230,0.7)' }}>
-                    {v.category} • {v.neighborhood}
-                  </p>
+                <div style={{ background: '#1C1C1E', padding: '8px', borderRadius: '8px', color: '#FFFFFF' }}>
+                  <p style={{ fontWeight: 600, fontSize: '15px' }}>{v.name}</p>
+                  <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{v.category} • {v.neighborhood}</p>
                 </div>
               </Popup>
             </CircleMarker>
           ))}
-
-          {/* Photo Spot Markers */}
           {photoSpots.map(s => (
             <CircleMarker
               key={s.id}
               center={[s.lat, s.lng]}
               radius={6}
               pathOptions={{
-                color: '#FF4B2B',
-                fillColor: '#FF4B2B',
+                color: '#FFB800',
+                fillColor: '#FFB800',
                 fillOpacity: 0.6,
                 weight: 2
               }}
             >
               <Popup>
-                <div style={{ background: '#0F0E0C', padding: '8px', borderRadius: '8px' }}>
-                  <p style={{ fontWeight: 700, fontSize: '14px', color: '#F5EFE6' }}>
-                    {s.name}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'rgba(245,239,230,0.7)' }}>
-                    {s.description}
-                  </p>
+                <div style={{ background: '#1C1C1E', padding: '8px', borderRadius: '8px', color: '#FFFFFF' }}>
+                  <p style={{ fontWeight: 600, fontSize: '15px' }}>{s.name}</p>
+                  <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{s.description}</p>
                 </div>
               </Popup>
             </CircleMarker>
           ))}
         </MapContainer>
-
-        {/* Shuffle Button */}
-        <div style={{ position: 'absolute', bottom: '80px', right: '16px', zIndex: 1000 }}>
-          <button
-            className="glass-button"
-            style={{ width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon name="shuffle" size={18} />
-          </button>
-        </div>
       </div>
-
       <Dock />
     </main>
   )

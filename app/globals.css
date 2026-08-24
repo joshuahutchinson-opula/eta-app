@@ -1,6 +1,5 @@
 /* app/globals.css */
 :root {
-  /* HIG System Colours */
   --system-bg: #F2F2F7;
   --system-bg-elevated: #FFFFFF;
   --system-bg-secondary: #FFFFFF;
@@ -13,7 +12,6 @@
   --separator: rgba(60, 60, 67, 0.29);
   --separator-opaque: #C6C6C8;
   
-  /* ETA Brand - Deep Rum */
   --rum: #B82010;
   --rum-dark: #8B1A0A;
   --rum-tint: rgba(184, 32, 16, 0.1);
@@ -25,7 +23,6 @@
   --error: #FF3B30;
   --info: #007AFF;
   
-  /* HIG Spacing Scale */
   --space-0: 0px;
   --space-1: 4px;
   --space-2: 8px;
@@ -37,22 +34,18 @@
   --space-10: 40px;
   --space-12: 48px;
   
-  /* HIG Radii */
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 999px;
   
-  /* HIG Touch Target */
   --tap-min: 44px;
   
-  /* HIG Shadows */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-sheet: 0 -2px 12px rgba(0, 0, 0, 0.08);
   
-  /* HIG Motion */
   --duration-fast: 0.2s;
   --duration-standard: 0.3s;
   --duration-slow: 0.4s;
@@ -106,32 +99,6 @@ body {
 
 body[data-theme="dark"] {
   background: #000000;
-}
-
-/* ============ MOVING COLOUR ACCENT ============ */
-.rum-shimmer {
-  background: linear-gradient(90deg, var(--rum), var(--gold), var(--rum));
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: rumShimmer 3s ease infinite;
-}
-
-@keyframes rumShimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-.btn-rum-shimmer {
-  background: linear-gradient(90deg, var(--rum), var(--gold), var(--rum));
-  background-size: 200% 200%;
-  animation: btnShimmer 3s ease infinite;
-}
-
-@keyframes btnShimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 /* ============ CARD ============ */
@@ -347,8 +314,8 @@ body[data-theme="dark"] {
 }
 
 .tab-logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
@@ -580,7 +547,7 @@ body[data-theme="dark"] {
   gap: 4px;
 }
 
-/* ============ MOOD PILLS ============ */
+/* ============ MOOD PICKER ============ */
 .mood-picker {
   display: flex;
   gap: var(--space-2);
@@ -634,30 +601,7 @@ body[data-theme="dark"] {
   margin: var(--space-6) 0;
 }
 
-/* ============ EMPTY STATE ============ */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-4);
-  gap: var(--space-3);
-  color: var(--label-secondary);
-  font-size: 15px;
-  text-align: center;
-}
-
-/* ============ UTILITY ============ */
-.num-font {
-  font-family: 'Space Mono', monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.caption-font {
-  font-family: 'Georgia', serif;
-  font-style: italic;
-}
-
+/* ============ DOTS ============ */
 .live-dot {
   width: 6px;
   height: 6px;
@@ -683,6 +627,19 @@ body[data-theme="dark"] {
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+}
+
+/* ============ EMPTY STATE ============ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+  gap: var(--space-3);
+  color: var(--label-secondary);
+  font-size: 15px;
+  text-align: center;
 }
 
 /* ============ HEART BUTTON ============ */
@@ -869,4 +826,15 @@ body[data-theme="dark"] {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
+}
+
+/* ============ UTILITY ============ */
+.num-font {
+  font-family: 'Space Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.caption-font {
+  font-family: 'Georgia', serif;
+  font-style: italic;
 }

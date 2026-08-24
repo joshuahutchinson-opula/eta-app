@@ -84,8 +84,6 @@ const EDITORIAL_SUBHEADS: Record<string, string> = {
   'MoBay Watersports': 'Where the reef comes alive'
 }
 
-const DESTINATIONS = ['Seven Mile', 'West End', 'Hip Strip', 'Cliffs', 'Freeport']
-
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
@@ -96,7 +94,6 @@ export default function HomePage() {
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
-  const [selectedDestination, setSelectedDestination] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
@@ -105,6 +102,27 @@ export default function HomePage() {
   useEffect(() => {
     fetchAll()
   }, [])
+
+  // Auto-scroll featured every 5 seconds
+  useEffect(() => {
+    const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+    if (featuredList.length <= 1) return
+
+    const autoScroll = setInterval(() => {
+      setFeaturedIndex(prevIndex => {
+        const nextIndex = (prevIndex + 1) % featuredList.length
+        if (featuredScrollRef.current) {
+          featuredScrollRef.current.scrollTo({
+            left: nextIndex * featuredScrollRef.current.clientWidth,
+            behavior: 'smooth'
+          })
+        }
+        return nextIndex
+      })
+    }, 5000)
+
+    return () => clearInterval(autoScroll)
+  }, [vendors])
 
   const fetchAll = async () => {
     try {
@@ -139,15 +157,9 @@ export default function HomePage() {
     }
   }
 
-  // Destination filter applies to everything including Featured
-  const destinationFilteredVendors = selectedDestination
-    ? vendors.filter(v => v.neighborhood === selectedDestination)
-    : vendors
+  const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
 
-  const featuredVendors = destinationFilteredVendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
-
-  // Trending = highest whoThere counts
-  const trendingVendors = [...destinationFilteredVendors]
+  const trendingVendors = [...vendors]
     .filter(v => v.live)
     .sort((a, b) => (b.whoThere || 0) - (a.whoThere || 0))
     .slice(0, 6)
@@ -176,8 +188,8 @@ export default function HomePage() {
     : experiences
 
   const filteredVendors = selectedMood
-    ? destinationFilteredVendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
-    : destinationFilteredVendors
+    ? vendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
+    : vendors
 
   if (loading) {
     return (
@@ -225,23 +237,15 @@ export default function HomePage() {
       {/* Divider below stories */}
       <div className="divider-faded" />
 
-      {/* Destination Chips */}
+      {/* Featured / Destinations header */}
       <div style={{ padding: '0 16px 12px' }}>
-        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Destination</p>
-        <div className="horizontal-scroll" style={{ padding: '0' }}>
-          {DESTINATIONS.map(dest => (
-            <button
-              key={dest}
-              onClick={() => setSelectedDestination(selectedDestination === dest ? null : dest)}
-              className={`chip ${selectedDestination === dest ? 'active' : ''}`}
-            >
-              {dest}
-            </button>
-          ))}
+        <div className="section-heading">
+          <span className="section-eyebrow">Featured</span>
+          <span className="section-title">Destinations</span>
         </div>
       </div>
 
-      {/* Featured Cards with autoplay */}
+      {/* Featured Cards with autoplay + auto-scroll */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div
@@ -304,13 +308,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Trending Near You */}
+      {/* Trending / Promotions */}
       {trendingVendors.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
             <div className="section-heading">
-              <span className="section-eyebrow">Hot Right Now</span>
-              <span className="section-title">Trending Near You</span>
+              <span className="section-eyebrow">Promotions</span>
+              <span className="section-title">Try Something New!</span>
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
@@ -340,7 +344,7 @@ export default function HomePage() {
       {/* Divider above moods */}
       <div className="divider-faded" />
 
-      {/* Moods with centre effect */}
+      {/* Moods */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
@@ -406,7 +410,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Vendor list - full width single column */}
+      {/* Vendor list */}
       {filteredVendors.length > 0 && (
         <div style={{ padding: '0 16px' }}>
           <div className="section-header">
@@ -420,7 +424,7 @@ export default function HomePage() {
             {filteredVendors.slice(0, 5).map(v => (
               <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
                 <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                  <div className="card-image" style={{ width: '100px', height: '100px', borderRadius: '10px', flexShrink: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
                     <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

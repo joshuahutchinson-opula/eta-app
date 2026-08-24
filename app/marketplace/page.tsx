@@ -54,10 +54,10 @@ interface FlashDeal {
 
 const CATEGORIES = [
   { name: 'Food', icon: 'food' },
-  { name: 'Drinks', icon: 'drink' },
-  { name: 'Activities', icon: 'activity' },
-  { name: 'Wellness', icon: 'wellness' },
-  { name: 'Beach', icon: 'sun' }
+  { name: 'Drinks', icon: 'glass' },
+  { name: 'Activities', icon: 'party' },
+  { name: 'Wellness', icon: 'spa' },
+  { name: 'Beach', icon: 'wave' }
 ]
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
@@ -202,13 +202,6 @@ export default function MarketplacePage() {
           <div className="skeleton-card" style={{ height: '200px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton-card" style={{ height: '100px' }}>
-                <div className="skeleton-image" style={{ height: '100%' }} />
-              </div>
-            ))}
-          </div>
         </div>
         <Dock />
       </main>
@@ -218,27 +211,36 @@ export default function MarketplacePage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
-        {/* Search bar with view toggle */}
-        <div className="card" style={{ 
+        {/* Search bar with controls */}
+        <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '8px',
-          padding: '12px 14px',
+          gap: '4px',
           marginBottom: '12px',
           minHeight: '44px'
         }}>
-          <Icon name="search" size={16} style={{ color: 'var(--label-secondary)' }} />
-          <input
-            type="text"
-            placeholder="Search vendors..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
-          />
+          <div className="card" style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            padding: '10px 12px',
+            flex: 1,
+            minWidth: 0,
+            minHeight: '44px'
+          }}>
+            <Icon name="search" size={16} style={{ color: 'var(--label-secondary)', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
+            />
+          </div>
           <button
             onClick={() => setViewMode('list')}
             style={{ 
-              background: viewMode === 'list' ? 'var(--rum)' : 'transparent',
+              background: viewMode === 'list' ? 'var(--rum)' : 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
               width: '44px',
@@ -251,12 +253,12 @@ export default function MarketplacePage() {
               flexShrink: 0
             }}
           >
-            <Icon name="journal" size={18} />
+            <Icon name="journal" size={16} />
           </button>
           <button
             onClick={() => setViewMode('map')}
             style={{ 
-              background: viewMode === 'map' ? 'var(--rum)' : 'transparent',
+              background: viewMode === 'map' ? 'var(--rum)' : 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
               width: '44px',
@@ -269,12 +271,12 @@ export default function MarketplacePage() {
               flexShrink: 0
             }}
           >
-            <Icon name="mapPin" size={18} />
+            <Icon name="mapPin" size={16} />
           </button>
           <button
             onClick={() => setShowFilterSheet(true)}
             style={{ 
-              background: 'transparent',
+              background: 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
               width: '44px',
@@ -287,26 +289,26 @@ export default function MarketplacePage() {
               flexShrink: 0
             }}
           >
-            <Icon name="filter" size={18} />
+            <Icon name="filter" size={16} />
           </button>
         </div>
 
-        {/* Category strip + Saved */}
-        <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
+        {/* Vibe pill filters */}
+        <div className="mood-picker" style={{ padding: '4px 0 12px' }}>
           <button
             onClick={() => setShowSavedOnly(!showSavedOnly)}
-            className={`chip ${showSavedOnly ? 'active' : ''}`}
+            className={`mood-pill ${showSavedOnly ? 'centre' : ''}`}
           >
-            <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
+            <Icon name="heart" size={16} className={showSavedOnly ? 'filled' : ''} />
             Saved
           </button>
           {CATEGORIES.map(cat => (
             <button
               key={cat.name}
               onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
-              className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
+              className={`mood-pill ${selectedCategory === cat.name ? 'centre' : ''}`}
             >
-              <Icon name={cat.icon as any} size={14} />
+              <Icon name={cat.icon as any} size={16} />
               {cat.name}
             </button>
           ))}
@@ -322,7 +324,7 @@ export default function MarketplacePage() {
               zoomControl={false}
             >
               <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; OpenStreetMap &copy; CARTO'
               />
               {filteredVendors.map(v => {
@@ -331,10 +333,10 @@ export default function MarketplacePage() {
                 return (
                   <Marker key={v.id} position={[vendorLat, vendorLng]}>
                     <Popup>
-                      <div style={{ minWidth: '150px' }}>
-                        <p style={{ fontSize: '15px', fontWeight: 600, color: '#000000' }}>{v.name}</p>
-                        <p style={{ fontSize: '13px', color: '#666666' }}>{formatCategory(v.category)} · {v.priceRange}</p>
-                        <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#999999' }}>
+                      <div style={{ minWidth: '150px', background: '#1C1C1E', color: '#FFFFFF', padding: '8px', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '15px', fontWeight: 600 }}>{v.name}</p>
+                        <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{formatCategory(v.category)} · {v.priceRange}</p>
+                        <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#A1A1A1' }}>
                           {v.open ? 'Open' : 'Closed'}
                           {v.isPremium && ' · ★ Premium'}
                         </p>
@@ -380,7 +382,7 @@ export default function MarketplacePage() {
         )}
 
         {/* Dish Of The Day */}
-        {dishesOfDay.length > 0 && viewMode === 'list' && (
+        {dishesOfDay.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
@@ -411,7 +413,7 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Premium Members - all same size */}
+        {/* Premium Members */}
         {premiumVendors.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
@@ -450,7 +452,7 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Accommodation - distinct cards */}
+        {/* Accommodation */}
         {filteredAccommodations.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
@@ -496,13 +498,14 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* All Vendors - one column full width */}
+        {/* All Vendors Preview - 5 vendors, See All */}
         <div>
           <div className="section-header">
             <div className="section-heading">
               <span className="section-eyebrow">{showSavedOnly ? 'Your Saves' : 'Full Listings'}</span>
               <span className="section-title">{showSavedOnly ? 'Saved Vendors' : 'All Vendors'}</span>
             </div>
+            <Link href="/vendors" className="section-link">See All</Link>
           </div>
           {filteredVendors.length === 0 ? (
             <div className="empty-state">
@@ -511,7 +514,7 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {filteredVendors.map(v => (
+              {filteredVendors.slice(0, 5).map(v => (
                 <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
                   <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
                     <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>

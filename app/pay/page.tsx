@@ -9,7 +9,7 @@ import { patois } from '@/lib/patois'
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
 
 export default function PayPage() {
-  const [view, setView] = useState<'scan' | 'myqr'>('scan')
+  const [view, setView] = useState<'scan' | 'qr'>('scan')
   const [amount, setAmount] = useState('')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [rail, setRail] = useState<Rail>('JAM-DEX')
@@ -41,8 +41,8 @@ export default function PayPage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      {/* Toggle */}
       <div style={{ padding: '16px 16px 0' }}>
+        {/* Toggle */}
         <div style={{ 
           display: 'flex', 
           background: 'var(--system-bg-secondary)', 
@@ -51,7 +51,7 @@ export default function PayPage() {
           gap: '2px',
           marginBottom: '16px'
         }}>
-          {(['scan', 'myqr'] as const).map(v => (
+          {(['scan', 'qr'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -70,14 +70,13 @@ export default function PayPage() {
                 minHeight: '44px'
               }}
             >
-              {v === 'scan' ? 'Scan QR' : 'My QR'}
+              {v === 'scan' ? 'Scan' : 'QR Code'}
             </button>
           ))}
         </div>
 
         {view === 'scan' && (
           <div>
-            {/* Camera viewfinder */}
             <div style={{
               width: '100%',
               height: '360px',
@@ -90,7 +89,6 @@ export default function PayPage() {
               overflow: 'hidden',
               marginBottom: '12px'
             }}>
-              {/* Frame guide */}
               <div style={{
                 width: '220px',
                 height: '220px',
@@ -104,8 +102,6 @@ export default function PayPage() {
               }}>
                 <Icon name="camera" size={48} style={{ color: flashOn ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.35)' }} />
               </div>
-
-              {/* Flash toggle */}
               <button
                 onClick={() => setFlashOn(!flashOn)}
                 style={{
@@ -126,8 +122,6 @@ export default function PayPage() {
               >
                 <Icon name="sparkle" size={18} />
               </button>
-
-              {/* Splitting badge */}
               <div style={{
                 position: 'absolute',
                 bottom: '12px',
@@ -144,14 +138,12 @@ export default function PayPage() {
                 Splitting with 2 others
               </div>
             </div>
-
             <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={simulateScan}>
               Simulate Scan
             </button>
             <button className="btn btn-tertiary" onClick={() => setManualCode(!manualCode)} style={{ width: '100%', minHeight: '44px' }}>
               Enter code manually
             </button>
-
             {manualCode && (
               <input
                 value={manualInput}
@@ -175,9 +167,8 @@ export default function PayPage() {
           </div>
         )}
 
-        {view === 'myqr' && (
+        {view === 'qr' && (
           <div style={{ textAlign: 'center', paddingTop: '20px' }}>
-            {/* User QR for vendor to scan */}
             <div style={{
               width: '240px',
               height: '240px',
@@ -198,7 +189,6 @@ export default function PayPage() {
                 }} />
               ))}
             </div>
-
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '4px' }}>
               Jordan Hutchinson
             </p>
@@ -221,7 +211,6 @@ export default function PayPage() {
           <div style={{ padding: '0 20px 20px' }}>
             <div className="sheet-grabber" />
             <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Checkout</h3>
-
             <div style={{ marginBottom: '16px' }}>
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Amount</p>
               <input
@@ -253,7 +242,6 @@ export default function PayPage() {
                 ))}
               </div>
             </div>
-
             <div style={{ marginBottom: '16px' }}>
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>
                 {autoRouting ? 'Auto-routing' : 'Paying via'}
@@ -280,13 +268,11 @@ export default function PayPage() {
                 </div>
               )}
             </div>
-
             <div style={{ marginBottom: '20px' }}>
               <p style={{ fontSize: '15px', color: 'var(--label-secondary)' }}>
                 Points earned: <span className="num-font" style={{ color: 'var(--rum)', fontWeight: 700 }}>+{Math.floor(parseFloat(amount || '0'))}</span>
               </p>
             </div>
-
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment}>
               {patois.ctaConfirm}
             </button>

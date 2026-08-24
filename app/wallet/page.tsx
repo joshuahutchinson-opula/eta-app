@@ -56,16 +56,7 @@ export default function WalletPage() {
   const router = useRouter()
   const [points] = useState(1240)
   const [balance] = useState(250)
-  const [darkMode, setDarkMode] = useState(false)
   const [passportOpen, setPassportOpen] = useState(false)
-  const [cards] = useState<PaymentCard[]>(MOCK_CARDS)
-  const [history] = useState<PointsTransaction[]>(MOCK_HISTORY)
-  const [rewards] = useState<Reward[]>(MOCK_REWARDS)
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    setDarkMode(savedTheme === 'dark')
-  }, [])
 
   const progressPercent = Math.min(100, Math.round((points / NEXT_REWARD_THRESHOLD) * 100))
   const pointsToNext = Math.max(0, NEXT_REWARD_THRESHOLD - points)
@@ -73,16 +64,15 @@ export default function WalletPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
-        {/* ============ WALLET SECTION ============ */}
+        {/* WALLET SECTION */}
         <div style={{ marginBottom: '24px' }}>
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Wallet</p>
           <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>
             ${balance.toFixed(2)}
           </h2>
 
-          {/* Attached cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {cards.map(card => (
+            {MOCK_CARDS.map(card => (
               <div key={card.id} className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px',
@@ -120,18 +110,16 @@ export default function WalletPage() {
             ))}
           </div>
 
-          {/* Add card */}
           <button className="btn btn-secondary" style={{ width: '100%', marginTop: '8px' }}>
             <Icon name="plus" size={16} />
             Add Card
           </button>
         </div>
 
-        {/* ============ PASSPORT SECTION ============ */}
+        {/* PASSPORT SECTION */}
         <div style={{ marginBottom: '24px' }}>
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>Membership</p>
 
-          {/* Passport cover - click to open */}
           {!passportOpen ? (
             <div 
               onClick={() => setPassportOpen(true)}
@@ -158,7 +146,19 @@ export default function WalletPage() {
                 pointerEvents: 'none'
               }} />
               <div style={{ position: 'relative', zIndex: 1 }}>
-                <img src={darkMode ? '/logo-dark.png' : '/logo.png'} alt="ETA" style={{ width: '60px', height: 'auto', marginBottom: '12px' }} />
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  border: '2px solid var(--gold)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  boxShadow: '0 0 20px rgba(255,184,0,0.25)'
+                }}>
+                  <Icon name="sparkle" size={28} style={{ color: 'var(--gold)' }} />
+                </div>
                 <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700, letterSpacing: '4px', color: 'var(--gold)', textShadow: '0 1px 0 rgba(0,0,0,0.7)', marginBottom: '8px' }}>
                   ETA
                 </h3>
@@ -171,7 +171,6 @@ export default function WalletPage() {
               </div>
             </div>
           ) : (
-            /* Passport interior */
             <div style={{
               minHeight: '200px',
               borderRadius: '14px',
@@ -197,9 +196,7 @@ export default function WalletPage() {
                 borderRadius: '4px',
                 pointerEvents: 'none'
               }} />
-
               <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                {/* User info */}
                 <div style={{
                   width: '56px',
                   height: '56px',
@@ -216,16 +213,12 @@ export default function WalletPage() {
                 <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C', marginBottom: '4px' }}>
                   Jordan Hutchinson
                 </h3>
-
-                {/* Points */}
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '6px', marginBottom: '16px' }}>
                   <span className="num-font" style={{ fontSize: '32px', fontWeight: 700, color: 'var(--rum)' }}>
                     {points.toLocaleString()}
                   </span>
                   <span style={{ fontSize: '13px', color: 'var(--grey)' }}>pts</span>
                 </div>
-
-                {/* Progress ring */}
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '11px', color: 'var(--grey)' }}>
@@ -239,7 +232,6 @@ export default function WalletPage() {
                     <div className="progress-fill" style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--rum)' }} />
                   </div>
                 </div>
-
                 <button onClick={() => setPassportOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', minHeight: '44px' }}>
                   Close
                 </button>
@@ -248,7 +240,7 @@ export default function WalletPage() {
           )}
         </div>
 
-        {/* ============ REWARDS SECTION ============ */}
+        {/* REWARDS SECTION */}
         <div style={{ marginBottom: '24px' }}>
           <div className="section-header">
             <div className="section-heading">
@@ -257,7 +249,7 @@ export default function WalletPage() {
             </div>
           </div>
           <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-            {rewards.map(reward => (
+            {MOCK_REWARDS.map(reward => (
               <div key={reward.id} className="card" style={{ width: '160px', flexShrink: 0, opacity: reward.available ? 1 : 0.5 }}>
                 <div className="card-image" style={{ height: '100px' }}>
                   <img src={reward.image} alt={reward.name} />
@@ -273,7 +265,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* ============ POINTS HISTORY ============ */}
+        {/* POINTS HISTORY */}
         <div>
           <div className="section-header">
             <div className="section-heading">
@@ -282,15 +274,14 @@ export default function WalletPage() {
             </div>
           </div>
           <div className="card" style={{ padding: '4px 16px' }}>
-            {history.map((h, i) => (
+            {MOCK_HISTORY.map((h, i) => (
               <div key={h.id} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 padding: '12px 0',
-                borderBottom: i < history.length - 1 ? '0.5px solid var(--separator)' : 'none'
+                borderBottom: i < MOCK_HISTORY.length - 1 ? '0.5px solid var(--separator)' : 'none'
               }}>
-                {/* Photo circle */}
                 <div style={{
                   width: '40px',
                   height: '40px',

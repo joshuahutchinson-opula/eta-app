@@ -18,7 +18,7 @@ export default function Dock() {
   const tabs = [
     { name: 'Home', href: '/', icon: 'home', type: 'icon' },
     { name: 'Experiences', href: '/experiences', icon: 'compass', type: 'icon' },
-    { name: 'Pay', href: '/pay', icon: '', type: 'logo' },
+    { name: '', href: '/pay', icon: '', type: 'logo' },
     { name: 'Market', href: '/marketplace', icon: 'marketplace', type: 'icon' },
     { name: 'Profile', href: '/profile', icon: 'user', type: 'icon' }
   ]
@@ -29,7 +29,7 @@ export default function Dock() {
         const isActive = pathname === tab.href
         return (
           <div
-            key={tab.name}
+            key={tab.href}
             className={`tab-item ${isActive ? 'active' : 'inactive'}`}
             onClick={() => router.push(tab.href)}
             style={{
@@ -42,14 +42,16 @@ export default function Dock() {
               <img 
                 src={darkMode ? '/logo-dark.png' : '/logo.png'} 
                 alt="ETA" 
-                className="tab-logo"
+                style={{ width: '32px', height: '32px', objectFit: 'contain' }}
               />
             ) : (
-              <div className="tab-icon">
-                <Icon name={tab.icon} size={24} />
-              </div>
+              <>
+                <div className="tab-icon">
+                  <Icon name={tab.icon} size={24} />
+                </div>
+                <span className="tab-label">{tab.name}</span>
+              </>
             )}
-            <span className="tab-label">{tab.name}</span>
           </div>
         )
       })}
