@@ -8,7 +8,7 @@ import Icon from '@/lib/icons'
 export default function Dock() {
   const pathname = usePathname()
   const router = useRouter()
-  const [darkMode, setDarkMode] = useState(false)
+  const [pulseDone, setPulseDone] = useState(false)
 
   const tabs = [
     { name: 'Home', href: '/', icon: 'home', type: 'icon' },
@@ -19,26 +19,9 @@ export default function Dock() {
   ]
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    setDarkMode(savedTheme === 'dark')
-
-    const observer = new MutationObserver(() => {
-      const currentTheme = document.documentElement.getAttribute('data-theme')
-      setDarkMode(currentTheme === 'dark')
-    })
-
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-
-    const handleStorage = () => {
-      const saved = localStorage.getItem('theme')
-      setDarkMode(saved === 'dark')
-    }
-    window.addEventListener('storage', handleStorage)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('storage', handleStorage)
-    }
+    // One-time pulse on first load
+    const timer = setTimeout(() => setPulseDone(true), 1300)
+    return () => clearTimeout(timer)
   }, [])
 
   return (
@@ -57,9 +40,9 @@ export default function Dock() {
             }}
           >
             {tab.type === 'logo' ? (
-              <div className="tab-logo-container">
+              <div className={`tab-logo-container ${!pulseDone ? 'tab-logo-pulse' : ''}`}>
                 <img 
-                  src={darkMode ? '/logo-dark.png' : '/logo.png'} 
+                  src="/logo-dark.png" 
                   alt="ETA" 
                   className="tab-logo"
                 />

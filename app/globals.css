@@ -272,7 +272,7 @@ body[data-theme="dark"] {
   min-height: var(--tap-min);
 }
 
-/* ============ TAB BAR - FIXED, ALWAYS VISIBLE ============ */
+/* ============ TAB BAR ============ */
 .tab-bar {
   position: fixed;
   bottom: 0;
@@ -338,35 +338,43 @@ body[data-theme="dark"] {
   letter-spacing: 0;
 }
 
+/* ============ ETA LOGO TAB BUTTON ============ */
 .tab-logo {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
-/* ETA Logo embossed raised */
 .tab-logo-container {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--system-bg-elevated);
+  background: var(--rum);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    inset 0 2px 4px rgba(255, 255, 255, 0.8),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: -16px;
-  border: 2px solid var(--rum-tint);
-  transition: box-shadow var(--duration-fast) ease;
+  box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35);
+  margin-top: -8px;
+  border: 2px solid #FFFFFF;
+  transition: transform var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tab-logo-container:active {
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 2px 6px rgba(0, 0, 0, 0.2),
-    inset 0 -2px 4px rgba(255, 255, 255, 0.4);
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(184, 32, 16, 0.25);
+}
+
+/* One-time ring pulse on first load */
+.tab-logo-pulse {
+  animation: logoRingPulse 1.2s var(--spring-standard) 1;
+}
+
+@keyframes logoRingPulse {
+  0% { box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35), 0 0 0 0 rgba(184, 32, 16, 0.5); }
+  50% { box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35), 0 0 0 8px rgba(184, 32, 16, 0); }
+  100% { box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35); }
 }
 
 /* ============ SECTION HEADERS ============ */
@@ -757,7 +765,7 @@ body[data-theme="dark"] {
   transition: width var(--duration-standard) var(--spring-standard);
 }
 
-/* ============ SKELETON CROSSFADE ============ */
+/* ============ SKELETON ============ */
 .skeleton-card {
   background: var(--system-bg-secondary);
   border-radius: var(--radius-md);
@@ -777,7 +785,7 @@ body[data-theme="dark"] {
 }
 
 .content-fade-in {
-  /* No transform — only opacity for safety */
+  /* No transform */
 }
 
 @keyframes fadeInContent {
