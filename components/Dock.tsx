@@ -22,7 +22,6 @@ export default function Dock() {
     const savedTheme = localStorage.getItem('theme')
     setDarkMode(savedTheme === 'dark')
 
-    // Listen for theme changes immediately
     const observer = new MutationObserver(() => {
       const currentTheme = document.documentElement.getAttribute('data-theme')
       setDarkMode(currentTheme === 'dark')
@@ -30,7 +29,6 @@ export default function Dock() {
 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
-    // Also listen for storage changes
     const handleStorage = () => {
       const saved = localStorage.getItem('theme')
       setDarkMode(saved === 'dark')
