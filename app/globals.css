@@ -340,21 +340,21 @@ body[data-theme="dark"] {
 
 /* ============ ETA LOGO TAB BUTTON ============ */
 .tab-logo {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
 .tab-logo-container {
-  width: 40px;
-  height: 40px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: var(--rum);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35);
-  margin-top: -8px;
+  margin-top: -24px;
   border: 2px solid #FFFFFF;
   transition: transform var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease;
   cursor: pointer;
@@ -366,7 +366,6 @@ body[data-theme="dark"] {
   box-shadow: 0 2px 6px rgba(184, 32, 16, 0.25);
 }
 
-/* One-time ring pulse on first load */
 .tab-logo-pulse {
   animation: logoRingPulse 1.2s var(--spring-standard) 1;
 }

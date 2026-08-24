@@ -19,7 +19,6 @@ export default function Dock() {
   ]
 
   useEffect(() => {
-    // One-time pulse on first load
     const timer = setTimeout(() => setPulseDone(true), 1300)
     return () => clearTimeout(timer)
   }, [])
