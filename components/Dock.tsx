@@ -1,29 +1,12 @@
 // components/Dock.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 
 export default function Dock() {
   const pathname = usePathname()
   const router = useRouter()
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY
-      const windowHeight = window.innerHeight
-      const documentHeight = document.documentElement.scrollHeight
-      // Show border when content has scrolled underneath
-      setScrolled(scrollY > 0 && scrollY + windowHeight < documentHeight - 10)
-    }
-    
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
-    
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const tabs = [
     { name: 'Home', href: '/', icon: 'home' },
@@ -34,7 +17,7 @@ export default function Dock() {
   ]
 
   return (
-    <nav className={`tab-bar ${scrolled ? 'scrolled' : ''}`}>
+    <nav className="tab-bar">
       {tabs.map(tab => {
         const isActive = pathname === tab.href
         return (

@@ -3,22 +3,6 @@
   "WorkspaceRootPath": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\next-env.d.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:next-env.d.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\railway.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:railway.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\prisma\\schema.prisma||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:prisma\\schema.prisma||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\app\\api\\accommodations\\route.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:app\\api\\accommodations\\route.ts||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\app\\page.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:app\\page.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     }
@@ -30,63 +14,15 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "next-env.d.ts",
-              "DocumentMoniker": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\next-env.d.ts",
-              "RelativeDocumentMoniker": "next-env.d.ts",
-              "ToolTip": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\next-env.d.ts",
-              "RelativeToolTip": "next-env.d.ts",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-08-21T18:12:34.951Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "railway.json",
-              "DocumentMoniker": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\railway.json",
-              "RelativeDocumentMoniker": "railway.json",
-              "ToolTip": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\railway.json",
-              "RelativeToolTip": "railway.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-08-21T18:11:50.507Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "schema.prisma",
-              "DocumentMoniker": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\prisma\\schema.prisma",
-              "RelativeDocumentMoniker": "prisma\\schema.prisma",
-              "ToolTip": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\prisma\\schema.prisma",
-              "RelativeToolTip": "prisma\\schema.prisma",
-              "ViewState": "AgIAAJYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-08-21T18:11:31.914Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "route.ts",
-              "DocumentMoniker": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\app\\api\\accommodations\\route.ts",
-              "RelativeDocumentMoniker": "app\\api\\accommodations\\route.ts",
-              "ToolTip": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\app\\api\\accommodations\\route.ts",
-              "RelativeToolTip": "app\\api\\accommodations\\route.ts",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAXAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2026-08-21T18:09:15.218Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
               "Title": "page.tsx",
               "DocumentMoniker": "C:\\Users\\JoshuaHutchinson\\Documents\\eta-app\\app\\page.tsx",
               "RelativeDocumentMoniker": "app\\page.tsx",

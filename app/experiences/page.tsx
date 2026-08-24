@@ -3,8 +3,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import FloatingPill from '@/components/FloatingPill'
-import ActiveTripBanner from '@/components/ActiveTripBanner'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 
@@ -50,7 +48,7 @@ const OCCASION_META: Record<string, { label: string; emoji: string }> = {
   none: { label: 'Surprise me', emoji: '🙅' }
 }
 
-const AV_COLORS = ['#00E5CC', '#FFB800', '#9333EA', '#FF4B2B']
+const AV_COLORS = ['#FF4B2B', '#FFB800', '#00E5CC', '#007AFF']
 
 function avatarColor(name: string): string {
   let h = 0
@@ -85,28 +83,16 @@ export default function ExperiencesPage() {
   const [adapting, setAdapting] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [selectAnim, setSelectAnim] = useState<string | null>(null)
-  const [revealStagger, setRevealStagger] = useState(false)
   const [planningPoints, setPlanningPoints] = useState(0)
-  const [darkMode, setDarkMode] = useState(false)
 
   const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    setDarkMode(savedTheme === 'dark')
     if (screen === 'active') {
       const etaTimer = setInterval(() => {
         setEtaSeconds(prev => prev > 60 ? prev - 15 : prev)
       }, 2500)
       return () => clearInterval(etaTimer)
-    }
-  }, [screen])
-
-  useEffect(() => {
-    if (screen === 'results') {
-      setRevealStagger(true)
-      const timer = setTimeout(() => setRevealStagger(false), 1200)
-      return () => clearTimeout(timer)
     }
   }, [screen])
 
@@ -185,10 +171,6 @@ export default function ExperiencesPage() {
     setSurveyStep(prev => prev + 1)
   }
 
-  const backStep = () => {
-    if (surveyStep > 0) setSurveyStep(prev => prev - 1)
-  }
-
   const toggleMood = (moodId: string) => {
     setSurvey(prev => {
       const has = prev.mood.includes(moodId)
@@ -255,16 +237,6 @@ export default function ExperiencesPage() {
 
   const statusLabel = (s: string) => s === 'arrived' ? 'Arrived' : s === 'enroute' ? 'En route' : 'Not started'
 
-  const logoElement = (
-    <div className="logo-container" onClick={() => router.push('/')}>
-      {darkMode ? (
-        <img src="/logo-dark.png" alt="ETA" />
-      ) : (
-        <img src="/logo.png" alt="ETA" />
-      )}
-    </div>
-  )
-
   // ============ SURVEY ============
   if (screen === 'survey') {
     const moodOptions = [
@@ -275,21 +247,20 @@ export default function ExperiencesPage() {
     ]
 
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        {logoElement}
-        <FloatingPill />
-        <div style={{ padding: '16px 16px 16px' }}>
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+        <div style={{ padding: '16px' }}>
+          {/* Progress */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--light-grey)', transition: 'background 0.3s ease' }} />
+              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--separator)', transition: 'background 0.3s ease' }} />
             ))}
           </div>
 
           {surveyStep === 0 && (
             <>
-              <p className="section-eyebrow" style={{ marginBottom: '8px' }}>STEP 1 OF 5</p>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginBottom: '8px' }}>What&apos;s calling you?</h2>
-              <p style={{ fontSize: '13px', color: 'var(--grey)', marginBottom: '16px' }}>Pick up to two.</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 1 of 5</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>What&apos;s calling you?</h2>
+              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>Pick up to two.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {moodOptions.map(m => (
                   <div 
@@ -297,18 +268,9 @@ export default function ExperiencesPage() {
                     onClick={() => toggleMood(m.id)} 
                     className={`mood-video-tile ${survey.mood.includes(m.id) ? 'selected' : ''} ${selectAnim === m.id ? 'select-bounce' : ''}`}
                   >
-                    <video
-                      src={MOOD_VIDEOS[m.id]}
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                      preload="auto"
-                    />
+                    <video src={MOOD_VIDEOS[m.id]} muted loop autoPlay playsInline preload="auto" />
                     <div className="mood-video-tile-overlay" />
-                    <div className="mood-video-tile-label">
-                      {m.emoji} {m.name}
-                    </div>
+                    <div className="mood-video-tile-label">{m.emoji} {m.name}</div>
                     {survey.mood.includes(m.id) && (
                       <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Icon name="check" size={12} />
@@ -317,40 +279,35 @@ export default function ExperiencesPage() {
                   </div>
                 ))}
               </div>
-              <button className="btn btn-primary" onClick={nextStep} disabled={survey.mood.length === 0} style={{ width: '100%', marginTop: '16px' }}>
-                Fawud
-              </button>
+              <button className="btn btn-primary" onClick={nextStep} disabled={survey.mood.length === 0} style={{ width: '100%', marginTop: '16px' }}>Fawud</button>
             </>
           )}
 
           {surveyStep === 1 && (
             <>
-              <p className="section-eyebrow" style={{ marginBottom: '8px' }}>STEP 2 OF 5</p>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginBottom: '16px' }}>How much time?</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 2 of 5</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>How much time?</h2>
               {Object.entries(TIME_META).map(([id, meta]) => (
                 <div 
                   key={id} 
-                  onClick={() => { 
-                    setSurvey(prev => ({ ...prev, time: id }))
-                    triggerSelectAnim(id)
-                    setTimeout(nextStep, 250)
-                  }} 
+                  onClick={() => { setSurvey(prev => ({ ...prev, time: id })); triggerSelectAnim(id); setTimeout(nextStep, 250) }} 
                   className={selectAnim === id ? 'select-bounce' : ''}
                   style={{
                     padding: '16px',
-                    borderRadius: '12px',
+                    borderRadius: '14px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     marginBottom: '8px',
-                    background: survey.time === id ? 'var(--rum)' : 'var(--card-bg)',
-                    border: '1px solid var(--light-grey)',
+                    background: survey.time === id ? 'var(--rum)' : 'var(--system-bg-elevated)',
+                    border: '1px solid var(--separator)',
+                    minHeight: '44px',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   <span style={{ fontSize: '20px' }}>{meta.emoji}</span>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: survey.time === id ? 'white' : 'var(--black)' }}>{meta.label}</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: survey.time === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
                 </div>
               ))}
             </>
@@ -358,24 +315,24 @@ export default function ExperiencesPage() {
 
           {surveyStep === 2 && (
             <>
-              <p className="section-eyebrow" style={{ marginBottom: '8px' }}>STEP 3 OF 5</p>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginBottom: '16px' }}>Who&apos;s coming?</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 3 of 5</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>Who&apos;s coming?</h2>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input
                   value={crewInput}
                   onChange={(e) => setCrewInput(e.target.value)}
                   placeholder="Add a name"
-                  style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--light-grey)', background: 'var(--card-bg)', fontSize: '14px', fontFamily: 'inherit', color: 'var(--black)', outline: 'none' }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '1px solid var(--separator)', background: 'var(--system-bg-elevated)', fontSize: '17px', fontFamily: 'inherit', color: 'var(--label-primary)', outline: 'none', minHeight: '44px' }}
                 />
-                <button onClick={() => { if (crewInput.trim()) { setSurvey(prev => ({ ...prev, crew: [...prev.crew, crewInput.trim()] })); setCrewInput(''); triggerSelectAnim('crew') } }} style={{ width: '48px', borderRadius: '12px', background: 'var(--rum)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => { if (crewInput.trim()) { setSurvey(prev => ({ ...prev, crew: [...prev.crew, crewInput.trim()] })); setCrewInput(''); triggerSelectAnim('crew') } }} style={{ width: '44px', borderRadius: '14px', background: 'var(--rum)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px' }}>
                   <Icon name="plus" size={16} />
                 </button>
               </div>
               {survey.crew.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                   {survey.crew.map((name, i) => (
-                    <span key={i} style={{ padding: '6px 12px', borderRadius: '999px', background: 'var(--card-bg)', border: '1px solid var(--light-grey)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: avatarColor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#0F0E0C' }}>{name[0].toUpperCase()}</span>
+                    <span key={i} style={{ padding: '6px 12px', borderRadius: '999px', background: 'var(--system-bg-elevated)', border: '1px solid var(--separator)', fontSize: '15px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', minHeight: '36px' }}>
+                      <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: avatarColor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: 'white' }}>{name[0].toUpperCase()}</span>
                       {name}
                     </span>
                   ))}
@@ -387,8 +344,8 @@ export default function ExperiencesPage() {
 
           {surveyStep === 3 && (
             <>
-              <p className="section-eyebrow" style={{ marginBottom: '8px' }}>STEP 4 OF 5</p>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginBottom: '24px' }}>How yuh want to spend?</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 4 of 5</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '24px' }}>How yuh want to spend?</h2>
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <span style={{ fontSize: '40px', fontWeight: 700, fontFamily: 'Space Mono, monospace', color: 'var(--rum)' }}>
                   {['$', '$$', '$$$', '$$$$'][survey.budget - 1]}
@@ -400,9 +357,9 @@ export default function ExperiencesPage() {
                 max="4"
                 value={survey.budget}
                 onChange={(e) => setSurvey(prev => ({ ...prev, budget: parseInt(e.target.value) }))}
-                style={{ width: '100%', height: '4px', borderRadius: '2px', background: 'var(--light-grey)', outline: 'none', WebkitAppearance: 'none', marginBottom: '8px' }}
+                style={{ width: '100%', height: '4px', borderRadius: '2px', background: 'var(--separator)', outline: 'none', WebkitAppearance: 'none', marginBottom: '8px', minHeight: '44px' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--grey)', fontWeight: 600, marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--label-secondary)', fontWeight: 500, marginBottom: '24px' }}>
                 <span>Local</span>
                 <span>No limit</span>
               </div>
@@ -412,32 +369,29 @@ export default function ExperiencesPage() {
 
           {surveyStep === 4 && (
             <>
-              <p className="section-eyebrow" style={{ marginBottom: '8px' }}>STEP 5 OF 5</p>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginBottom: '16px' }}>One more ting.</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 5 of 5</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>One more ting.</h2>
               {Object.entries(OCCASION_META).map(([id, meta]) => (
                 <div 
                   key={id} 
-                  onClick={() => { 
-                    setSurvey(prev => ({ ...prev, occasion: id }))
-                    triggerSelectAnim(id)
-                    setTimeout(nextStep, 300)
-                  }} 
+                  onClick={() => { setSurvey(prev => ({ ...prev, occasion: id })); triggerSelectAnim(id); setTimeout(nextStep, 300) }} 
                   className={selectAnim === id ? 'select-bounce' : ''}
                   style={{
                     padding: '16px',
-                    borderRadius: '12px',
+                    borderRadius: '14px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     marginBottom: '8px',
-                    background: survey.occasion === id ? 'var(--rum)' : 'var(--card-bg)',
-                    border: '1px solid var(--light-grey)',
+                    background: survey.occasion === id ? 'var(--rum)' : 'var(--system-bg-elevated)',
+                    border: '1px solid var(--separator)',
+                    minHeight: '44px',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   <span style={{ fontSize: '20px' }}>{meta.emoji}</span>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: survey.occasion === id ? 'white' : 'var(--black)' }}>{meta.label}</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: survey.occasion === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
                 </div>
               ))}
             </>
@@ -451,9 +405,9 @@ export default function ExperiencesPage() {
   // ============ LOADING ============
   if (screen === 'loading') {
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', paddingBottom: '80px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--light-grey)', borderTopColor: 'var(--rum)', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--black)' }}>Wi a look fi di best spot</p>
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', paddingBottom: '80px' }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--separator)', borderTopColor: 'var(--rum)', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>Wi a look fi di best spot</p>
         <style jsx>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </main>
     )
@@ -465,23 +419,20 @@ export default function ExperiencesPage() {
     const others = bundles.slice(1)
 
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        {logoElement}
-        <FloatingPill />
-
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
         {showConfetti && (
           <>
             {[...Array(20)].map((_, i) => (
-              <div key={i} className="confetti-piece" style={{ left: `${Math.random() * 100}%`, top: '-10px', background: ['#FF4B2B', '#FFB800', '#00E5CC', '#9333EA'][i % 4], animationDelay: `${Math.random() * 0.3}s` }} />
+              <div key={i} className="confetti-piece" style={{ left: `${Math.random() * 100}%`, top: '-10px', background: ['#FF4B2B', '#FFB800', '#00E5CC', '#007AFF'][i % 4], animationDelay: `${Math.random() * 0.3}s` }} />
             ))}
           </>
         )}
 
-        <div style={{ padding: '16px 16px 16px' }}>
+        <div style={{ padding: '16px' }}>
           <div style={{ marginBottom: '24px' }}>
-            <p className="section-eyebrow">CURATED FOR YOU</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--black)', marginTop: '2px' }}>Yuh vibe, bundled.</h2>
-            <p style={{ fontSize: '13px', color: 'var(--rum)', fontWeight: 600, marginTop: '4px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>Curated for You</p>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginTop: '2px' }}>Yuh vibe, bundled.</h2>
+            <p style={{ fontSize: '15px', color: 'var(--rum)', fontWeight: 600, marginTop: '4px' }}>
               +{planningPoints} pts for planning your trip
             </p>
           </div>
@@ -490,63 +441,47 @@ export default function ExperiencesPage() {
             <div 
               onClick={() => openBundle(bestMatch)} 
               className="card" 
-              style={{ 
-                position: 'relative', 
-                height: '280px', 
-                cursor: 'pointer',
-                marginBottom: '16px',
-                opacity: revealStagger ? 0 : 1,
-                transform: revealStagger ? 'translateY(20px)' : 'translateY(0)',
-                transition: 'opacity 0.4s ease, transform 0.4s ease'
-              }}
+              style={{ position: 'relative', height: '280px', cursor: 'pointer', marginBottom: '16px' }}
             >
               <img src={bestMatch.hero} alt={bestMatch.title} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.1) 0%, rgba(15,14,12,0.5) 50%, rgba(15,14,12,0.9) 100%)' }} />
-              <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--rum)', color: 'white', fontSize: '10px', fontWeight: 700, padding: '4px 8px', borderRadius: '999px' }}>
-                BEST MATCH
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
+              <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--rum)', color: 'white', fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '999px' }}>
+                Best Match
               </div>
               <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '20px', color: 'white' }}>
-                <h3 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px' }}>{bestMatch.title}</h3>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{bestMatch.title}</h3>
+                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>
                   {bestMatch.meta.join(' · ')}
                 </p>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>
                   {bestMatch.socialProof}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span className="num-font" style={{ fontSize: '18px', fontWeight: 700 }}>${bestMatch.price}</span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Explore <Icon name="chevronRight" size={12} />
+                  <span style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Explore <Icon name="chevronRight" size={14} />
                   </span>
                 </div>
               </div>
             </div>
           )}
 
-          {others.map((bundle, index) => (
+          {others.map(bundle => (
             <div 
               key={bundle.id} 
               onClick={() => openBundle(bundle)} 
               className="card" 
-              style={{ 
-                position: 'relative', 
-                height: '180px', 
-                cursor: 'pointer',
-                marginBottom: '12px',
-                opacity: revealStagger ? 0 : 1,
-                transform: revealStagger ? 'translateY(20px)' : 'translateY(0)',
-                transition: `opacity 0.4s ease ${0.15 * (index + 1)}s, transform 0.4s ease ${0.15 * (index + 1)}s`
-              }}
+              style={{ position: 'relative', height: '180px', cursor: 'pointer', marginBottom: '12px' }}
             >
               <img src={bundle.hero} alt={bundle.title} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.1) 0%, rgba(15,14,12,0.7) 100%)' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.75))' }} />
               <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '2px' }}>{bundle.title}</h3>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{bundle.socialProof}</p>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '2px' }}>{bundle.title}</h3>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{bundle.socialProof}</p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span className="num-font" style={{ fontSize: '14px', fontWeight: 700 }}>${bundle.price}</span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Explore <Icon name="chevronRight" size={10} />
+                  <span className="num-font" style={{ fontSize: '15px', fontWeight: 700 }}>${bundle.price}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Explore <Icon name="chevronRight" size={12} />
                   </span>
                 </div>
               </div>
@@ -561,22 +496,20 @@ export default function ExperiencesPage() {
   // ============ DETAIL ============
   if (screen === 'detail' && selectedBundle) {
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-        {logoElement}
-        <FloatingPill />
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
         <div style={{ height: '200px', position: 'relative', overflow: 'hidden', marginBottom: '16px' }}>
           <img src={selectedBundle.hero} alt={selectedBundle.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.2) 0%, transparent 30%, rgba(15,14,12,0.9) 100%)' }} />
-          <button onClick={() => setScreen('results')} style={{ position: 'absolute', top: '60px', left: '16px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(15,14,12,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-            <Icon name="back" size={14} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
+          <button onClick={() => setScreen('results')} style={{ position: 'absolute', top: '16px', left: '16px', width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <Icon name="back" size={18} />
           </button>
-          <h2 style={{ position: 'absolute', bottom: '16px', left: '16px', fontSize: '20px', fontWeight: 700, color: 'white' }}>{selectedBundle.title}</h2>
+          <h2 style={{ position: 'absolute', bottom: '16px', left: '16px', fontSize: '24px', fontWeight: 700, color: 'white' }}>{selectedBundle.title}</h2>
         </div>
 
         <div style={{ padding: '0 16px' }}>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">YOUR ROUTE</span>
+              <span className="section-eyebrow">Your Route</span>
               <span className="section-title">Timeline</span>
             </div>
           </div>
@@ -584,18 +517,18 @@ export default function ExperiencesPage() {
           <div style={{ marginBottom: '24px' }}>
             {selectedBundle.stops.map((stop, i) => (
               stop.type === 'transport' ? (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0 8px 16px', fontSize: '12px', color: 'var(--grey)' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0 8px 16px', fontSize: '13px', color: 'var(--label-secondary)' }}>
                   <Icon name="chevronRight" size={12} />
                   {stop.label}
                 </div>
               ) : (
                 <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', padding: '12px' }}>
-                  <img src={stop.img} alt={stop.name} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} />
+                  <img src={stop.img} alt={stop.name} style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover' }} />
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{stop.name}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{stop.time}</p>
+                    <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{stop.name}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{stop.time}</p>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--rum)', cursor: 'pointer' }} onClick={() => setShowChangePlan(true)}>Change</span>
+                  <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--rum)', cursor: 'pointer', minHeight: '44px', display: 'flex', alignItems: 'center' }} onClick={() => setShowChangePlan(true)}>Change</span>
                 </div>
               )
             ))}
@@ -603,7 +536,7 @@ export default function ExperiencesPage() {
 
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">SPLIT PAYMENT</span>
+              <span className="section-eyebrow">Split Payment</span>
               <span className="section-title">Who Pays What</span>
             </div>
           </div>
@@ -612,10 +545,10 @@ export default function ExperiencesPage() {
             {['You', ...(survey.crew.length ? survey.crew : ['Jules', 'Ken', 'Priya'])].map((name, i) => (
               <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: avatarColor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#0F0E0C' }}>{name[0].toUpperCase()}</span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{name}</span>
+                  <span style={{ width: '32px', height: '32px', borderRadius: '50%', background: avatarColor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'white' }}>{name[0].toUpperCase()}</span>
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{name}</span>
                 </div>
-                <span className="num-font" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)' }}>${Math.round(selectedBundle.price)}</span>
+                <span className="num-font" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--label-primary)' }}>${Math.round(selectedBundle.price)}</span>
               </div>
             ))}
           </div>
@@ -636,13 +569,7 @@ export default function ExperiencesPage() {
     const etaMin = Math.floor(etaSeconds / 60)
 
     return (
-      <main style={{ minHeight: '100vh', background: '#1a1530', paddingBottom: '0', overflow: 'hidden', position: 'relative' }}>
-        <ActiveTripBanner 
-          tripName={selectedBundle?.title || 'Your Experience'}
-          etaMinutes={etaMin}
-          nextStopName={nextStop?.name || 'Complete'}
-        />
-
+      <main style={{ minHeight: '100dvh', background: '#000000', paddingBottom: '0', overflow: 'hidden', position: 'relative' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a1530 0%, #0F0E0C 100%)' }}>
           <svg viewBox="0 0 500 900" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%' }}>
             <rect width="500" height="900" fill="url(#mapGrad)" />
@@ -661,59 +588,59 @@ export default function ExperiencesPage() {
         </div>
 
         <div style={{ position: 'absolute', top: '0', left: '0', right: '0', zIndex: 20, padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setScreen('results')} style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(15,14,12,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-            <Icon name="back" size={14} />
+          <button onClick={() => setScreen('results')} style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+            <Icon name="back" size={18} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(15,14,12,0.5)', padding: '8px 12px', borderRadius: '999px' }}>
-            <Icon name="sparkle" size={12} style={{ color: '#FFB800' }} />
-            <span className="num-font" style={{ fontWeight: 700, fontSize: '13px', color: '#FFB800' }}>{points}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.5)', padding: '8px 12px', borderRadius: '999px', minHeight: '44px' }}>
+            <Icon name="sparkle" size={14} style={{ color: '#FFB800' }} />
+            <span className="num-font" style={{ fontWeight: 700, fontSize: '15px', color: '#FFB800' }}>{points}</span>
           </div>
         </div>
 
-        <div style={{ position: 'absolute', left: '0', right: '0', bottom: '0', zIndex: 10, background: '#14120E', borderRadius: '20px 20px 0 0', boxShadow: '0 -4px 20px rgba(0,0,0,0.5)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ position: 'absolute', left: '0', right: '0', bottom: '0', zIndex: 10, background: 'rgba(20, 18, 14, 0.95)', borderRadius: '20px 20px 0 0', boxShadow: '0 -2px 12px rgba(0,0,0,0.4)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid rgba(255,255,255,0.1)' }}>
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(245,239,230,0.6)' }}>Next Stop</p>
-              <p style={{ fontSize: '16px', fontWeight: 700, color: '#F5EFE6', marginTop: '2px' }}>{nextStop?.name || 'Complete'}</p>
+              <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.6)' }}>Next Stop</p>
+              <p style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginTop: '2px' }}>{nextStop?.name || 'Complete'}</p>
             </div>
-            <span className="num-font" style={{ fontSize: '20px', fontWeight: 700, color: '#00E5CC' }}>{etaMin} min</span>
+            <span className="num-font" style={{ fontSize: '24px', fontWeight: 700, color: '#00E5CC' }}>{etaMin} min</span>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', marginBottom: '16px' }}>
               {realStopsList.map((stop, i) => (
-                <div key={i} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: i < currentStopIndex ? 'rgba(0,229,204,0.1)' : i === currentStopIndex ? 'rgba(255,75,43,0.15)' : 'rgba(255,255,255,0.06)', color: i < currentStopIndex ? '#00E5CC' : i === currentStopIndex ? '#FF4B2B' : 'rgba(245,239,230,0.5)' }}>
+                <div key={i} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', background: i < currentStopIndex ? 'rgba(0,229,204,0.1)' : i === currentStopIndex ? 'rgba(255,75,43,0.2)' : 'rgba(255,255,255,0.06)', color: i < currentStopIndex ? '#00E5CC' : i === currentStopIndex ? '#FF4B2B' : 'rgba(255,255,255,0.5)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                   {stop.name}
                 </div>
               ))}
             </div>
 
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#F5EFE6', marginBottom: '8px' }}>Your crew</p>
+            <p style={{ fontSize: '15px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Your crew</p>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {groupMembers.map((member, i) => (
-                <div key={i} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => cycleStatus(i)}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: avatarColor(member.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#0F0E0C', border: member.status === 'arrived' ? '2px solid #00E5CC' : '2px solid transparent' }}>
+                <div key={i} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', minHeight: '44px' }} onClick={() => cycleStatus(i)}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: avatarColor(member.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: 'white', border: member.status === 'arrived' ? '2px solid #00E5CC' : '2px solid transparent' }}>
                     {member.name[0].toUpperCase()}
                   </div>
-                  <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(245,239,230,0.7)' }}>{member.name}</span>
-                  <span style={{ fontSize: '9px', color: 'rgba(245,239,230,0.5)' }}>{statusLabel(member.status)}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>{member.name}</span>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>{statusLabel(member.status)}</span>
                 </div>
               ))}
             </div>
 
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#F5EFE6', marginBottom: '8px' }}>Split payment</p>
-            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '15px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Split payment</p>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="num-font" style={{ fontSize: '16px', fontWeight: 700, color: '#F5EFE6' }}>${totalPaid}</span>
-                <span className="num-font" style={{ fontSize: '11px', color: 'rgba(245,239,230,0.6)' }}>{paidCount} of {payments.length} paid</span>
+                <span className="num-font" style={{ fontSize: '20px', fontWeight: 700, color: 'white' }}>${totalPaid}</span>
+                <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{paidCount} of {payments.length} paid</span>
               </div>
               {payments.map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.08)' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: avatarColor(p.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#0F0E0C' }}>{p.name[0].toUpperCase()}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#F5EFE6' }}>{p.name}</span>
+                    <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: avatarColor(p.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'white' }}>{p.name[0].toUpperCase()}</span>
+                    <span style={{ fontSize: '15px', fontWeight: 500, color: 'white' }}>{p.name}</span>
                   </div>
-                  <span onClick={() => togglePaid(i)} style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', borderRadius: '999px', cursor: 'pointer', background: p.paid ? 'rgba(0,229,204,0.15)' : 'rgba(255,75,43,0.15)', color: p.paid ? '#00E5CC' : '#FF4B2B' }}>
+                  <span onClick={() => togglePaid(i)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 10px', borderRadius: '999px', cursor: 'pointer', background: p.paid ? 'rgba(0,229,204,0.15)' : 'rgba(255,75,43,0.2)', color: p.paid ? '#00E5CC' : '#FF4B2B', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                     {p.paid ? 'Paid' : `$${p.amount}`}
                   </span>
                 </div>
@@ -721,10 +648,10 @@ export default function ExperiencesPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowChangePlan(true)} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: '#F5EFE6', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+              <button onClick={() => setShowChangePlan(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'white', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px' }}>
                 Change plan
               </button>
-              <button onClick={() => setShowRouteSheet(true)} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: '#F5EFE6', fontFamily: 'inherit', fontSize: '11px', fontWeight: 600 }}>
+              <button onClick={() => setShowRouteSheet(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'white', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px' }}>
                 Full route
               </button>
             </div>
@@ -732,20 +659,20 @@ export default function ExperiencesPage() {
         </div>
 
         {adapting && (
-          <div style={{ position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'rgba(15,14,12,0.95)', padding: '12px 16px', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#00E5CC', animation: 'spin 0.7s linear infinite' }} />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#F5EFE6' }}>Updating plan...</span>
+          <div style={{ position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'rgba(0,0,0,0.9)', padding: '12px 16px', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#00E5CC', animation: 'spin 0.7s linear infinite' }} />
+            <span style={{ fontSize: '15px', fontWeight: 500, color: 'white' }}>Updating plan...</span>
           </div>
         )}
 
         {showChangePlan && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setShowChangePlan(false)}>
-            <div style={{ width: '100%', maxWidth: '520px', background: '#161410', borderRadius: '20px 20px 0 0', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '36px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', margin: '0 auto 16px' }} />
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F5EFE6', marginBottom: '12px' }}>Change your plan</h3>
+            <div style={{ width: '100%', maxWidth: '520px', background: 'rgba(20,18,14,0.98)', borderRadius: '20px 20px 0 0', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: '36px', height: '5px', background: 'rgba(255,255,255,0.2)', borderRadius: '3px', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>Change your plan</h3>
               {['Sunset Catamaran', 'Blue Hole Falls', 'Jerk Pit Crawl'].map(name => (
-                <div key={name} onClick={() => setSwapSelection(name)} style={{ padding: '12px', borderRadius: '12px', cursor: 'pointer', marginBottom: '8px', background: swapSelection === name ? 'rgba(255,75,43,0.1)' : 'rgba(255,255,255,0.06)', border: swapSelection === name ? '1px solid #FF4B2B' : '1px solid rgba(255,255,255,0.1)' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#F5EFE6' }}>{name}</p>
+                <div key={name} onClick={() => setSwapSelection(name)} style={{ padding: '14px', borderRadius: '14px', cursor: 'pointer', marginBottom: '8px', background: swapSelection === name ? 'rgba(255,75,43,0.15)' : 'rgba(255,255,255,0.06)', border: swapSelection === name ? '1px solid #FF4B2B' : '1px solid rgba(255,255,255,0.1)', minHeight: '44px' }}>
+                  <p style={{ fontSize: '17px', fontWeight: 600, color: 'white' }}>{name}</p>
                 </div>
               ))}
               <button className="btn btn-primary" onClick={applySwap} style={{ width: '100%', marginTop: '8px' }}>Fawud</button>
@@ -755,18 +682,18 @@ export default function ExperiencesPage() {
 
         {showRouteSheet && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setShowRouteSheet(false)}>
-            <div style={{ width: '100%', maxWidth: '520px', maxHeight: '80vh', overflowY: 'auto', background: '#161410', borderRadius: '20px 20px 0 0', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '36px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', margin: '0 auto 16px' }} />
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F5EFE6', marginBottom: '12px' }}>Full route</h3>
+            <div style={{ width: '100%', maxWidth: '520px', maxHeight: '85vh', overflowY: 'auto', background: 'rgba(20,18,14,0.98)', borderRadius: '20px 20px 0 0', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: '36px', height: '5px', background: 'rgba(255,255,255,0.2)', borderRadius: '3px', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>Full route</h3>
               {activeStops.map((stop, i) => (
                 stop.type === 'transport' ? (
-                  <div key={i} style={{ padding: '6px 0 6px 16px', fontSize: '11px', color: 'rgba(245,239,230,0.5)' }}>{stop.label}</div>
+                  <div key={i} style={{ padding: '6px 0 6px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>{stop.label}</div>
                 ) : (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '12px', marginBottom: '4px', background: 'rgba(255,255,255,0.06)' }}>
-                    <img src={stop.img} alt={stop.name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '14px', marginBottom: '4px', background: 'rgba(255,255,255,0.06)' }}>
+                    <img src={stop.img} alt={stop.name} style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} />
                     <div>
-                      <p style={{ fontSize: '12px', fontWeight: 600, color: '#F5EFE6' }}>{stop.name}</p>
-                      <p style={{ fontSize: '10px', color: 'rgba(245,239,230,0.5)' }}>{stop.time}</p>
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>{stop.name}</p>
+                      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>{stop.time}</p>
                     </div>
                   </div>
                 )

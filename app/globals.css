@@ -1,46 +1,85 @@
 /* app/globals.css */
 :root {
-  --black: #0F0E0C;
-  --white: #FFFFFF;
-  --off-white: #FAF8F5;
-  --grey: #717171;
-  --grey-light: #A1A1A1;
-  --light-grey: #EBEBEB;
+  /* HIG System Colours */
+  --system-bg: #F2F2F7;
+  --system-bg-elevated: #FFFFFF;
+  --system-bg-secondary: #FFFFFF;
+  
+  --label-primary: #000000;
+  --label-secondary: rgba(60, 60, 67, 0.6);
+  --label-tertiary: rgba(60, 60, 67, 0.3);
+  --label-quaternary: rgba(60, 60, 67, 0.18);
+  
+  --separator: rgba(60, 60, 67, 0.29);
+  --separator-opaque: #C6C6C8;
+  
+  /* ETA Brand */
   --rum: #FF4B2B;
   --rum-dark: #E03A1C;
-  --deep-rum: #C9301A;
+  --rum-tint: rgba(255, 75, 43, 0.1);
   --gold: #FFB800;
   --live: #00E5CC;
-  --card-bg: #FFFFFF;
-  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --card-shadow-deep: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --radius-card: 12px;
-  --radius-sheet: 20px;
-  --radius-pill: 999px;
-  --spacing-1: 4px;
-  --spacing-2: 8px;
-  --spacing-3: 12px;
-  --spacing-4: 16px;
-  --spacing-5: 24px;
-  --spacing-6: 32px;
-  --spacing-7: 40px;
+  
+  /* HIG semantic */
+  --success: #34C759;
+  --warning: #FF9500;
+  --error: #FF3B30;
+  --info: #007AFF;
+  
+  /* HIG Spacing Scale (8pt grid) */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  
+  /* HIG Radii */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  
+  /* HIG Touch Targets */
+  --tap-min: 44px;
+  
+  /* HIG Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-sheet: 0 -2px 12px rgba(0, 0, 0, 0.08);
+  
+  /* HIG Motion */
+  --duration-fast: 0.2s;
+  --duration-standard: 0.3s;
+  --duration-slow: 0.4s;
+  --spring-standard: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Dark Mode — HIG elevation levels */
 [data-theme="dark"] {
-  --black: #F5EFE6;
-  --white: #1C1C1E;
-  --off-white: #0F0E0C;
-  --grey: #A1A1A1;
-  --grey-light: #717171;
-  --light-grey: #2C2C2E;
-  --card-bg: #1C1C1E;
-  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.7);
-  --card-shadow-deep: 0 8px 24px rgba(0, 0, 0, 0.8);
+  --system-bg: #000000;
+  --system-bg-elevated: #1C1C1E;
+  --system-bg-secondary: #2C2C2E;
+  
+  --label-primary: #FFFFFF;
+  --label-secondary: rgba(235, 235, 245, 0.6);
+  --label-tertiary: rgba(235, 235, 245, 0.3);
+  --label-quaternary: rgba(235, 235, 245, 0.18);
+  
+  --separator: rgba(84, 84, 88, 0.6);
+  --separator-opaque: #38383A;
+  
   --rum: #FF6B3D;
-  --gold: #FFB800;
-  --live: #00E5CC;
+  --rum-tint: rgba(255, 107, 61, 0.15);
+  
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.8);
+  --shadow-sheet: 0 -2px 12px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -50,37 +89,114 @@
 }
 
 html {
-  background: #FAF8F5;
-}
-
-html[data-theme="dark"] {
-  background: #0F0E0C;
+  background: var(--system-bg);
 }
 
 body {
-  background: #FAF8F5;
+  background: var(--system-bg);
+  color: var(--label-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--black);
+  letter-spacing: -0.01em;
 }
 
-body[data-theme="dark"] {
-  background: #0F0E0C;
+/* ============ HIG NAVIGATION BAR ============ */
+.nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(242, 242, 247, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+  padding: var(--space-2) var(--space-4);
 }
 
-/* ============ CARD ============ */
+[data-theme="dark"] .nav-bar {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.nav-bar-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--label-primary);
+}
+
+.nav-bar-large {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ============ HIG TAB BAR ============ */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(242, 242, 247, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 50;
+}
+
+[data-theme="dark"] .tab-bar {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  min-height: var(--tap-min);
+  min-width: 44px;
+  justify-content: center;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab-item.active {
+  color: var(--rum);
+}
+
+.tab-item.inactive {
+  color: var(--label-secondary);
+}
+
+.tab-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.tab-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* ============ HIG CARD ============ */
 .card {
-  background: var(--card-bg);
-  border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
+  background: var(--system-bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow var(--duration-fast) ease;
   cursor: pointer;
 }
 
 .card:active {
-  transform: scale(0.98);
+  opacity: 0.7;
 }
 
 .card-image {
@@ -99,56 +215,58 @@ body[data-theme="dark"] {
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.6));
+  background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.7));
 }
 
 .card-badge {
   position: absolute;
-  top: var(--spacing-2);
-  left: var(--spacing-2);
+  top: var(--space-2);
+  left: var(--space-2);
   background: rgba(255, 255, 255, 0.92);
   color: #0F0E0C;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
   padding: 4px 8px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full);
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px;
 }
 
 .card-content {
-  padding: var(--spacing-3);
+  padding: var(--space-3);
 }
 
 .card-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   margin-bottom: 2px;
-  color: var(--black);
+  color: var(--label-primary);
+  letter-spacing: -0.01em;
 }
 
 .card-subtitle {
-  font-size: 11px;
-  color: var(--grey);
+  font-size: 13px;
+  color: var(--label-secondary);
 }
 
 .card-price {
   font-family: 'Space Mono', monospace;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--rum);
 }
 
-/* ============ POLAROID ============ */
+/* ============ HIG POLAROID (brand exception) ============ */
 .polaroid {
-  background: var(--white);
-  padding: var(--spacing-2) var(--spacing-2) var(--spacing-6);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  background: #FFFFFF;
+  padding: var(--space-2) var(--space-2) var(--space-6);
+  box-shadow: var(--shadow-elevated);
   transform: rotate(-2deg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--duration-fast) ease;
   position: relative;
   cursor: pointer;
 }
@@ -164,9 +282,9 @@ body[data-theme="dark"] {
 .polaroid-caption {
   font-family: 'Georgia', serif;
   font-style: italic;
-  color: var(--grey);
+  color: var(--label-secondary);
   text-align: center;
-  margin-top: var(--spacing-2);
+  margin-top: var(--space-2);
   font-size: 13px;
 }
 
@@ -183,218 +301,53 @@ body[data-theme="dark"] {
   border-radius: 2px;
 }
 
-/* ============ BUTTONS ============ */
+/* ============ HIG BUTTONS ============ */
 .btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-2);
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 15px;
+  gap: var(--space-2);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
-  border-radius: var(--radius-card);
+  transition: opacity var(--duration-fast) ease;
+  border-radius: var(--radius-md);
+  min-height: var(--tap-min);
 }
 
 .btn:active {
-  transform: scale(0.98);
+  opacity: 0.6;
 }
 
 .btn-primary {
   background: var(--rum);
   color: white;
-  height: 48px;
   padding: 0 20px;
+  min-height: var(--tap-min);
 }
 
-.btn-primary:hover {
-  background: var(--rum-dark);
+.btn-secondary {
+  background: var(--rum-tint);
+  color: var(--rum);
+  padding: 0 20px;
+  min-height: var(--tap-min);
 }
 
-.btn-primary:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+.btn-tertiary {
+  background: transparent;
+  color: var(--rum);
+  padding: 0 12px;
+  min-height: var(--tap-min);
 }
 
-/* ============ TAB BAR ============ */
-.tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--deep-rum);
-  border-top: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  z-index: 50;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.tab-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-1);
-  cursor: pointer;
-  padding: var(--spacing-2);
-  transition: color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.tab-item:active {
-  opacity: 0.7;
-}
-
-.tab-item.active {
-  color: #FFFFFF;
-}
-
-.tab-item.inactive {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.tab-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.tab-label {
-  font-size: 10px;
-  font-weight: 600;
-}
-
-/* ============ FLOATING PILL ============ */
-.floating-pill {
-  position: fixed;
-  top: calc(env(safe-area-inset-top) + 12px);
-  right: 16px;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border-radius: var(--radius-pill);
-  padding: 6px 10px 6px 6px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease;
-}
-
-.floating-pill:active {
-  transform: scale(0.96);
-}
-
-[data-theme="dark"] .floating-pill {
-  background: rgba(28, 28, 30, 0.92);
-}
-
-.floating-pill-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--light-grey);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.floating-pill-points {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* ============ LOGO ============ */
-.logo-container {
-  padding: 16px 16px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.logo-container img {
-  width: 72px;
-  height: auto;
-  display: block;
-}
-
-/* ============ ACTIVE TRIP BANNER ============ */
-.active-trip-banner {
-  position: sticky;
-  top: calc(env(safe-area-inset-top) + 12px);
-  z-index: 35;
-  margin: 0 16px;
-  background: #1a1530;
-  border-radius: var(--radius-card);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.active-trip-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-}
-
-.active-trip-banner-eta {
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--live);
-  flex-shrink: 0;
-}
-
-.active-trip-banner-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.active-trip-banner-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #F5EFE6;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.active-trip-banner-sub {
-  font-size: 11px;
-  color: rgba(245, 239, 230, 0.6);
-}
-
-.active-trip-banner-dismiss {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(245, 239, 230, 0.6);
-  flex-shrink: 0;
-}
-
-/* ============ SECTION HEADERS ============ */
+/* ============ HIG SECTION HEADERS ============ */
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4) 0 var(--spacing-2);
+  padding: var(--space-4) 0 var(--space-2);
 }
 
 .section-heading {
@@ -404,370 +357,47 @@ body[data-theme="dark"] {
 }
 
 .section-eyebrow {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--grey);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--label-secondary);
 }
 
 .section-title {
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--black);
+  letter-spacing: -0.02em;
+  color: var(--label-primary);
 }
 
 .section-link {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--rum);
   cursor: pointer;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: var(--spacing-1);
+  gap: 2px;
+  min-height: var(--tap-min);
 }
 
-.section-link:active {
-  opacity: 0.7;
-}
-
-/* ============ STORIES SECTION ============ */
-.stories-section {
-  box-shadow: var(--card-shadow-deep);
-  background: var(--card-bg);
-  position: relative;
-  z-index: 1;
-}
-
-.stories-separator {
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--rum), transparent);
-  animation: rumDraw 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transform-origin: center;
-}
-
-@keyframes rumDraw {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-/* ============ SECTION DIVIDER ============ */
-.section-divider {
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--rum), transparent);
-  margin: 32px 0;
-}
-
-/* ============ MOOD PICKER ============ */
-.mood-picker {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 16px;
-  scroll-snap-type: x mandatory;
-  align-items: center;
-}
-
-.mood-picker::-webkit-scrollbar {
-  display: none;
-}
-
-.mood-pill {
-  flex-shrink: 0;
-  scroll-snap-align: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  font-family: 'Inter', system-ui, sans-serif;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--card-bg);
-  color: var(--grey);
-  box-shadow: var(--card-shadow);
-  opacity: 0.6;
-  transform: scale(0.92);
-}
-
-.mood-pill.centre {
-  background: var(--rum);
-  color: white;
-  opacity: 1;
-  transform: scale(1.08);
-  box-shadow: var(--card-shadow-deep);
-  font-size: 14px;
-  padding: 12px 20px;
-}
-
-.mood-pill:active {
-  transform: scale(0.95);
-}
-
-/* ============ FEATURED HERO ============ */
-.featured-hero {
-  position: relative;
-  width: calc(100% - 32px);
-  margin: 0 16px;
-  height: 380px;
-  overflow: hidden;
-  cursor: pointer;
-  border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow-deep);
-}
-
-.featured-hero video,
-.featured-hero img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.featured-hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 14, 12, 0.1) 0%,
-    rgba(15, 14, 12, 0.2) 30%,
-    rgba(15, 14, 12, 0.6) 60%,
-    rgba(15, 14, 12, 0.9) 100%
-  );
-}
-
-.featured-hero-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 24px 20px 32px;
-}
-
-.featured-hero-title {
-  font-size: 32px;
-  font-weight: 800;
-  color: white;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-  margin-bottom: 4px;
-}
-
-.featured-hero-sub {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 400;
-  line-height: 1.4;
-}
-
-.featured-hero-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 2;
-  background: rgba(255, 255, 255, 0.9);
-  color: #0F0E0C;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* ============ HORIZONTAL SCROLL ============ */
-.horizontal-scroll {
-  display: flex;
-  gap: var(--spacing-3);
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-top: var(--spacing-2);
-  padding-bottom: var(--spacing-4);
-}
-
-.horizontal-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* ============ STORY RINGS ============ */
-.story-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.story-ring:active {
-  opacity: 0.7;
-}
-
-.story-ring.premium {
-  background: var(--rum);
-}
-
-.story-ring.standard {
-  background: var(--light-grey);
-}
-
-.story-ring img {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--card-bg);
-}
-
-/* ============ GRID ============ */
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-3);
-}
-
-/* ============ CHIP ============ */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--spacing-2) 14px;
-  border-radius: var(--radius-pill);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
-  background: var(--light-grey);
-  color: var(--grey);
-  border: none;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.chip:active {
-  opacity: 0.7;
-}
-
-.chip.active {
-  background: var(--rum);
-  color: white;
-}
-
-/* ============ HEART TAP TARGET ============ */
-.heart-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--light-grey);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  color: var(--grey);
-}
-
-.heart-btn:active {
-  transform: scale(0.9);
-}
-
-/* ============ EMPTY STATE ============ */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-7) var(--spacing-4);
-  gap: var(--spacing-3);
-  color: var(--grey);
-  font-size: 14px;
-  text-align: center;
-}
-
-/* ============ SKELETON ============ */
-.skeleton-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
-.skeleton-image {
-  background: var(--light-grey);
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.skeleton-text {
-  background: var(--light-grey);
-  border-radius: 4px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ============ LAUNCH SCREEN ============ */
-.launch-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: var(--off-white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeOut 0.5s ease-in-out 2s forwards;
-}
-
-@keyframes fadeOut {
-  to { opacity: 0; visibility: hidden; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
-}
-
-/* ============ LIVE DOT ============ */
-.live-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--rum);
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-/* ============ BOTTOM SHEET ============ */
+/* ============ HIG BOTTOM SHEET ============ */
 .bottom-sheet {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--card-bg);
-  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-  box-shadow: var(--card-shadow-deep);
+  background: var(--system-bg-elevated);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
   transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--duration-standard) var(--spring-standard);
   z-index: 50;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
+  padding-top: var(--space-3);
 }
 
 .bottom-sheet.open {
@@ -781,7 +411,7 @@ body[data-theme="dark"] {
   z-index: 49;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-standard) ease;
 }
 
 .bottom-sheet-overlay.open {
@@ -789,18 +419,71 @@ body[data-theme="dark"] {
   pointer-events: auto;
 }
 
-/* ============ UTILITY ============ */
-.no-scrollbar::-webkit-scrollbar {
+.sheet-grabber {
+  width: 36px;
+  height: 5px;
+  background: var(--label-tertiary);
+  border-radius: 3px;
+  margin: 0 auto var(--space-3);
+}
+
+/* ============ HIG CHIP ============ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) ease;
+  background: var(--system-bg-secondary);
+  color: var(--label-primary);
+  border: none;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: var(--tap-min);
+}
+
+.chip.active {
+  background: var(--rum);
+  color: white;
+}
+
+/* ============ HIG UTILITY ============ */
+.horizontal-scroll {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+  -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
   display: none;
 }
 
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
 }
 
-.price-font {
-  font-family: 'Space Mono', monospace;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+  gap: var(--space-3);
+  color: var(--label-secondary);
+  font-size: 15px;
+  text-align: center;
 }
 
 .num-font {
@@ -810,135 +493,159 @@ body[data-theme="dark"] {
 
 .caption-font {
   font-family: 'Georgia', serif;
+  font-style: italic;
 }
 
-.avatar-stack {
-  display: flex;
-  align-items: center;
-}
-
-.avatar-stack img {
-  width: 24px;
-  height: 24px;
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--live);
   border-radius: 50%;
-  border: 2px solid var(--card-bg);
-  margin-left: -8px;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
-.avatar-stack img:first-child {
-  margin-left: 0;
-}
-
-/* ============ MUTED PRICE TIER ============ */
-.price-tier {
-  color: var(--grey);
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  font-weight: 400;
-}
-
-/* ============ STAR RATING ============ */
-.rating-text {
-  font-size: 11px;
-  color: var(--grey);
+/* ============ HIG STORY RINGS ============ */
+.story-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  padding: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
 }
 
-/* ============ SELECTION MICRO-ANIMATION ============ */
-.select-bounce {
-  animation: selectBounce 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+.story-ring.premium {
+  background: var(--rum);
 }
 
-@keyframes selectBounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+.story-ring.standard {
+  background: var(--separator);
 }
 
-/* ============ PROGRESS BAR FILL ============ */
-.progress-fill {
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.story-ring img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--system-bg-elevated);
 }
 
-/* ============ CONFETTI ============ */
-.confetti-piece {
-  position: fixed;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  z-index: 200;
-  pointer-events: none;
-  animation: confettiFall 1.2s ease-in forwards;
-}
-
-@keyframes confettiFall {
-  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
-  100% { opacity: 0; transform: translateY(80vh) rotate(720deg); }
-}
-
-/* ============ MOOD VIDEO TILE ============ */
-.mood-video-tile {
+/* ============ HIG FEATURED HERO ============ */
+.featured-hero {
   position: relative;
-  border-radius: var(--radius-card);
+  width: 100%;
+  height: 380px;
   overflow: hidden;
   cursor: pointer;
-  height: 160px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
-.mood-video-tile video {
+.featured-hero video,
+.featured-hero img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.mood-video-tile.selected {
-  box-shadow: 0 0 0 2px var(--rum);
-}
-
-.mood-video-tile-overlay {
+.featured-hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.7));
+  background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.7));
 }
 
-.mood-video-tile-label {
+.featured-hero-content {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  font-size: 14px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+}
+
+.featured-hero-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.featured-hero-sub {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.featured-hero-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0F0E0C;
+  font-size: 11px;
   font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============ HIG MOOD PICKER ============ */
+.mood-picker {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: var(--space-3) var(--space-4);
+  -webkit-overflow-scrolling: touch;
+  align-items: center;
+}
+
+.mood-picker::-webkit-scrollbar {
+  display: none;
+}
+
+.mood-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: all var(--duration-standard) var(--spring-standard);
+  background: var(--system-bg-secondary);
+  color: var(--label-secondary);
+  min-height: var(--tap-min);
+}
+
+.mood-pill.centre {
+  background: var(--rum);
   color: white;
+  font-weight: 600;
 }
 
-/* ============ WALLET BRANDED CARD ============ */
-.wallet-branded-card {
-  position: relative;
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  padding: 24px;
-  color: white;
-  background: linear-gradient(135deg, #1a1530 0%, #2C1A3A 50%, #0F0E0C 100%);
-  box-shadow: var(--card-shadow-deep);
+/* ============ HIG PROGRESS ============ */
+.progress-fill {
+  transition: width var(--duration-standard) var(--spring-standard);
 }
 
-.wallet-branded-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 80% 20%, rgba(255, 75, 43, 0.3) 0%, transparent 60%),
-              radial-gradient(ellipse at 20% 80%, var(--gold) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.wallet-branded-card-content {
-  position: relative;
-  z-index: 1;
-}
-
-/* ============ PASSPORT 3D FLIP ============ */
+/* ============ HIG PASSport 3D (brand exception, keep) ============ */
 .passport-book {
   position: relative;
   perspective: 1200px;
@@ -952,7 +659,7 @@ body[data-theme="dark"] {
   inset: 0;
   transform-style: preserve-3d;
   transform-origin: left center;
-  transition: transform 0.7s cubic-bezier(0.45, 0.05, 0.35, 1);
+  transition: transform 0.7s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .passport-leaf.turned {
@@ -1020,36 +727,14 @@ body[data-theme="dark"] {
   transition: opacity 0.32s ease;
 }
 
-/* ============ STAMP SHAPES ============ */
-.stamp-food {
-  border-radius: 50%;
-}
+/* ============ HIG STAMPS ============ */
+.stamp-food { border-radius: 50%; }
+.stamp-drinks { border-radius: 4px; transform: rotate(-8deg); }
+.stamp-activity { border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; }
+.stamp-wellness { border-radius: 50%; border-style: double; }
+.stamp-beach { border-radius: 2px; transform: rotate(6deg); }
+.stamp-transport { border-radius: 0; transform: rotate(-4deg); }
 
-.stamp-drinks {
-  border-radius: 4px;
-  transform: rotate(-8deg);
-}
-
-.stamp-activity {
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-}
-
-.stamp-wellness {
-  border-radius: 50%;
-  border-style: double;
-}
-
-.stamp-beach {
-  border-radius: 2px;
-  transform: rotate(6deg);
-}
-
-.stamp-transport {
-  border-radius: 0;
-  transform: rotate(-4deg);
-}
-
-/* ============ MILESTONE STAMP ============ */
 .milestone-stamp {
   border: 4px solid var(--gold);
   border-radius: 50%;
@@ -1057,9 +742,189 @@ body[data-theme="dark"] {
   background: rgba(255, 184, 0, 0.05);
 }
 
-/* ============ STAMP ANIMATION ============ */
 @keyframes stampLand {
   0% { transform: scale(2) rotate(-12deg); opacity: 0; }
   50% { transform: scale(0.9) rotate(-12deg); opacity: 1; }
   100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+}
+
+/* ============ HIG SELECTION ============ */
+.select-bounce {
+  animation: selectBounce var(--duration-fast) var(--spring-standard);
+}
+
+@keyframes selectBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ============ HIG CONFETTI (brand moment) ============ */
+.confetti-piece {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  z-index: 200;
+  pointer-events: none;
+  animation: confettiFall 1.2s ease-in forwards;
+}
+
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(80vh) rotate(720deg); }
+}
+
+/* ============ HIG HEART BUTTON ============ */
+.heart-btn {
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: 50%;
+  background: var(--system-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) ease;
+  flex-shrink: 0;
+  color: var(--label-secondary);
+}
+
+.heart-btn:active {
+  opacity: 0.6;
+}
+
+/* ============ HIG WALLET CARD (brand exception) ============ */
+.wallet-branded-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  padding: var(--space-6);
+  color: white;
+  background: linear-gradient(135deg, #1a1530 0%, #2C1A3A 50%, #0F0E0C 100%);
+  box-shadow: var(--shadow-elevated);
+}
+
+.wallet-branded-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 20%, rgba(255, 75, 43, 0.3) 0%, transparent 60%),
+              radial-gradient(ellipse at 20% 80%, var(--gold) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.wallet-branded-card-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============ HIG MOOD VIDEO ============ */
+.mood-video-tile {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  height: 160px;
+}
+
+.mood-video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mood-video-tile.selected {
+  box-shadow: 0 0 0 2px var(--rum);
+}
+
+.mood-video-tile-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.7));
+}
+
+.mood-video-tile-label {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+}
+
+/* ============ HIG SKELETON ============ */
+.skeleton-card {
+  background: var(--system-bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.skeleton-image {
+  background: var(--separator);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  background: var(--separator);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============ HIG LAUNCH SCREEN ============ */
+.launch-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--system-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeOut 0.5s ease-in-out 2s forwards;
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; visibility: hidden; }
+}
+
+/* ============ HIG AVATAR STACK ============ */
+.avatar-stack {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-stack img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--system-bg-elevated);
+  margin-left: -8px;
+}
+
+.avatar-stack img:first-child {
+  margin-left: 0;
+}
+
+/* ============ HIG RATING ============ */
+.rating-text {
+  font-size: 13px;
+  color: var(--label-secondary);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ============ HIG PRICE TIER ============ */
+.price-tier {
+  color: var(--label-secondary);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 400;
 }

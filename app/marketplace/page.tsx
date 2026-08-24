@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
@@ -51,7 +50,7 @@ const CATEGORIES = [
   { name: 'Activities', icon: 'activity' },
   { name: 'Wellness', icon: 'wellness' },
   { name: 'Beach', icon: 'sun' },
-  { name: 'Transport', icon: 'compass' }
+  { name: 'Transport', icon: 'route' }
 ]
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
@@ -74,7 +73,6 @@ export default function MarketplacePage() {
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string }>>([])
-  const [darkMode, setDarkMode] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -86,8 +84,6 @@ export default function MarketplacePage() {
     if (savedCategory) setSelectedCategory(savedCategory)
     const savedSort = localStorage.getItem('marketplaceSort')
     if (savedSort) setSortBy(savedSort)
-    const savedTheme = localStorage.getItem('theme')
-    setDarkMode(savedTheme === 'dark')
   }, [])
 
   const fetchData = async () => {
@@ -183,20 +179,12 @@ export default function MarketplacePage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)', overflowX: 'hidden' }}>
-        <div className="logo-container" onClick={() => router.push('/')}>
-          {darkMode ? (
-            <img src="/logo-dark.png" alt="ETA" />
-          ) : (
-            <img src="/logo.png" alt="ETA" />
-          )}
-        </div>
-        <FloatingPill />
-        <div style={{ padding: '16px 16px 100px' }}>
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
+        <div style={{ padding: '16px', paddingBottom: '100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
-          <div className="skeleton-card" style={{ height: '200px', marginBottom: '32px' }}>
+          <div className="skeleton-card" style={{ height: '200px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
           <div className="grid-2">
@@ -204,8 +192,8 @@ export default function MarketplacePage() {
               <div key={i} className="skeleton-card">
                 <div className="skeleton-image" style={{ height: '140px' }} />
                 <div style={{ padding: '12px' }}>
-                  <div className="skeleton-text" style={{ height: '14px', width: '80%', marginBottom: '8px' }} />
-                  <div className="skeleton-text" style={{ height: '10px', width: '60%' }} />
+                  <div className="skeleton-text" style={{ height: '16px', width: '80%', marginBottom: '8px' }} />
+                  <div className="skeleton-text" style={{ height: '12px', width: '60%' }} />
                 </div>
               </div>
             ))}
@@ -217,51 +205,40 @@ export default function MarketplacePage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <div className="logo-container" onClick={() => router.push('/')}>
-        {darkMode ? (
-          <img src="/logo-dark.png" alt="ETA" />
-        ) : (
-          <img src="/logo.png" alt="ETA" />
-        )}
-      </div>
-      <FloatingPill />
-
-      <div style={{ padding: '16px 16px 16px' }}>
+    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+      <div style={{ padding: '16px' }}>
         {/* Search bar */}
         <div className="card" style={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: '8px',
-          padding: '10px 14px',
+          padding: '12px 14px',
           marginBottom: '24px',
-          position: 'sticky',
-          top: '12px',
-          zIndex: 30
+          minHeight: '44px'
         }}>
-          <Icon name="search" size={16} style={{ color: 'var(--grey)' }} />
+          <Icon name="search" size={16} style={{ color: 'var(--label-secondary)' }} />
           <input
             type="text"
             placeholder="Search vendors, food, drinks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--black)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
+            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
           />
-          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <Icon name="filter" size={16} style={{ color: 'var(--grey)' }} />
+          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
+            <Icon name="filter" size={16} style={{ color: 'var(--label-secondary)' }} />
           </span>
         </div>
 
         {/* Flash Deals */}
         {flashDeals.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">LIMITED TIME</span>
+                <span className="section-eyebrow">Limited Time</span>
                 <span className="section-title">Flash Deals</span>
               </div>
             </div>
-            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
+            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {flashDeals.map(fd => (
                 <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div className="card" style={{ width: '200px' }}>
@@ -270,9 +247,9 @@ export default function MarketplacePage() {
                       <div className="card-overlay" />
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--rum)' }}>{fd.vendor.name}</p>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{fd.deal}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{fd.deal}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Icon name="clock" size={12} />
                         {formatCountdown(fd.expires)}
                       </p>
@@ -286,27 +263,27 @@ export default function MarketplacePage() {
 
         {/* Dish Of The Day */}
         {dishesOfDay.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">TODAY&apos;S PICK</span>
+                <span className="section-eyebrow">Today&apos;s Pick</span>
                 <span className="section-title">Dish Of The Day</span>
               </div>
             </div>
             <Link href={`/vendor/${dishesOfDay[0].vendorId}`} style={{ textDecoration: 'none' }}>
               <div className="card" style={{ position: 'relative', height: '200px' }}>
                 <img src={dishesOfDay[0].imageUrl} alt={dishesOfDay[0].dish} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.8))' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
                 <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
-                  <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', color: 'rgba(255,255,255,0.7)' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.7)' }}>
                     {dishesOfDay[0].vendorName}
                   </p>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{dishesOfDay[0].dish}</h3>
+                  <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{dishesOfDay[0].dish}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="num-font" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--rum)' }}>
+                    <span className="num-font" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--rum)' }}>
                       ${dishesOfDay[0].price}
                     </span>
-                    <span className="num-font" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                    <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
                       {dishesOfDay[0].eta}
                     </span>
                   </div>
@@ -318,15 +295,15 @@ export default function MarketplacePage() {
 
         {/* Premium Members */}
         {premiumVendors.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">TOP TIER</span>
+                <span className="section-eyebrow">Top Tier</span>
                 <span className="section-title">Premium Members</span>
               </div>
-              <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
+              <Link href="/vendors" className="section-link">See All</Link>
             </div>
-            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
+            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {premiumVendors.map((v) => (
                 <Link 
                   key={v.id} 
@@ -344,8 +321,8 @@ export default function MarketplacePage() {
                       )}
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                       {v.rating && (
                         <div className="rating-text">
                           ★ <span className="num-font">{v.rating}</span>
@@ -362,13 +339,13 @@ export default function MarketplacePage() {
 
         {/* Accommodation */}
         {filteredAccommodations.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">STAY AWHILE</span>
+                <span className="section-eyebrow">Stay Awhile</span>
                 <span className="section-title">Accommodation</span>
               </div>
-              <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
+              <Link href="/vendors" className="section-link">See All</Link>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px' }}>
               {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
@@ -381,7 +358,7 @@ export default function MarketplacePage() {
                 </button>
               ))}
             </div>
-            <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
+            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {filteredAccommodations.map(a => (
                 <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '220px' }}>
                   <div className="card">
@@ -389,8 +366,8 @@ export default function MarketplacePage() {
                       <img src={a.media?.[0]?.url || ''} alt={a.name} />
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{a.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>
+                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
                         ★ <span className="num-font">{a.googleStars}</span> · {a.type}
                       </p>
                       <p className="card-price">{a.priceRange}/night</p>
@@ -406,16 +383,16 @@ export default function MarketplacePage() {
         <div>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">FULL LISTINGS</span>
+              <span className="section-eyebrow">Full Listings</span>
               <span className="section-title">All Vendors</span>
             </div>
-            <Link href="/vendors" className="section-link">See all <Icon name="chevronRight" size={14} /></Link>
+            <Link href="/vendors" className="section-link">See All</Link>
           </div>
           {filteredVendors.length === 0 ? (
             <div className="empty-state">
-              <Icon name="search" size={32} style={{ opacity: 0.3 }} />
-              <p style={{ fontSize: '16px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
-              <p style={{ fontSize: '13px' }}>Try adjusting your search or filters</p>
+              <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
+              <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
+              <p style={{ fontSize: '15px' }}>Try adjusting your search or filters</p>
             </div>
           ) : (
             <div className="grid-2" style={{ gap: '12px' }}>
@@ -435,8 +412,8 @@ export default function MarketplacePage() {
                       <div className="card-content">
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{v.name}</p>
-                            <p style={{ fontSize: '11px', color: 'var(--grey)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                            <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                            <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                             {v.rating && (
                               <div className="rating-text" style={{ marginBottom: '4px' }}>
                                 ★ <span className="num-font">{v.rating}</span>
@@ -447,9 +424,9 @@ export default function MarketplacePage() {
                           <button
                             className="heart-btn"
                             onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--grey)' }}
+                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
                           >
-                            <Icon name="heart" size={14} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                            <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
                           </button>
                         </div>
                         <p className="price-tier">{v.priceRange}</p>
@@ -466,11 +443,11 @@ export default function MarketplacePage() {
       {/* Filter Sheet */}
       <div className={`bottom-sheet-overlay ${showFilterSheet ? 'open' : ''}`} onClick={() => setShowFilterSheet(false)} />
       <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
-        <div style={{ padding: '20px' }}>
-          <div style={{ width: '36px', height: '4px', background: 'var(--light-grey)', borderRadius: '2px', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '16px' }}>Filter & Sort</h3>
+        <div className="sheet-grabber" />
+        <div style={{ padding: '0 20px 20px' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
           
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Location</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Location</p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
             {['NEGRIL', 'MONTEGO_BAY'].map(c => (
               <button
@@ -484,7 +461,7 @@ export default function MarketplacePage() {
             ))}
           </div>
 
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Categories</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Categories</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {CATEGORIES.map(cat => (
               <button
@@ -492,13 +469,13 @@ export default function MarketplacePage() {
                 onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
                 className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
               >
-                <Icon name={cat.icon as any} size={12} />
+                <Icon name={cat.icon as any} size={14} />
                 {cat.name}
               </button>
             ))}
           </div>
 
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--grey)', marginBottom: '8px' }}>Sort By</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {SORT_OPTIONS.map(option => (
               <button
