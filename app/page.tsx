@@ -251,7 +251,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Divider */}
+        {/* Divider below stories */}
         <div className="divider-faded" />
 
         {/* Featured / Destinations */}
@@ -262,7 +262,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Featured Cards - NO LongPressCard wrapper, simple Link */}
+        {/* Featured Cards */}
         {featuredVendors.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <div
@@ -358,8 +358,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Divider */}
-        <div className="divider-faded" />
+        {/* Divider above moods with extra spacing */}
+        <div className="divider-faded" style={{ marginBottom: '48px' }} />
 
         {/* Moods */}
         {moods.length > 0 && (
