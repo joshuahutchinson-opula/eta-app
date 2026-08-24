@@ -346,16 +346,16 @@ body[data-theme="dark"] {
 }
 
 .tab-logo-container {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: var(--rum);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(184, 32, 16, 0.35);
-  margin-top: -24px;
-  border: 2px solid #FFFFFF;
+  margin-top: -20px;
+  border: 1px solid #FFFFFF;
   transition: transform var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

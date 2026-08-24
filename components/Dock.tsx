@@ -41,7 +41,7 @@ export default function Dock() {
             {tab.type === 'logo' ? (
               <div className={`tab-logo-container ${!pulseDone ? 'tab-logo-pulse' : ''}`}>
                 <img 
-                  src="/logo-dark.png" 
+                  src="/logo-tb.png" 
                   alt="ETA" 
                   className="tab-logo"
                 />
