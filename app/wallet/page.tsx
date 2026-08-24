@@ -3,9 +3,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import FloatingPill from '@/components/FloatingPill'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+
+interface PaymentCard {
+  id: string
+  brand: string
+  last4: string
+  expiry: string
+  isDefault: boolean
+}
 
 interface PointsTransaction {
   id: string
@@ -13,221 +20,251 @@ interface PointsTransaction {
   type: 'earned' | 'spent'
   description: string
   date: string
+  vendorImage?: string
 }
 
 interface Reward {
   id: string
   name: string
   pointsCost: number
-  icon: string
+  image: string
   available: boolean
 }
 
-interface Redemption {
-  id: string
-  reward: string
-  pointsCost: number
-  status: 'pending' | 'completed'
-  date: string
-}
+const MOCK_CARDS: PaymentCard[] = [
+  { id: 'card-1', brand: 'Visa', last4: '4242', expiry: '09/27', isDefault: true },
+  { id: 'card-2', brand: 'Mastercard', last4: '8888', expiry: '11/26', isDefault: false },
+]
+
+const MOCK_HISTORY: PointsTransaction[] = [
+  { id: '1', amount: 250, type: 'earned', description: 'Sunset Catamaran experience', date: 'Today', vendorImage: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=60&h=60&fit=crop' },
+  { id: '2', amount: 100, type: 'earned', description: 'Check-in at Rick\'s Café', date: 'Today', vendorImage: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=60&h=60&fit=crop' },
+  { id: '3', amount: 500, type: 'spent', description: 'Redeemed Free Jerk Plate', date: 'Yesterday', vendorImage: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=60&h=60&fit=crop' },
+  { id: '4', amount: 320, type: 'earned', description: 'Water Life Loop completed', date: 'Yesterday', vendorImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=60&h=60&fit=crop' },
+]
+
+const MOCK_REWARDS: Reward[] = [
+  { id: 'r1', name: 'Free Jerk Plate', pointsCost: 500, image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=150&fit=crop', available: true },
+  { id: 'r2', name: 'Sunset Catamaran', pointsCost: 800, image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&h=150&fit=crop', available: true },
+  { id: 'r3', name: 'Beach Day Pass', pointsCost: 350, image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=200&h=150&fit=crop', available: true },
+  { id: 'r4', name: 'Rum Punch Flight', pointsCost: 250, image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=200&h=150&fit=crop', available: true },
+]
 
 const NEXT_REWARD_THRESHOLD = 2000
 
 export default function WalletPage() {
   const router = useRouter()
-  const [points, setPoints] = useState(1240)
-  const [history, setHistory] = useState<PointsTransaction[]>([])
-  const [rewards, setRewards] = useState<Reward[]>([])
-  const [outstanding, setOutstanding] = useState<Redemption[]>([])
-  const [redemptionHistory, setRedemptionHistory] = useState<Redemption[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [points] = useState(1240)
+  const [balance] = useState(250)
+  const [darkMode, setDarkMode] = useState(false)
+  const [passportOpen, setPassportOpen] = useState(false)
+  const [cards] = useState<PaymentCard[]>(MOCK_CARDS)
+  const [history] = useState<PointsTransaction[]>(MOCK_HISTORY)
+  const [rewards] = useState<Reward[]>(MOCK_REWARDS)
 
   useEffect(() => {
-    fetchWalletData()
+    const savedTheme = localStorage.getItem('theme')
+    setDarkMode(savedTheme === 'dark')
   }, [])
-
-  const fetchWalletData = async () => {
-    try {
-      setPoints(1240)
-      setRewards([
-        { id: 'r1', name: 'Free Jerk Plate', pointsCost: 500, icon: 'food', available: true },
-        { id: 'r2', name: 'Sunset Catamaran Ride', pointsCost: 800, icon: 'activity', available: true },
-        { id: 'r3', name: 'Beach Day Pass', pointsCost: 350, icon: 'sun', available: true },
-        { id: 'r4', name: 'Rum Punch Flight', pointsCost: 250, icon: 'drink', available: true },
-        { id: 'r5', name: '2x Points Weekend', pointsCost: 500, icon: 'sparkle', available: true },
-        { id: 'r6', name: 'Private Driver Day', pointsCost: 1500, icon: 'compass', available: false }
-      ])
-      setHistory([
-        { id: '1', amount: 250, type: 'earned', description: 'Sunset Catamaran experience', date: 'Today, 4:30 PM' },
-        { id: '2', amount: 100, type: 'earned', description: 'Check-in at Rick\'s Café', date: 'Today, 3:15 PM' },
-        { id: '3', amount: 500, type: 'spent', description: 'Redeemed Free Jerk Plate', date: 'Yesterday' },
-        { id: '4', amount: 320, type: 'earned', description: 'Water Life Loop completed', date: 'Yesterday' },
-        { id: '5', amount: 50, type: 'earned', description: 'Reviewed Pork Pit', date: '2 days ago' },
-        { id: '6', amount: 170, type: 'earned', description: 'Golden Hour Drift completed', date: '3 days ago' }
-      ])
-      setOutstanding([
-        { id: 'o1', reward: 'Sunset Catamaran Ride', pointsCost: 800, status: 'pending', date: 'Requested today' },
-        { id: 'o2', reward: '2x Points Weekend Pass', pointsCost: 500, status: 'pending', date: 'Requested today' }
-      ])
-      setRedemptionHistory([
-        { id: 'rh1', reward: 'Free Jerk Plate at Pork Pit', pointsCost: 500, status: 'completed', date: 'Yesterday' },
-        { id: 'rh2', reward: 'Beach Day Pass', pointsCost: 350, status: 'completed', date: 'Last week' }
-      ])
-    } catch (error) {
-      console.error('Failed to fetch wallet data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const progressPercent = Math.min(100, Math.round((points / NEXT_REWARD_THRESHOLD) * 100))
   const pointsToNext = Math.max(0, NEXT_REWARD_THRESHOLD - points)
 
-  const triggerConfetti = () => {
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 1500)
-  }
-
-  if (loading) {
-    return (
-      <main style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
-        <FloatingPill />
-        <div style={{ padding: '60px 16px 100px' }}>
-          <div className="skeleton-card" style={{ height: '180px', marginBottom: '24px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '100px', marginBottom: '24px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '200px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-        </div>
-        <Dock />
-      </main>
-    )
-  }
-
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--off-white)', paddingBottom: '80px', overflowX: 'hidden' }}>
-      <FloatingPill />
+    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+      <div style={{ padding: '16px' }}>
+        {/* ============ WALLET SECTION ============ */}
+        <div style={{ marginBottom: '24px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Wallet</p>
+          <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>
+            ${balance.toFixed(2)}
+          </h2>
 
-      {showConfetti && (
-        <>
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="confetti-piece"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: '-10px',
-                background: ['#FF4B2B', '#FFB800', '#00E5CC', '#9333EA'][i % 4],
-                animationDelay: `${Math.random() * 0.3}s`
-              }}
-            />
-          ))}
-        </>
-      )}
-
-      <div style={{ padding: '60px 16px 16px' }}>
-        {/* Branded Membership Card */}
-        <div className="wallet-branded-card" style={{ marginBottom: '24px' }}>
-          <div className="wallet-branded-card-content">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-              <img src="/logo.png" alt="ETA" style={{ width: '60px', height: 'auto' }} />
-              <span style={{ 
-                fontSize: '10px', 
-                fontWeight: 700, 
-                letterSpacing: '1.5px', 
-                textTransform: 'uppercase',
-                background: 'rgba(255,75,43,0.3)',
-                padding: '4px 10px',
-                borderRadius: '999px'
-              }}>
-                Gold Member
-              </span>
-            </div>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>
-              Jordan Hutchinson
-            </p>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <span className="num-font" style={{ fontSize: '36px', fontWeight: 700, color: 'var(--rum)' }}>
-                {points.toLocaleString()}
-              </span>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>points</span>
-            </div>
-
-            <div style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
-                  {pointsToNext > 0 ? `${pointsToNext} pts to next reward` : 'Next reward unlocked!'}
-                </span>
-                <span className="num-font" style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
-                  {progressPercent}%
-                </span>
+          {/* Attached cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {cards.map(card => (
+              <div key={card.id} className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '10px',
+                  background: 'var(--rum-tint)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Icon name="card" size={20} style={{ color: 'var(--rum)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+                    {card.brand} •••• {card.last4}
+                  </p>
+                  <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
+                    Expires {card.expiry}
+                  </p>
+                </div>
+                {card.isDefault && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '4px 8px',
+                    borderRadius: '999px',
+                    background: 'var(--rum-tint)',
+                    color: 'var(--rum)'
+                  }}>
+                    Default
+                  </span>
+                )}
               </div>
-              <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
-                <div className="progress-fill" style={{ 
-                  width: `${progressPercent}%`, 
-                  height: '100%', 
-                  borderRadius: '3px',
-                  background: 'var(--rum)'
-                }} />
-              </div>
-            </div>
+            ))}
           </div>
+
+          {/* Add card */}
+          <button className="btn btn-secondary" style={{ width: '100%', marginTop: '8px' }}>
+            <Icon name="plus" size={16} />
+            Add Card
+          </button>
         </div>
 
-        {/* Outstanding */}
-        {outstanding.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">PENDING</span>
-                <span className="section-title">Outstanding</span>
+        {/* ============ PASSPORT SECTION ============ */}
+        <div style={{ marginBottom: '24px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>Membership</p>
+
+          {/* Passport cover - click to open */}
+          {!passportOpen ? (
+            <div 
+              onClick={() => setPassportOpen(true)}
+              style={{
+                minHeight: '200px',
+                borderRadius: '14px',
+                background: 'linear-gradient(155deg, #9c2812, #6e1a0c 55%, #4d1207)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                padding: '24px',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 2px, transparent 2px, transparent 4px)',
+                pointerEvents: 'none'
+              }} />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <img src={darkMode ? '/logo-dark.png' : '/logo.png'} alt="ETA" style={{ width: '60px', height: 'auto', marginBottom: '12px' }} />
+                <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700, letterSpacing: '4px', color: 'var(--gold)', textShadow: '0 1px 0 rgba(0,0,0,0.7)', marginBottom: '8px' }}>
+                  ETA
+                </h3>
+                <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', letterSpacing: '2px', color: 'rgba(255, 184, 0, 0.7)', textTransform: 'uppercase' }}>
+                  Gold Member
+                </p>
+                <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.4)', marginTop: '16px' }}>
+                  Tap to open
+                </p>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {outstanding.map(item => (
-                <div key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px' }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{item.reward}</p>
-                    <p className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>{item.pointsCost} pts · {item.date}</p>
-                  </div>
-                  <span style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 700, 
-                    padding: '4px 8px', 
-                    borderRadius: '999px',
-                    background: 'var(--light-grey)',
-                    color: 'var(--grey)'
-                  }}>
-                    PENDING
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          ) : (
+            /* Passport interior */
+            <div style={{
+              minHeight: '200px',
+              borderRadius: '14px',
+              background: 'linear-gradient(160deg, #FEFBF6 0%, #F3ECDD 100%)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              position: 'relative',
+              overflow: 'hidden',
+              padding: '24px 20px'
+            }}>
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px)',
+                pointerEvents: 'none'
+              }} />
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                left: '12px',
+                right: '12px',
+                bottom: '12px',
+                border: '1px solid rgba(184, 32, 16, 0.25)',
+                borderRadius: '4px',
+                pointerEvents: 'none'
+              }} />
 
-        {/* Redeemable Rewards */}
-        <div style={{ marginBottom: '32px' }}>
+              <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                {/* User info */}
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 8px',
+                  overflow: 'hidden'
+                }}>
+                  <Icon name="user" size={24} style={{ color: 'var(--grey)' }} />
+                </div>
+                <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C', marginBottom: '4px' }}>
+                  Jordan Hutchinson
+                </h3>
+
+                {/* Points */}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '6px', marginBottom: '16px' }}>
+                  <span className="num-font" style={{ fontSize: '32px', fontWeight: 700, color: 'var(--rum)' }}>
+                    {points.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--grey)' }}>pts</span>
+                </div>
+
+                {/* Progress ring */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                      {pointsToNext} pts to next reward
+                    </span>
+                    <span className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                      {progressPercent}%
+                    </span>
+                  </div>
+                  <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                    <div className="progress-fill" style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--rum)' }} />
+                  </div>
+                </div>
+
+                <button onClick={() => setPassportOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', minHeight: '44px' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ============ REWARDS SECTION ============ */}
+        <div style={{ marginBottom: '24px' }}>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">REDEEM</span>
+              <span className="section-eyebrow">Redeem</span>
               <span className="section-title">Rewards</span>
             </div>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '8px 0 16px 0' }}>
+          <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
             {rewards.map(reward => (
-              <div key={reward.id} className="card" style={{ width: '140px', flexShrink: 0, cursor: reward.available ? 'pointer' : 'default', opacity: reward.available ? 1 : 0.5 }}>
-                <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--light-grey)' }}>
-                  <Icon name={reward.icon as any} size={28} style={{ color: 'var(--grey)' }} />
+              <div key={reward.id} className="card" style={{ width: '160px', flexShrink: 0, opacity: reward.available ? 1 : 0.5 }}>
+                <div className="card-image" style={{ height: '100px' }}>
+                  <img src={reward.image} alt={reward.name} />
                 </div>
                 <div className="card-content">
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--black)', marginBottom: '4px' }}>{reward.name}</p>
-                  <p className="num-font" style={{ fontSize: '11px', color: reward.available ? 'var(--rum)' : 'var(--grey)' }}>
+                  <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '4px' }}>{reward.name}</p>
+                  <p className="num-font" style={{ fontSize: '13px', color: reward.available ? 'var(--rum)' : 'var(--label-secondary)' }}>
                     {reward.pointsCost} pts
                   </p>
                 </div>
@@ -236,43 +273,49 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* Points History */}
-        <div style={{ marginBottom: '32px' }}>
+        {/* ============ POINTS HISTORY ============ */}
+        <div>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">ACTIVITY</span>
+              <span className="section-eyebrow">Activity</span>
               <span className="section-title">Points History</span>
             </div>
           </div>
           <div className="card" style={{ padding: '4px 16px' }}>
             {history.map((h, i) => (
-              <div key={h.id} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '12px', 
+              <div key={h.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
                 padding: '12px 0',
-                borderBottom: i < history.length - 1 ? '1px solid var(--light-grey)' : 'none'
+                borderBottom: i < history.length - 1 ? '0.5px solid var(--separator)' : 'none'
               }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '50%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  background: h.type === 'earned' ? 'rgba(255,75,43,0.08)' : 'var(--light-grey)',
-                  flexShrink: 0
+                {/* Photo circle */}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  background: 'var(--system-bg-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  <Icon name={h.type === 'earned' ? 'arrow-up' : 'gift'} size={14} style={{ color: h.type === 'earned' ? 'var(--rum)' : 'var(--grey)' }} />
+                  {h.vendorImage ? (
+                    <img src={h.vendorImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <Icon name="sparkle" size={18} style={{ color: 'var(--label-secondary)' }} />
+                  )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--black)' }}>{h.description}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--grey)' }}>{h.date}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{h.description}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{h.date}</p>
                 </div>
-                <span className="num-font" style={{ 
-                  fontSize: '13px', 
-                  fontWeight: 700, 
-                  color: h.type === 'earned' ? 'var(--rum)' : 'var(--grey)'
+                <span className="num-font" style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: h.type === 'earned' ? 'var(--rum)' : 'var(--label-secondary)'
                 }}>
                   {h.type === 'earned' ? '+' : '-'}{h.amount}
                 </span>
@@ -280,38 +323,6 @@ export default function WalletPage() {
             ))}
           </div>
         </div>
-
-        {/* Redemption History */}
-        {redemptionHistory.length > 0 && (
-          <div>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">PREVIOUS</span>
-                <span className="section-title">Redeemed</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {redemptionHistory.map(item => (
-                <div key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px' }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--black)', marginBottom: '2px' }}>{item.reward}</p>
-                    <p className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>{item.pointsCost} pts · {item.date}</p>
-                  </div>
-                  <span style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 700, 
-                    padding: '4px 8px', 
-                    borderRadius: '999px',
-                    background: 'var(--light-grey)',
-                    color: 'var(--grey)'
-                  }}>
-                    DONE
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <Dock />

@@ -131,6 +131,41 @@ export default function Icon({ name, size = 20, className = '', style, onClick }
         <path d="M9 2v6.5L4 20a2 2 0 002 3h12a2 2 0 002-3L15 8.5V2" />
       </svg>
     ),
+    glass: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M5 2h14l-2 14a6 6 0 01-10 0L5 2z" />
+        <path d="M8 2l2 10h4l2-10" />
+      </svg>
+    ),
+    wave: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M2 12c2-2 3-2 5 0s3 2 5 0 3-2 5 0 3 2 5 0" />
+        <path d="M2 6c2-2 3-2 5 0s3 2 5 0 3-2 5 0 3 2 5 0" />
+        <path d="M2 18c2-2 3-2 5 0s3 2 5 0 3-2 5 0 3 2 5 0" />
+      </svg>
+    ),
+    party: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20 8l-14 14-2-2L18 6" />
+        <path d="M4 4l2 2" />
+        <path d="M10 2l1 3" />
+        <path d="M16 2l1 3" />
+        <path d="M22 2l-2 3" />
+        <circle cx="10" cy="14" r="2" />
+      </svg>
+    ),
+    spa: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M8 16c0 2 2 4 4 4s4-2 4-4c0-2-2-4-4-4s-4 2-4 4z" />
+        <path d="M12 12c-3 0-6-2-6-6 3 0 6 2 6 6z" />
+        <path d="M12 12c3 0 6-2 6-6-3 0-6 2-6 6z" />
+      </svg>
+    ),
+    recharge: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      </svg>
+    ),
     activity: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -259,6 +294,11 @@ export default function Icon({ name, size = 20, className = '', style, onClick }
     bookmark: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+      </svg>
+    ),
+    plus: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 5v14M5 12h14" />
       </svg>
     ),
   }

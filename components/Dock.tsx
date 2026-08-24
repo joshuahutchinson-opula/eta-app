@@ -1,19 +1,26 @@
 // components/Dock.tsx
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 
 export default function Dock() {
   const pathname = usePathname()
   const router = useRouter()
+  const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    setDarkMode(savedTheme === 'dark')
+  }, [])
 
   const tabs = [
-    { name: 'Home', href: '/', icon: 'home' },
-    { name: 'Experiences', href: '/experiences', icon: 'compass' },
-    { name: 'Pay', href: '/pay', icon: 'camera' },
-    { name: 'Market', href: '/marketplace', icon: 'marketplace' },
-    { name: 'Explore', href: '/explore', icon: 'mapPin' }
+    { name: 'Home', href: '/', icon: 'home', type: 'icon' },
+    { name: 'Experiences', href: '/experiences', icon: 'compass', type: 'icon' },
+    { name: 'Pay', href: '/pay', icon: '', type: 'logo' },
+    { name: 'Market', href: '/marketplace', icon: 'marketplace', type: 'icon' },
+    { name: 'Profile', href: '/profile', icon: 'user', type: 'icon' }
   ]
 
   return (
@@ -31,9 +38,17 @@ export default function Dock() {
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            <div className="tab-icon">
-              <Icon name={tab.icon} size={24} />
-            </div>
+            {tab.type === 'logo' ? (
+              <img 
+                src={darkMode ? '/logo-dark.png' : '/logo.png'} 
+                alt="ETA" 
+                className="tab-logo"
+              />
+            ) : (
+              <div className="tab-icon">
+                <Icon name={tab.icon} size={24} />
+              </div>
+            )}
             <span className="tab-label">{tab.name}</span>
           </div>
         )

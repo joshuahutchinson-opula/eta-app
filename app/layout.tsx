@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#FAF8F5',
+  themeColor: '#F2F2F7',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -30,16 +30,16 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </head>
       <body style={{ 
-        fontFamily: 'Inter, system-ui, sans-serif',
-        backgroundColor: '#FAF8F5',
-        color: '#0F0E0C',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+        backgroundColor: '#F2F2F7',
+        color: '#000000',
         margin: 0,
         padding: 0
       }}>
         <LaunchScreen />
         <main style={{ 
           paddingBottom: '80px',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           overflowX: 'hidden',
           overflowY: 'visible',
           paddingTop: 0,

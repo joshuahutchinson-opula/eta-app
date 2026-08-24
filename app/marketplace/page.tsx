@@ -4,9 +4,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
+
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false })
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
 
 interface Vendor {
   id: string
@@ -24,6 +30,8 @@ interface Vendor {
   whoThere: number
   rating?: number
   reviewCount?: number
+  lat?: number
+  lng?: number
 }
 
 interface Accommodation {
@@ -49,8 +57,7 @@ const CATEGORIES = [
   { name: 'Drinks', icon: 'drink' },
   { name: 'Activities', icon: 'activity' },
   { name: 'Wellness', icon: 'wellness' },
-  { name: 'Beach', icon: 'sun' },
-  { name: 'Transport', icon: 'route' }
+  { name: 'Beach', icon: 'sun' }
 ]
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
@@ -72,6 +79,9 @@ export default function MarketplacePage() {
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
   const [showFilterSheet, setShowFilterSheet] = useState(false)
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 18.2723, lng: -78.3521 })
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string }>>([])
 
   useEffect(() => {
@@ -84,6 +94,12 @@ export default function MarketplacePage() {
     if (savedCategory) setSelectedCategory(savedCategory)
     const savedSort = localStorage.getItem('marketplaceSort')
     if (savedSort) setSortBy(savedSort)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setUserLocation({ lat: 18.2723, lng: -78.3521 })
+      )
+    }
   }, [])
 
   const fetchData = async () => {
@@ -164,6 +180,7 @@ export default function MarketplacePage() {
     )
     .filter(v => !city || v.city === city)
     .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
+    .filter(v => !showSavedOnly || savedVendors.includes(v.id))
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
@@ -175,8 +192,6 @@ export default function MarketplacePage() {
     !accommodationType || a.type === accommodationType
   )
 
-  const topRatedPremium = [...premiumVendors].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0]
-
   if (loading) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
@@ -187,14 +202,10 @@ export default function MarketplacePage() {
           <div className="skeleton-card" style={{ height: '200px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
-          <div className="grid-2">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="skeleton-card">
-                <div className="skeleton-image" style={{ height: '140px' }} />
-                <div style={{ padding: '12px' }}>
-                  <div className="skeleton-text" style={{ height: '16px', width: '80%', marginBottom: '8px' }} />
-                  <div className="skeleton-text" style={{ height: '12px', width: '60%' }} />
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton-card" style={{ height: '100px' }}>
+                <div className="skeleton-image" style={{ height: '100%' }} />
               </div>
             ))}
           </div>
@@ -207,30 +218,137 @@ export default function MarketplacePage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
-        {/* Search bar */}
+        {/* Search bar with view toggle */}
         <div className="card" style={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: '8px',
           padding: '12px 14px',
-          marginBottom: '24px',
+          marginBottom: '12px',
           minHeight: '44px'
         }}>
           <Icon name="search" size={16} style={{ color: 'var(--label-secondary)' }} />
           <input
             type="text"
-            placeholder="Search vendors, food, drinks..."
+            placeholder="Search vendors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
           />
-          <span onClick={() => setShowFilterSheet(true)} style={{ cursor: 'pointer', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
-            <Icon name="filter" size={16} style={{ color: 'var(--label-secondary)' }} />
-          </span>
+          <button
+            onClick={() => setViewMode('list')}
+            style={{ 
+              background: viewMode === 'list' ? 'var(--rum)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: viewMode === 'list' ? 'white' : 'var(--label-secondary)',
+              flexShrink: 0
+            }}
+          >
+            <Icon name="journal" size={18} />
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            style={{ 
+              background: viewMode === 'map' ? 'var(--rum)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: viewMode === 'map' ? 'white' : 'var(--label-secondary)',
+              flexShrink: 0
+            }}
+          >
+            <Icon name="mapPin" size={18} />
+          </button>
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            style={{ 
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--label-secondary)',
+              flexShrink: 0
+            }}
+          >
+            <Icon name="filter" size={18} />
+          </button>
         </div>
 
+        {/* Category strip + Saved */}
+        <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
+          <button
+            onClick={() => setShowSavedOnly(!showSavedOnly)}
+            className={`chip ${showSavedOnly ? 'active' : ''}`}
+          >
+            <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
+            Saved
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.name}
+              onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
+              className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
+            >
+              <Icon name={cat.icon as any} size={14} />
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Map view */}
+        {viewMode === 'map' && (
+          <div style={{ height: '400px', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' }}>
+            <MapContainer
+              center={[userLocation.lat, userLocation.lng]}
+              zoom={14}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; OpenStreetMap &copy; CARTO'
+              />
+              {filteredVendors.map(v => {
+                const vendorLat = v.lat || userLocation.lat + (Math.random() * 0.02 - 0.01)
+                const vendorLng = v.lng || userLocation.lng + (Math.random() * 0.02 - 0.01)
+                return (
+                  <Marker key={v.id} position={[vendorLat, vendorLng]}>
+                    <Popup>
+                      <div style={{ minWidth: '150px' }}>
+                        <p style={{ fontSize: '15px', fontWeight: 600, color: '#000000' }}>{v.name}</p>
+                        <p style={{ fontSize: '13px', color: '#666666' }}>{formatCategory(v.category)} · {v.priceRange}</p>
+                        <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#999999' }}>
+                          {v.open ? 'Open' : 'Closed'}
+                          {v.isPremium && ' · ★ Premium'}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              })}
+            </MapContainer>
+          </div>
+        )}
+
         {/* Flash Deals */}
-        {flashDeals.length > 0 && (
+        {flashDeals.length > 0 && viewMode === 'list' && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
@@ -262,7 +380,7 @@ export default function MarketplacePage() {
         )}
 
         {/* Dish Of The Day */}
-        {dishesOfDay.length > 0 && (
+        {dishesOfDay.length > 0 && viewMode === 'list' && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
@@ -293,25 +411,20 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Premium Members */}
-        {premiumVendors.length > 0 && (
+        {/* Premium Members - all same size */}
+        {premiumVendors.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-eyebrow">Top Tier</span>
                 <span className="section-title">Premium Members</span>
               </div>
-              <Link href="/vendors" className="section-link">See All</Link>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {premiumVendors.map((v) => (
-                <Link 
-                  key={v.id} 
-                  href={`/vendor/${v.id}`} 
-                  style={{ textDecoration: 'none', flexShrink: 0, width: v.id === topRatedPremium?.id ? '280px' : '180px' }}
-                >
+              {premiumVendors.map(v => (
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '180px' }}>
                   <div className="card">
-                    <div className="card-image" style={{ height: v.id === topRatedPremium?.id ? '180px' : '120px' }}>
+                    <div className="card-image" style={{ height: '120px' }}>
                       <img src={v.images[0]} alt={v.name} />
                       {v.live && (
                         <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -321,14 +434,14 @@ export default function MarketplacePage() {
                       )}
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                      {v.rating && (
-                        <div className="rating-text">
-                          ★ <span className="num-font">{v.rating}</span>
-                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {v.open ? <span className="open-dot" /> : <span className="closed-dot" />}
+                        <span style={{ fontSize: '13px', color: v.open ? 'var(--success)' : 'var(--label-tertiary)' }}>
+                          {v.open ? 'Open' : 'Closed'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -337,8 +450,8 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Accommodation */}
-        {filteredAccommodations.length > 0 && (
+        {/* Accommodation - distinct cards */}
+        {filteredAccommodations.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
@@ -360,17 +473,21 @@ export default function MarketplacePage() {
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {filteredAccommodations.map(a => (
-                <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '220px' }}>
+                <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '240px' }}>
                   <div className="card">
-                    <div className="card-image" style={{ height: '120px' }}>
+                    <div className="card-image" style={{ height: '160px' }}>
                       <img src={a.media?.[0]?.url || ''} alt={a.name} />
                     </div>
                     <div className="card-content">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                        <Icon name="star" size={14} style={{ color: 'var(--gold)' }} />
+                        <span className="num-font" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{a.googleStars}</span>
+                      </div>
                       <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                        ★ <span className="num-font">{a.googleStars}</span> · {a.type}
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{a.type}</p>
+                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum)' }}>
+                        {a.priceRange}<span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> /night</span>
                       </p>
-                      <p className="card-price">{a.priceRange}/night</p>
                     </div>
                   </div>
                 </Link>
@@ -379,61 +496,69 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* All Vendors */}
+        {/* All Vendors - one column full width */}
         <div>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-eyebrow">Full Listings</span>
-              <span className="section-title">All Vendors</span>
+              <span className="section-eyebrow">{showSavedOnly ? 'Your Saves' : 'Full Listings'}</span>
+              <span className="section-title">{showSavedOnly ? 'Saved Vendors' : 'All Vendors'}</span>
             </div>
-            <Link href="/vendors" className="section-link">See All</Link>
           </div>
           {filteredVendors.length === 0 ? (
             <div className="empty-state">
               <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
               <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
-              <p style={{ fontSize: '15px' }}>Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div className="grid-2" style={{ gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredVendors.map(v => (
-                <div key={v.id}>
-                  <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="card">
-                      <div className="card-image" style={{ height: '120px' }}>
-                        <img src={v.images[0]} alt={v.name} />
+                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                    <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                        <button
+                          className="heart-btn"
+                          onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
+                          style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
+                        >
+                          <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                        </button>
+                      </div>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                        {formatCategory(v.category)} · {v.neighborhood}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        {v.open ? (
+                          <>
+                            <span className="open-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="closed-dot" />
+                            <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
+                          </>
+                        )}
                         {v.live && (
-                          <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="live-dot" />
-                            <span className="num-font">{v.whoThere}</span> here now
-                          </div>
+                          <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
+                            · {v.whoThere} here now
+                          </span>
                         )}
                       </div>
-                      <div className="card-content">
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                            <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                            {v.rating && (
-                              <div className="rating-text" style={{ marginBottom: '4px' }}>
-                                ★ <span className="num-font">{v.rating}</span>
-                                {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            className="heart-btn"
-                            onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
-                          >
-                            <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                          </button>
+                      {v.rating && (
+                        <div className="rating-text">
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                         </div>
-                        <p className="price-tier">{v.priceRange}</p>
-                      </div>
+                      )}
+                      <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
                     </div>
-                  </Link>
-                </div>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -457,20 +582,6 @@ export default function MarketplacePage() {
                 style={{ flex: 1, justifyContent: 'center' }}
               >
                 {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Categories</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.name}
-                onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
-                className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
-              >
-                <Icon name={cat.icon as any} size={14} />
-                {cat.name}
               </button>
             ))}
           </div>

@@ -56,16 +56,16 @@ interface Mood {
 }
 
 const MOOD_ICONS: Record<string, string> = {
-  'R&R': 'wellness',
+  'R&R': 'spa',
   'Just The Two Of Us': 'heart',
-  'Party Time': 'moon',
+  'Party Time': 'party',
   'Sunset Chaser': 'sun',
-  'Water Life': 'activity',
+  'Water Life': 'wave',
   'Street Food Crawl': 'food',
-  'Hangover Cures': 'drink',
+  'Hangover Cures': 'recharge',
   'Solo Missions': 'user',
   'Family Day': 'users',
-  'Rum & Bass': 'drink'
+  'Rum & Bass': 'glass'
 }
 
 const STORY_EXAMPLES = [
@@ -84,6 +84,8 @@ const EDITORIAL_SUBHEADS: Record<string, string> = {
   'MoBay Watersports': 'Where the reef comes alive'
 }
 
+const DESTINATIONS = ['Seven Mile', 'West End', 'Hip Strip', 'Cliffs', 'Freeport']
+
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
@@ -94,9 +96,11 @@ export default function HomePage() {
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const [selectedDestination, setSelectedDestination] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
+  const moodPickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAll()
@@ -135,7 +139,18 @@ export default function HomePage() {
     }
   }
 
-  const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+  // Destination filter applies to everything including Featured
+  const destinationFilteredVendors = selectedDestination
+    ? vendors.filter(v => v.neighborhood === selectedDestination)
+    : vendors
+
+  const featuredVendors = destinationFilteredVendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+
+  // Trending = highest whoThere counts
+  const trendingVendors = [...destinationFilteredVendors]
+    .filter(v => v.live)
+    .sort((a, b) => (b.whoThere || 0) - (a.whoThere || 0))
+    .slice(0, 6)
 
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
@@ -146,13 +161,23 @@ export default function HomePage() {
     }
   }
 
+  const snapMoodToCentre = (moodId: string) => {
+    setSelectedMood(selectedMood === moodId ? null : moodId)
+    if (moodPickerRef.current) {
+      const pill = moodPickerRef.current.querySelector(`[data-mood="${moodId}"]`)
+      if (pill) {
+        pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }
+    }
+  }
+
   const filteredExperiences = selectedMood 
     ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
     : experiences
 
   const filteredVendors = selectedMood
-    ? vendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
-    : vendors
+    ? destinationFilteredVendors.filter(v => v.category === selectedMood || v.neighborhood === selectedMood)
+    : destinationFilteredVendors
 
   if (loading) {
     return (
@@ -197,7 +222,26 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Featured Cards - manual swipe only */}
+      {/* Divider below stories */}
+      <div className="divider-faded" />
+
+      {/* Destination Chips */}
+      <div style={{ padding: '0 16px 12px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Destination</p>
+        <div className="horizontal-scroll" style={{ padding: '0' }}>
+          {DESTINATIONS.map(dest => (
+            <button
+              key={dest}
+              onClick={() => setSelectedDestination(selectedDestination === dest ? null : dest)}
+              className={`chip ${selectedDestination === dest ? 'active' : ''}`}
+            >
+              {dest}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Featured Cards with autoplay */}
       {featuredVendors.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div
@@ -206,7 +250,7 @@ export default function HomePage() {
             className="horizontal-scroll"
             style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}
           >
-            {featuredVendors.map((vendor) => (
+            {featuredVendors.map((vendor, index) => (
               <Link
                 key={vendor.id}
                 href={`/vendor/${vendor.id}`}
@@ -215,11 +259,18 @@ export default function HomePage() {
                 <div className="featured-hero" style={{ margin: '0 4px' }}>
                   {vendor.videos && vendor.videos.length > 0 ? (
                     <video
+                      ref={(el) => {
+                        if (el && index === featuredIndex) {
+                          el.muted = true
+                          el.playsInline = true
+                          el.play().catch(() => {})
+                        }
+                      }}
                       src={vendor.videos[0]}
                       muted
                       loop
                       playsInline
-                      preload="metadata"
+                      preload="auto"
                       poster={vendor.images[0]}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -246,28 +297,50 @@ export default function HomePage() {
           {featuredVendors.length > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
               {featuredVendors.map((_, i) => (
-                <div key={i} style={{ 
-                  width: i === featuredIndex ? '16px' : '6px', 
-                  height: '6px', 
-                  borderRadius: '3px', 
-                  background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', 
-                  transition: 'all 0.3s ease' 
-                }} />
+                <div key={i} style={{ width: i === featuredIndex ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', transition: 'all 0.3s ease' }} />
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Faded divider */}
-      <div style={{ 
-        width: '100%', 
-        height: '1px', 
-        background: 'linear-gradient(90deg, transparent, var(--separator), transparent)', 
-        margin: '24px 0' 
-      }} />
+      {/* Trending Near You */}
+      {trendingVendors.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            <div className="section-heading">
+              <span className="section-eyebrow">Hot Right Now</span>
+              <span className="section-title">Trending Near You</span>
+            </div>
+          </div>
+          <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
+            {trendingVendors.map(v => (
+              <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <div className="card" style={{ width: '180px' }}>
+                  <div className="card-image" style={{ height: '110px' }}>
+                    <img src={v.images[0]} alt={v.name} />
+                    {v.live && (
+                      <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="live-dot" />
+                        <span className="num-font">{v.whoThere}</span> here now
+                      </div>
+                    )}
+                  </div>
+                  <div className="card-content">
+                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Moods */}
+      {/* Divider above moods */}
+      <div className="divider-faded" />
+
+      {/* Moods with centre effect */}
       {moods.length > 0 && (
         <div style={{ marginBottom: '24px' }}>
           <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
@@ -276,11 +349,12 @@ export default function HomePage() {
               How We Feelin Today?
             </h2>
           </div>
-          <div className="mood-picker">
+          <div className="mood-picker" ref={moodPickerRef}>
             {moods.map(mood => (
               <button
                 key={mood.id}
-                onClick={() => setSelectedMood(selectedMood === mood.id ? null : mood.id)}
+                data-mood={mood.id}
+                onClick={() => snapMoodToCentre(mood.id)}
                 className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}
               >
                 <Icon name={mood.icon as any} size={16} />
@@ -332,7 +406,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Near You Now */}
+      {/* Vendor list - full width single column */}
       {filteredVendors.length > 0 && (
         <div style={{ padding: '0 16px' }}>
           <div className="section-header">
@@ -342,25 +416,42 @@ export default function HomePage() {
             </div>
             <Link href="/vendors" className="section-link">See All</Link>
           </div>
-          <div className="grid-2" style={{ gap: '12px' }}>
-            {filteredVendors.slice(0, 4).map(v => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredVendors.slice(0, 5).map(v => (
               <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card">
-                  <div className="card-image" style={{ height: '110px' }}>
-                    <img src={v.images[0]} alt={v.name} />
-                    {v.live && (
-                      <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span className="live-dot" />
-                        <span className="num-font">{v.whoThere}</span> here now
+                <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                  <div className="card-image" style={{ width: '100px', height: '100px', borderRadius: '10px', flexShrink: 0, overflow: 'hidden' }}>
+                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                      {formatCategory(v.category)} · {v.neighborhood}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      {v.open ? (
+                        <>
+                          <span className="open-dot" />
+                          <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="closed-dot" />
+                          <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
+                        </>
+                      )}
+                      {v.live && (
+                        <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
+                          · {v.whoThere} here now
+                        </span>
+                      )}
+                    </div>
+                    {v.rating && (
+                      <div className="rating-text">
+                        ★ <span className="num-font">{v.rating}</span>
+                        {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                       </div>
                     )}
-                  </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
-                      {formatCategory(v.category)} · {v.neighborhood}
-                      {!v.open && ' · Closed'}
-                    </p>
                   </div>
                 </div>
               </Link>
