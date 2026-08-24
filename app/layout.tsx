@@ -2,7 +2,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
-import SwipeNavigation from '@/components/SwipeNavigation'
 
 export const metadata: Metadata = {
   title: 'ETA — Experience Travel Adventure',
@@ -47,9 +46,7 @@ export default function RootLayout({
           paddingTop: 0,
           margin: 0
         }}>
-          <SwipeNavigation>
-            {children}
-          </SwipeNavigation>
+          {children}
         </main>
       </body>
     </html>

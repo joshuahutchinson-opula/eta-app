@@ -37,8 +37,7 @@ export default function LaunchScreen() {
         alt="ETA" 
         style={{ 
           width: '120px', 
-          height: 'auto',
-          animation: 'pulse 1.5s ease-in-out infinite'
+          height: 'auto'
         }} 
       />
     </div>
