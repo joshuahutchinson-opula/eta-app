@@ -228,7 +228,7 @@ export default function HomePage() {
 
         {/* Stories */}
         <div style={{ padding: '8px 16px 0' }}>
-          <div className="horizontal-scroll" style={{ padding: '0 0 12px' }}>
+          <div className="horizontal-scroll" style={{ padding: '0 0 4px' }}>
             {STORY_EXAMPLES.map(story => (
               story.type === 'user' ? (
                 <div key={story.id} style={{ textAlign: 'center', flexShrink: 0, cursor: 'pointer' }}>
