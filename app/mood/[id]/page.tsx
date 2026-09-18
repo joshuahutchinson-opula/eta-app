@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { getCurrentUser } from '@/lib/auth-client'
 
 interface Mood {
   id: string
@@ -20,6 +20,9 @@ export default function MoodDetailPage() {
   const router = useRouter()
   const [mood, setMood] = useState<Mood | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAddSheet, setShowAddSheet] = useState(false)
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     fetchMood()
@@ -37,10 +40,58 @@ export default function MoodDetailPage() {
     }
   }
 
+  const handleAddMomentClick = () => {
+    const user = getCurrentUser()
+    if (!user) {
+      alert('Log in to add your moment')
+      router.push('/login')
+      return
+    }
+    setShowAddSheet(true)
+  }
+
+  const submitMoment = async () => {
+    const user = getCurrentUser()
+    if (!user) {
+      alert('Log in to add your moment')
+      router.push('/login')
+      return
+    }
+    if (!mediaUrl.trim()) return
+
+    setSubmitting(true)
+    try {
+      const body = {
+        moodId: params.id,
+        url: mediaUrl.trim(),
+        type: 'image',
+        uploadedBy: user.name
+      }
+
+      const response = await fetch('/api/moodmedia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      const newMedia = await response.json()
+
+      setMood(prev => prev
+        ? { ...prev, media: [newMedia, ...prev.media] }
+        : prev)
+
+      setShowAddSheet(false)
+      setMediaUrl('')
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ width: '48px', height: '48px', border: '3px solid var(--glass-border)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: '48px', height: '48px', border: '3px solid var(--separator)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </main>
     )
   }
@@ -48,7 +99,7 @@ export default function MoodDetailPage() {
   if (!mood) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <p style={{ color: 'var(--sand-dim)' }}>Nuttin nuh go suh</p>
+        <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>
       </main>
     )
   }
@@ -83,20 +134,20 @@ export default function MoodDetailPage() {
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95))' }} />
         <div style={{ position: 'absolute', bottom: '14px', left: '14px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 800 }}>{mood.name}</h1>
-          <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>{mood.description}</p>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{mood.description}</p>
         </div>
       </div>
 
       <div style={{ padding: '16px' }}>
         <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Photos</h2>
         {mood.media.length === 0 ? (
-          <p style={{ color: 'var(--sand-dim)', textAlign: 'center', padding: '40px 0' }}>Nuh nuh photos yet</p>
+          <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>Nuh nuh photos yet</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {mood.media.map(m => (
               <div key={m.id} style={{ borderRadius: '12px', overflow: 'hidden' }}>
                 <img src={m.url} alt="" style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
-                <p style={{ fontSize: '10px', color: 'var(--sand-dim)', marginTop: '4px' }}>
+                <p style={{ fontSize: '10px', color: 'var(--label-secondary)', marginTop: '4px' }}>
                   @{m.uploadedBy}
                 </p>
               </div>
@@ -104,13 +155,48 @@ export default function MoodDetailPage() {
           </div>
         )}
 
-        <button className="btn-secondary" style={{ marginTop: '20px' }}>
+        <button className="btn btn-secondary" style={{ marginTop: '20px' }} onClick={handleAddMomentClick}>
           <Icon name="camera" size={18} />
           Add Your Moment
         </button>
       </div>
 
-      <Dock />
+      {/* Add Your Moment sheet */}
+      <div className={`bottom-sheet-overlay ${showAddSheet ? 'open' : ''}`} onClick={() => setShowAddSheet(false)} />
+      <div className={`bottom-sheet ${showAddSheet ? 'open' : ''}`}>
+        <div className="sheet-grabber" />
+        <div style={{ padding: '0 20px 20px' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Your Moment</h3>
+
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Photo URL</p>
+          <input
+            type="text"
+            placeholder="https://..."
+            value={mediaUrl}
+            onChange={(e) => setMediaUrl(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--separator)',
+              background: 'var(--system-bg)',
+              color: 'var(--label-primary)',
+              fontSize: '15px',
+              marginBottom: '20px',
+              fontFamily: 'inherit'
+            }}
+          />
+
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            onClick={submitMoment}
+            disabled={submitting || !mediaUrl.trim()}
+          >
+            {submitting ? 'Posting...' : 'Post'}
+          </button>
+        </div>
+      </div>
     </main>
   )
 }

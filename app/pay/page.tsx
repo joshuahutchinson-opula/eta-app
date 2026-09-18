@@ -1,12 +1,17 @@
 // app/pay/page.tsx
 'use client'
 
-import { useState } from 'react'
-import Dock from '@/components/Dock'
+import { useEffect, useState } from 'react'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
+import { getCurrentUser, type CurrentUser } from '@/lib/auth-client'
+import SuccessAnimation from '@/components/SuccessAnimation'
 
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
+
+function formatLevel(level: string): string {
+  return level.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
+}
 
 export default function PayPage() {
   const [view, setView] = useState<'scan' | 'qr'>('scan')
@@ -17,6 +22,13 @@ export default function PayPage() {
   const [flashOn, setFlashOn] = useState(false)
   const [manualCode, setManualCode] = useState(false)
   const [manualInput, setManualInput] = useState('')
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [paying, setPaying] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+  }, [])
 
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']
 
@@ -32,9 +44,28 @@ export default function PayPage() {
 
   const simulateScan = () => setCheckoutOpen(true)
 
-  const processPayment = () => {
-    setCheckoutOpen(false)
-    setAmount('')
+  const processPayment = async () => {
+    if (!user || !amount || paying) return
+    setPaying(true)
+    try {
+      await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: parseFloat(amount),
+          type: 'PAYMENT',
+          status: 'COMPLETED'
+        })
+      })
+      setCheckoutOpen(false)
+      setAmount('')
+      setShowSuccess(true)
+    } catch (error) {
+      console.error('Payment error:', error)
+    } finally {
+      setPaying(false)
+    }
   }
 
   return (
@@ -116,7 +147,7 @@ export default function PayPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: flashOn ? 'var(--black)' : 'white'
+                  color: flashOn ? '#0F0E0C' : 'white'
                 }}
               >
                 <Icon name="sparkle" size={18} />
@@ -189,10 +220,10 @@ export default function PayPage() {
               ))}
             </div>
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '4px' }}>
-              Jordan Hutchinson
+              {user?.name || 'Guest'}
             </p>
             <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>
-              Gold Member · 1,240 pts
+              {user ? `${formatLevel(user.level)} · ${user.points.toLocaleString()} pts` : ''}
             </p>
             <p className="caption-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
               Vendor scans this to charge you
@@ -272,14 +303,14 @@ export default function PayPage() {
                 Points earned: <span className="num-font" style={{ color: 'var(--rum)', fontWeight: 700 }}>+{Math.floor(parseFloat(amount || '0'))}</span>
               </p>
             </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment}>
-              {patois.ctaConfirm}
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment} disabled={paying}>
+              {paying ? patois.loadingHome : patois.ctaConfirm}
             </button>
           </div>
         )}
       </div>
 
-      <Dock />
+      <SuccessAnimation show={showSuccess} onComplete={() => setShowSuccess(false)} />
     </main>
   )
 }

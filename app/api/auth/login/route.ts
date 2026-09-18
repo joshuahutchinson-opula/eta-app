@@ -35,7 +35,9 @@ export async function POST(request: Request) {
       { expiresIn: '7d' }
     )
 
-    return NextResponse.json({ token, user })
+    const { password: _password, ...safeUser } = user
+
+    return NextResponse.json({ token, user: safeUser })
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(

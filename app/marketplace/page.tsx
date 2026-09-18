@@ -9,6 +9,7 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
 import BrandedRefresh from '@/components/BrandedRefresh'
+import FloatingPill from '@/components/FloatingPill'
 import { hapticSaved } from '@/lib/haptics'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
@@ -82,27 +83,6 @@ const MOOD_NAMES = [
 
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
 
-const MOCK_FLASH_DEALS: FlashDeal[] = [
-  { 
-    id: 'fd-1', 
-    deal: '20% off jerk chicken', 
-    expires: new Date(Date.now() + 6 * 3600000).toISOString(), 
-    vendor: { id: 'v1', name: 'Push Cart', images: ['https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'], isPremium: true } 
-  },
-  { 
-    id: 'fd-2', 
-    deal: '2-for-1 rum punch', 
-    expires: new Date(Date.now() + 4 * 3600000).toISOString(), 
-    vendor: { id: 'v2', name: 'Coral Reef Bar', images: ['https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'], isPremium: true } 
-  },
-  { 
-    id: 'fd-3', 
-    deal: 'Free dessert with lobster', 
-    expires: new Date(Date.now() + 3 * 3600000).toISOString(), 
-    vendor: { id: 'v3', name: 'Cliffside Grill', images: ['https://images.unsplash.com/photo-1544025162-d76694265947?w=800'], isPremium: true } 
-  },
-]
-
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
@@ -111,7 +91,7 @@ export default function MarketplacePage() {
   const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
-  const [flashDeals, setFlashDeals] = useState<FlashDeal[]>(MOCK_FLASH_DEALS)
+  const [flashDeals, setFlashDeals] = useState<FlashDeal[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -158,7 +138,7 @@ export default function MarketplacePage() {
 
       setVendors(Array.isArray(vendorsData) ? vendorsData : [])
       setAccommodations(Array.isArray(accomData) ? accomData : [])
-      setFlashDeals(Array.isArray(flashDealsData) && flashDealsData.length > 0 ? flashDealsData : MOCK_FLASH_DEALS)
+      setFlashDeals(Array.isArray(flashDealsData) ? flashDealsData : [])
       
       const foodVendors = Array.isArray(vendorsData) ? vendorsData.filter((v: Vendor) => v.category === 'FOOD').slice(0, 3) : []
       const mockDishes = foodVendors.map((v: Vendor, i: number) => ({
@@ -259,6 +239,7 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+      <FloatingPill />
       <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
       <div className="content-fade-in" style={{ padding: '16px' }}>
@@ -471,6 +452,7 @@ export default function MarketplacePage() {
               <div className="section-heading">
                 <span className="section-title">Premium Members</span>
               </div>
+              <Link href="/vendors?premium=true" className="section-link">See All</Link>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {premiumVendors.map(v => (
@@ -525,7 +507,7 @@ export default function MarketplacePage() {
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {filteredAccommodations.map(a => (
-                <Link key={a.id} href={`/accommodation/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '240px' }}>
+                <Link key={a.id} href={`/accommodations/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '240px' }}>
                   <div className="card">
                     <div className="card-image" style={{ height: '160px' }}>
                       <img src={a.media?.[0]?.url || ''} alt={a.name} />

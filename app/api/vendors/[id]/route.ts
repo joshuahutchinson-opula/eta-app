@@ -42,7 +42,12 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(vendor)
+    const reviewCount = vendor.reviews.length
+    const rating = reviewCount > 0
+      ? Math.round((vendor.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10
+      : undefined
+
+    return NextResponse.json({ ...vendor, rating, reviewCount: reviewCount > 0 ? reviewCount : undefined })
   } catch (error) {
     console.error('Error fetching vendor:', error)
     return NextResponse.json(

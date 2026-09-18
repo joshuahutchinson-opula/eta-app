@@ -19,11 +19,22 @@ export async function GET() {
           where: {
             expiresAt: { gt: new Date() }
           }
+        },
+        reviews: {
+          select: { rating: true }
         }
       }
     })
 
-    return NextResponse.json(vendors)
+    const withRatings = vendors.map(({ reviews, ...vendor }) => {
+      const reviewCount = reviews.length
+      const rating = reviewCount > 0
+        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10
+        : undefined
+      return { ...vendor, rating, reviewCount: reviewCount > 0 ? reviewCount : undefined }
+    })
+
+    return NextResponse.json(withRatings)
   } catch (error) {
     console.error('Error fetching vendors:', error)
     return NextResponse.json(

@@ -1,70 +1,163 @@
 // app/wallet/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { hapticRewardRedeemed } from '@/lib/haptics'
+import { hapticSaved } from '@/lib/haptics'
 import SuccessAnimation from '@/components/SuccessAnimation'
+import { getCurrentUser, CurrentUser } from '@/lib/auth-client'
 
 interface PaymentCard {
   id: string
   brand: string
   last4: string
-  expiry: string
-  isDefault: boolean
+  label: string
 }
 
-interface PointsTransaction {
+interface Transaction {
   id: string
   amount: number
-  type: 'earned' | 'spent'
-  description: string
-  date: string
-  vendorImage?: string
+  type: 'PAYMENT' | 'REWARD' | 'TOPUP' | 'TRANSFER'
+  status: 'PENDING' | 'COMPLETED' | 'FAILED'
+  createdAt: string
+  userId: string
+  vendorId?: string | null
+  user?: { name: string }
+  vendor?: { name: string } | null
 }
 
-interface Reward {
-  id: string
-  name: string
-  pointsCost: number
-  image: string
-  available: boolean
-}
+const CARDS_STORAGE_KEY = 'etaWalletCards'
 
-const MOCK_CARDS: PaymentCard[] = [
-  { id: 'card-1', brand: 'Visa', last4: '4242', expiry: '09/27', isDefault: true },
-  { id: 'card-2', brand: 'Mastercard', last4: '8888', expiry: '11/26', isDefault: false },
-]
-
-const MOCK_HISTORY: PointsTransaction[] = [
-  { id: '1', amount: 250, type: 'earned', description: 'Sunset Catamaran experience', date: 'Today', vendorImage: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=60&h=60&fit=crop' },
-  { id: '2', amount: 100, type: 'earned', description: 'Check-in at Rick\'s Café', date: 'Today', vendorImage: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=60&h=60&fit=crop' },
-  { id: '3', amount: 500, type: 'spent', description: 'Redeemed Free Jerk Plate', date: 'Yesterday', vendorImage: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=60&h=60&fit=crop' },
-  { id: '4', amount: 320, type: 'earned', description: 'Water Life Loop completed', date: 'Yesterday', vendorImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=60&h=60&fit=crop' },
-]
-
-const MOCK_REWARDS: Reward[] = [
-  { id: 'r1', name: 'Free Jerk Plate', pointsCost: 500, image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=150&fit=crop', available: true },
-  { id: 'r2', name: 'Sunset Catamaran', pointsCost: 800, image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&h=150&fit=crop', available: true },
-  { id: 'r3', name: 'Beach Day Pass', pointsCost: 350, image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=200&h=150&fit=crop', available: true },
-  { id: 'r4', name: 'Rum Punch Flight', pointsCost: 250, image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=200&h=150&fit=crop', available: true },
+const DEFAULT_CARDS: PaymentCard[] = [
+  { id: 'card-1', brand: 'Visa', last4: '4242', label: 'Default' },
+  { id: 'card-2', brand: 'Mastercard', last4: '8888', label: 'Backup' },
 ]
 
 const NEXT_REWARD_THRESHOLD = 2000
 
+const TYPE_LABELS: Record<Transaction['type'], string> = {
+  PAYMENT: 'Payment',
+  REWARD: 'Reward earned',
+  TOPUP: 'Wallet top up',
+  TRANSFER: 'Transfer',
+}
+
+function isCredit(type: Transaction['type']) {
+  return type === 'REWARD' || type === 'TOPUP'
+}
+
+function formatLevel(level: string) {
+  return level.split('_').map(w => w[0] + w.slice(1).toLowerCase()).join(' ')
+}
+
+function formatDate(iso: string) {
+  const date = new Date(iso)
+  const now = new Date()
+  const isSameDay = date.toDateString() === now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const isYesterday = date.toDateString() === yesterday.toDateString()
+
+  if (isSameDay) return 'Today'
+  if (isYesterday) return 'Yesterday'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function WalletPage() {
-  const [points] = useState(1240)
-  const [balance] = useState(250)
+  const router = useRouter()
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [checkedAuth, setCheckedAuth] = useState(false)
+  const [cards, setCards] = useState<PaymentCard[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [passportOpen, setPassportOpen] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showAddCardSheet, setShowAddCardSheet] = useState(false)
+  const [newCardBrand, setNewCardBrand] = useState('')
+  const [newCardLast4, setNewCardLast4] = useState('')
+  const [newCardLabel, setNewCardLabel] = useState('')
 
+  useEffect(() => {
+    const currentUser = getCurrentUser()
+    setUser(currentUser)
+    setCheckedAuth(true)
+
+    try {
+      const raw = localStorage.getItem(CARDS_STORAGE_KEY)
+      if (raw) {
+        setCards(JSON.parse(raw))
+      } else {
+        setCards(DEFAULT_CARDS)
+        localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(DEFAULT_CARDS))
+      }
+    } catch {
+      setCards(DEFAULT_CARDS)
+    }
+
+    if (!currentUser) return
+
+    fetch('/api/transactions')
+      .then(res => res.json())
+      .then((data: Transaction[]) => {
+        if (Array.isArray(data)) {
+          setTransactions(data.filter(t => t.userId === currentUser.id))
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const points = user?.points ?? 0
+  const balance = user?.walletBalance ?? 0
   const progressPercent = Math.min(100, Math.round((points / NEXT_REWARD_THRESHOLD) * 100))
   const pointsToNext = Math.max(0, NEXT_REWARD_THRESHOLD - points)
 
-  const handleRedeem = (rewardName: string) => {
-    hapticRewardRedeemed()
+  const saveCards = (updated: PaymentCard[]) => {
+    setCards(updated)
+    try {
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated))
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  const handleAddCard = () => {
+    const brand = newCardBrand.trim()
+    const last4 = newCardLast4.trim()
+    if (!brand || last4.length !== 4 || !/^\d{4}$/.test(last4)) return
+
+    const newCard: PaymentCard = {
+      id: `card-${Date.now()}`,
+      brand,
+      last4,
+      label: newCardLabel.trim() || 'Card',
+    }
+    saveCards([...cards, newCard])
+    hapticSaved()
+    setShowAddCardSheet(false)
     setShowSuccess(true)
+    setNewCardBrand('')
+    setNewCardLast4('')
+    setNewCardLabel('')
+  }
+
+  if (checkedAuth && !user) {
+    return (
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+        <div className="content-fade-in empty-state" style={{ minHeight: '60vh' }}>
+          <Icon name="wallet" size={32} style={{ color: 'var(--label-tertiary)' }} />
+          <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>Log in to see your wallet</p>
+          <p style={{ fontSize: '15px', color: 'var(--label-secondary)' }}>
+            Your balance, points, and payment methods live here once you&apos;re signed in.
+          </p>
+          <Link href="/login" className="btn btn-primary" style={{ marginTop: '8px' }}>
+            Log In
+          </Link>
+        </div>
+        <Dock />
+      </main>
+    )
   }
 
   return (
@@ -76,11 +169,11 @@ export default function WalletPage() {
         <div style={{ marginBottom: '24px' }}>
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Wallet</p>
           <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>
-            ${balance.toFixed(2)}
+            <span className="num-font">${balance.toFixed(2)}</span>
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {MOCK_CARDS.map(card => (
+            {cards.map(card => (
               <div key={card.id} className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px',
@@ -96,29 +189,17 @@ export default function WalletPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
-                    {card.brand} •••• {card.last4}
+                    {card.brand} <span className="num-font">•••• {card.last4}</span>
                   </p>
                   <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
-                    Expires {card.expiry}
+                    {card.label}
                   </p>
                 </div>
-                {card.isDefault && (
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '4px 8px',
-                    borderRadius: '999px',
-                    background: 'var(--rum-tint)',
-                    color: 'var(--rum)'
-                  }}>
-                    Default
-                  </span>
-                )}
               </div>
             ))}
           </div>
 
-          <button className="btn btn-secondary" style={{ width: '100%', marginTop: '8px' }}>
+          <button className="btn btn-secondary" style={{ width: '100%', marginTop: '8px' }} onClick={() => setShowAddCardSheet(true)}>
             <Icon name="plus" size={16} />
             Add Card
           </button>
@@ -129,7 +210,7 @@ export default function WalletPage() {
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>Membership</p>
 
           {!passportOpen ? (
-            <div 
+            <div
               onClick={() => setPassportOpen(true)}
               className="tappable"
               style={{
@@ -172,7 +253,7 @@ export default function WalletPage() {
                   ETA
                 </h3>
                 <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', letterSpacing: '2px', color: 'rgba(255, 184, 0, 0.7)', textTransform: 'uppercase' }}>
-                  Gold Member
+                  {user ? formatLevel(user.level) : 'Member'}
                 </p>
                 <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.4)', marginTop: '16px' }}>
                   Tap to open
@@ -217,23 +298,23 @@ export default function WalletPage() {
                   margin: '0 auto 8px',
                   overflow: 'hidden'
                 }}>
-                  <Icon name="user" size={24} style={{ color: 'var(--grey)' }} />
+                  <Icon name="user" size={24} style={{ color: 'rgba(15, 14, 12, 0.55)' }} />
                 </div>
                 <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '18px', fontWeight: 700, color: '#0F0E0C', marginBottom: '4px' }}>
-                  Jordan Hutchinson
+                  {user?.name ?? 'Member'}
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '6px', marginBottom: '16px' }}>
                   <span className="num-font" style={{ fontSize: '32px', fontWeight: 700, color: 'var(--rum)' }}>
                     {points.toLocaleString()}
                   </span>
-                  <span style={{ fontSize: '13px', color: 'var(--grey)' }}>pts</span>
+                  <span style={{ fontSize: '13px', color: 'rgba(15, 14, 12, 0.55)' }}>pts</span>
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                    <span style={{ fontSize: '11px', color: 'rgba(15, 14, 12, 0.55)' }}>
                       {pointsToNext} pts to next reward
                     </span>
-                    <span className="num-font" style={{ fontSize: '11px', color: 'var(--grey)' }}>
+                    <span className="num-font" style={{ fontSize: '11px', color: 'rgba(15, 14, 12, 0.55)' }}>
                       {progressPercent}%
                     </span>
                   </div>
@@ -241,7 +322,7 @@ export default function WalletPage() {
                     <div className="progress-fill" style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--rum)' }} />
                   </div>
                 </div>
-                <button onClick={() => setPassportOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', minHeight: '44px' }}>
+                <button onClick={() => setPassportOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(15, 14, 12, 0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', minHeight: '44px' }}>
                   Close
                 </button>
               </div>
@@ -249,7 +330,7 @@ export default function WalletPage() {
           )}
         </div>
 
-        {/* REWARDS SECTION */}
+        {/* REWARDS TEASER */}
         <div style={{ marginBottom: '24px' }}>
           <div className="section-header">
             <div className="section-heading">
@@ -257,25 +338,20 @@ export default function WalletPage() {
               <span className="section-title">Rewards</span>
             </div>
           </div>
-          <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-            {MOCK_REWARDS.map(reward => (
-              <div 
-                key={reward.id} 
-                className="card" 
-                style={{ width: '160px', flexShrink: 0, opacity: reward.available ? 1 : 0.5 }}
-                onClick={() => handleRedeem(reward.name)}
-              >
-                <div className="card-image" style={{ height: '100px' }}>
-                  <img src={reward.image} alt={reward.name} />
-                </div>
-                <div className="card-content">
-                  <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '4px' }}>{reward.name}</p>
-                  <p className="num-font" style={{ fontSize: '13px', color: reward.available ? 'var(--rum)' : 'var(--label-secondary)' }}>
-                    {reward.pointsCost} pts
-                  </p>
-                </div>
+          <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div>
+              <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>You have</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span className="num-font" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--rum)' }}>
+                  {points.toLocaleString()}
+                </span>
+                <span style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>points to spend</span>
               </div>
-            ))}
+            </div>
+            <button className="btn btn-secondary" onClick={() => router.push('/rewards')}>
+              See All
+              <Icon name="chevronRight" size={16} />
+            </button>
           </div>
         </div>
 
@@ -284,49 +360,104 @@ export default function WalletPage() {
           <div className="section-header">
             <div className="section-heading">
               <span className="section-eyebrow">Activity</span>
-              <span className="section-title">Points History</span>
+              <span className="section-title">Transaction History</span>
             </div>
           </div>
-          <div className="card" style={{ padding: '4px 16px' }}>
-            {MOCK_HISTORY.map((h, i) => (
-              <div key={h.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 0',
-                borderBottom: i < MOCK_HISTORY.length - 1 ? '0.5px solid var(--separator)' : 'none'
-              }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  background: 'var(--system-bg-secondary)',
+          {transactions.length === 0 ? (
+            <div className="empty-state">
+              <Icon name="receipt" size={32} style={{ color: 'var(--label-tertiary)' }} />
+              <p style={{ fontSize: '15px' }}>No transactions yet</p>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: '4px 16px' }}>
+              {transactions.map((t, i) => (
+                <div key={t.id} style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  gap: '12px',
+                  padding: '12px 0',
+                  borderBottom: i < transactions.length - 1 ? '0.5px solid var(--separator)' : 'none'
                 }}>
-                  {h.vendorImage ? (
-                    <img src={h.vendorImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <Icon name="sparkle" size={18} style={{ color: 'var(--label-secondary)' }} />
-                  )}
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: 'var(--system-bg-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Icon name={isCredit(t.type) ? 'sparkle' : 'receipt'} size={18} style={{ color: 'var(--label-secondary)' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>
+                      {t.vendor?.name || TYPE_LABELS[t.type]}
+                    </p>
+                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
+                      {formatDate(t.createdAt)}
+                      {t.status !== 'COMPLETED' && ` · ${t.status.charAt(0) + t.status.slice(1).toLowerCase()}`}
+                    </p>
+                  </div>
+                  <span className="num-font" style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: isCredit(t.type) ? 'var(--rum)' : 'var(--label-secondary)'
+                  }}>
+                    {isCredit(t.type) ? '+' : '-'}{Math.abs(t.amount)}
+                  </span>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{h.description}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{h.date}</p>
-                </div>
-                <span className="num-font" style={{
-                  fontSize: '15px',
-                  fontWeight: 700,
-                  color: h.type === 'earned' ? 'var(--rum)' : 'var(--label-secondary)'
-                }}>
-                  {h.type === 'earned' ? '+' : '-'}{h.amount}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Card Sheet */}
+      <div className={`bottom-sheet-overlay ${showAddCardSheet ? 'open' : ''}`} onClick={() => setShowAddCardSheet(false)} />
+      <div className={`bottom-sheet ${showAddCardSheet ? 'open' : ''}`}>
+        <div className="sheet-grabber" />
+        <div style={{ padding: '0 20px 20px' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Card</h3>
+
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Card Brand</p>
+          <input
+            type="text"
+            placeholder="e.g. Visa"
+            value={newCardBrand}
+            onChange={(e) => setNewCardBrand(e.target.value)}
+            style={{ width: '100%', padding: '12px 14px', marginBottom: '16px', fontSize: '17px', color: 'var(--label-primary)', background: 'var(--system-bg-secondary)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+          />
+
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Last 4 Digits</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="4242"
+            value={newCardLast4}
+            onChange={(e) => setNewCardLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            style={{ width: '100%', padding: '12px 14px', marginBottom: '16px', fontSize: '17px', color: 'var(--label-primary)', background: 'var(--system-bg-secondary)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+          />
+
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Label (optional)</p>
+          <input
+            type="text"
+            placeholder="e.g. Personal"
+            value={newCardLabel}
+            onChange={(e) => setNewCardLabel(e.target.value)}
+            style={{ width: '100%', padding: '12px 14px', marginBottom: '20px', fontSize: '17px', color: 'var(--label-primary)', background: 'var(--system-bg-secondary)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+          />
+
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', opacity: (!newCardBrand.trim() || newCardLast4.length !== 4) ? 0.5 : 1 }}
+            disabled={!newCardBrand.trim() || newCardLast4.length !== 4}
+            onClick={handleAddCard}
+          >
+            Add Card
+          </button>
         </div>
       </div>
 

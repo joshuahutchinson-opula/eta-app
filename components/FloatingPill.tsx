@@ -1,13 +1,19 @@
 // components/FloatingPill.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
+import { getCurrentUser } from '@/lib/auth-client'
 
 export default function FloatingPill() {
   const router = useRouter()
-  const [points] = useState(1240)
+  const [points, setPoints] = useState(0)
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    setPoints(user?.points ?? 0)
+  }, [])
 
   return (
     <div className="floating-pill">
@@ -32,7 +38,7 @@ export default function FloatingPill() {
         <span className="num-font" style={{ 
           fontSize: '13px', 
           fontWeight: 700, 
-          color: 'var(--black)'
+          color: 'var(--label-primary)'
         }}>
           {points.toLocaleString()}
         </span>

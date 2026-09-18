@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import FloatingPill from '@/components/FloatingPill'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
@@ -69,6 +70,7 @@ export default function ExplorePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
+      <FloatingPill />
       <div style={{ flex: 1, position: 'relative' }}>
         <MapContainer
           center={[18.27, -78.35]}

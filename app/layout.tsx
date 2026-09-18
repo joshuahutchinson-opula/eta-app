@@ -33,13 +33,7 @@ export default function RootLayout({
         <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
         <link rel="icon" href="/icons/favicon-16.png" sizes="16x16" type="image/png" />
       </head>
-      <body style={{ 
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
-        backgroundColor: '#F2F2F7',
-        color: '#000000',
-        margin: 0,
-        padding: 0
-      }}>
+      <body>
         <LaunchScreen />
         <main style={{ 
           paddingBottom: '80px',

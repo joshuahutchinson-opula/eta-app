@@ -988,6 +988,126 @@ body[data-theme="dark"] {
   100% { transform: scale(1); }
 }
 
+/* ============ FLOATING PILL ============ */
+.floating-pill {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + var(--space-3));
+  right: var(--space-4);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.floating-pill-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(242, 242, 247, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--label-primary);
+  transition: transform var(--duration-fast) ease-out, opacity var(--duration-fast) ease-out;
+  flex-shrink: 0;
+}
+
+.floating-pill-points {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: rgba(242, 242, 247, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform var(--duration-fast) ease-out, opacity var(--duration-fast) ease-out;
+}
+
+[data-theme="dark"] .floating-pill-avatar,
+[data-theme="dark"] .floating-pill-points {
+  background: rgba(28, 28, 30, 0.85);
+}
+
+.floating-pill-avatar:active,
+.floating-pill-points:active {
+  transform: scale(0.94);
+  opacity: 0.85;
+}
+
+/* ============ ACTIVE TRIP BANNER ============ */
+.active-trip-banner {
+  margin: 0 var(--space-4) var(--space-4);
+  background: var(--rum);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform var(--duration-fast) ease-out, opacity var(--duration-fast) ease-out;
+  overflow: hidden;
+}
+
+.active-trip-banner:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.active-trip-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.active-trip-banner-eta {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.active-trip-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.active-trip-banner-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-trip-banner-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-trip-banner-dismiss {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ============ UTILITY ============ */
 .num-font {
   font-family: 'Space Mono', monospace;

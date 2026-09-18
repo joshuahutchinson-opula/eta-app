@@ -8,7 +8,10 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import LongPressCard from '@/components/LongPressCard'
 import BrandedRefresh from '@/components/BrandedRefresh'
+import FloatingPill from '@/components/FloatingPill'
+import ActiveTripBanner from '@/components/ActiveTripBanner'
 import { hapticSaved } from '@/lib/haptics'
+import { getCurrentUser } from '@/lib/auth-client'
 
 interface Vendor {
   id: string
@@ -58,6 +61,15 @@ interface Mood {
   coverImage: string
 }
 
+interface Booking {
+  id: string
+  status: string
+  date: string
+  userId: string
+  experience?: { name: string } | null
+  vendor?: { name: string } | null
+}
+
 const MOOD_ICONS: Record<string, string> = {
   'R&R': 'spa',
   'Just The Two Of Us': 'heart',
@@ -80,13 +92,6 @@ const STORY_EXAMPLES = [
   { id: 'story-5', name: 'Beach', type: 'standard', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100&h=100&fit=crop' }
 ]
 
-const EDITORIAL_SUBHEADS: Record<string, string> = {
-  'Push Cart': 'Smoke and spice, the real deal',
-  'Coral Reef Bar': 'Rum punch and good vibes',
-  'MoBay Jerk House': 'The official taste of MoBay',
-  'MoBay Watersports': 'Where the reef comes alive'
-}
-
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
@@ -96,6 +101,7 @@ export default function HomePage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
+  const [activeBooking, setActiveBooking] = useState<Booking | null>(null)
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -129,10 +135,11 @@ export default function HomePage() {
 
   const fetchAll = async () => {
     try {
-      const [vendorsRes, experiencesRes, moodsRes] = await Promise.allSettled([
+      const [vendorsRes, experiencesRes, moodsRes, bookingsRes] = await Promise.allSettled([
         fetch('/api/vendors'),
         fetch('/api/experiences'),
-        fetch('/api/moods')
+        fetch('/api/moods'),
+        fetch('/api/bookings')
       ])
 
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
@@ -152,6 +159,21 @@ export default function HomePage() {
           return { ...mood, name, icon: MOOD_ICONS[name] || mood.icon }
         })
         setMoods(mappedMoods)
+      }
+      if (bookingsRes.status === 'fulfilled' && bookingsRes.value.ok) {
+        const currentUser = getCurrentUser()
+        if (currentUser) {
+          const data: Booking[] = await bookingsRes.value.json()
+          const now = Date.now()
+          const active = data
+            .filter(b => b.userId === currentUser.id && b.status === 'CONFIRMED')
+            .filter(b => {
+              const t = new Date(b.date).getTime()
+              return t >= now - 3 * 3600000 && t <= now + 6 * 3600000
+            })
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+          setActiveBooking(active || null)
+        }
       }
     } catch (error) {
       console.error('Fetch error:', error)
@@ -218,6 +240,7 @@ export default function HomePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+      <FloatingPill />
       <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
       <div className="content-fade-in">
@@ -225,6 +248,16 @@ export default function HomePage() {
         <div style={{ padding: '16px 16px 0' }}>
           <h1 className="greeting-text">Wah Gwan, Jordan</h1>
         </div>
+
+        {activeBooking && (
+          <div style={{ paddingTop: '12px' }}>
+            <ActiveTripBanner
+              tripName={activeBooking.experience?.name || activeBooking.vendor?.name || 'Your trip'}
+              etaMinutes={Math.max(0, Math.round((new Date(activeBooking.date).getTime() - Date.now()) / 60000))}
+              nextStopName={activeBooking.experience?.name || activeBooking.vendor?.name || 'your stop'}
+            />
+          </div>
+        )}
 
         {/* Stories */}
         <div style={{ padding: '8px 16px 0' }}>
@@ -308,7 +341,7 @@ export default function HomePage() {
                     <div className="featured-hero-content">
                       <h2 className="featured-hero-title">{vendor.name}</h2>
                       <p className="featured-hero-sub">
-                        {EDITORIAL_SUBHEADS[vendor.name] || `${formatCategory(vendor.category)} · ${vendor.neighborhood}`}
+                        {formatCategory(vendor.category)} · {vendor.neighborhood}
                       </p>
                     </div>
                   </div>

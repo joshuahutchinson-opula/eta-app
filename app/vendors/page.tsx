@@ -1,9 +1,9 @@
 // app/vendors/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import LongPressCard from '@/components/LongPressCard'
@@ -24,6 +24,8 @@ interface Vendor {
   whoThere: number
   rating?: number
   reviewCount?: number
+  lat: number
+  lng: number
 }
 
 const CATEGORIES = [
@@ -34,33 +36,72 @@ const CATEGORIES = [
   { name: 'Beach', icon: 'wave' }
 ]
 
+const CITIES: Array<{ value: 'NEGRIL' | 'MONTEGO_BAY'; label: string }> = [
+  { value: 'NEGRIL', label: 'Negril' },
+  { value: 'MONTEGO_BAY', label: 'Montego Bay' }
+]
+
+const PRICE_TIERS = ['$', '$$', '$$$', '$$$$']
+
 const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
+
+const DEFAULT_LOCATION = { lat: 18.2723, lng: -78.3521 }
 
 function formatCategory(category: string): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
 
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 export default function VendorsPage() {
+  return (
+    <Suspense fallback={null}>
+      <VendorsContent />
+    </Suspense>
+  )
+}
+
+function VendorsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY'>('NEGRIL')
+  const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY' | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedPriceTier, setSelectedPriceTier] = useState<string | null>(null)
+  const [premiumOnly, setPremiumOnly] = useState(false)
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [showFilterSheet, setShowFilterSheet] = useState(false)
+  const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION)
 
   useEffect(() => {
     fetchVendors()
+
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
-    const savedCity = localStorage.getItem('marketplaceCity')
-    if (savedCity) setCity(savedCity as 'NEGRIL' | 'MONTEGO_BAY')
-    const savedCategory = localStorage.getItem('marketplaceCategory')
-    if (savedCategory) setSelectedCategory(savedCategory)
-    const savedSort = localStorage.getItem('marketplaceSort')
-    if (savedSort) setSortBy(savedSort)
+
+    const categoryParam = searchParams.get('category')
+    if (categoryParam) setSelectedCategory(categoryParam)
+
+    const cityParam = searchParams.get('city')
+    if (cityParam === 'NEGRIL' || cityParam === 'MONTEGO_BAY') setCity(cityParam)
+
+    if (searchParams.get('premium') === 'true') setPremiumOnly(true)
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setUserLocation(DEFAULT_LOCATION)
+      )
+    }
   }, [])
 
   const fetchVendors = async () => {
@@ -84,34 +125,23 @@ export default function VendorsPage() {
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
   }
 
-  const handleCityChange = (c: 'NEGRIL' | 'MONTEGO_BAY') => {
-    setCity(c)
-    localStorage.setItem('marketplaceCity', c)
-  }
-
-  const handleCategoryChange = (cat: string | null) => {
-    setSelectedCategory(cat)
-    if (cat) localStorage.setItem('marketplaceCategory', cat)
-    else localStorage.removeItem('marketplaceCategory')
-  }
-
-  const handleSortChange = (sort: string) => {
-    setSortBy(sort)
-    localStorage.setItem('marketplaceSort', sort)
-  }
-
   const filteredVendors = vendors
-    .filter(v => !search || 
+    .filter(v => !search ||
       v.name.toLowerCase().includes(search.toLowerCase()) ||
       v.category.toLowerCase().includes(search.toLowerCase()) ||
       v.neighborhood.toLowerCase().includes(search.toLowerCase())
     )
     .filter(v => !city || v.city === city)
     .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
+    .filter(v => !selectedPriceTier || v.priceRange === selectedPriceTier)
+    .filter(v => !premiumOnly || v.isPremium)
     .sort((a, b) => {
-      if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
+      if (sortBy === 'Price') return (a.priceRange || '').length - (b.priceRange || '').length
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
-      if (sortBy === 'Distance') return (a.neighborhood || '').localeCompare(b.neighborhood || '')
+      if (sortBy === 'Distance') {
+        return distanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) -
+          distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng)
+      }
       return 0
     })
 
@@ -122,9 +152,9 @@ export default function VendorsPage() {
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="grid-2">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="skeleton-card" style={{ height: '100px' }}>
+              <div key={i} className="skeleton-card" style={{ height: '200px' }}>
                 <div className="skeleton-image" style={{ height: '100%' }} />
               </div>
             ))}
@@ -139,15 +169,15 @@ export default function VendorsPage() {
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
         {/* Search + filter */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: '4px',
           marginBottom: '12px'
         }}>
-          <div className="card" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div className="card" style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '8px',
             padding: '10px 12px',
             flex: 1,
@@ -165,7 +195,7 @@ export default function VendorsPage() {
           </div>
           <button
             onClick={() => setShowFilterSheet(true)}
-            style={{ 
+            style={{
               background: 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
@@ -183,16 +213,43 @@ export default function VendorsPage() {
           </button>
         </div>
 
-        {/* Category vibe pills */}
-        <div className="mood-picker" style={{ padding: '4px 0 12px' }}>
+        {/* Category chips */}
+        <div className="mood-picker" style={{ padding: '4px 0 4px', margin: '0 -16px' }}>
           {CATEGORIES.map(cat => (
             <button
               key={cat.name}
-              onClick={() => handleCategoryChange(selectedCategory === cat.name ? null : cat.name)}
+              onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
               className={`mood-pill ${selectedCategory === cat.name ? 'centre' : ''}`}
             >
               <Icon name={cat.icon as any} size={16} />
               {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Destination chips */}
+        <div className="mood-picker" style={{ padding: '4px 0 4px', margin: '0 -16px' }}>
+          {CITIES.map(c => (
+            <button
+              key={c.value}
+              onClick={() => setCity(city === c.value ? null : c.value)}
+              className={`mood-pill ${city === c.value ? 'centre' : ''}`}
+            >
+              <Icon name="mapPin" size={16} />
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Price tier quick filter */}
+        <div className="mood-picker" style={{ padding: '4px 0 12px', margin: '0 -16px' }}>
+          {PRICE_TIERS.map(tier => (
+            <button
+              key={tier}
+              onClick={() => setSelectedPriceTier(selectedPriceTier === tier ? null : tier)}
+              className={`mood-pill ${selectedPriceTier === tier ? 'centre' : ''}`}
+            >
+              <span className="num-font">{tier}</span>
             </button>
           ))}
         </div>
@@ -203,70 +260,88 @@ export default function VendorsPage() {
           {city && ` in ${city === 'NEGRIL' ? 'Negril' : 'Montego Bay'}`}
         </p>
 
-        {/* Full vendor list - one column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filteredVendors.map(v => (
-            <LongPressCard
-              key={v.id}
-              onPress={() => router.push(`/vendor/${v.id}`)}
-              preview={
-                <div>
-                  <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                </div>
-              }
-            >
-              <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                  <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {/* Vendor grid - polaroid cards, 2 columns */}
+        {filteredVendors.length === 0 ? (
+          <div className="empty-state">
+            <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
+            <p style={{ fontSize: '17px', fontWeight: 600 }}>Nuttin nuh go suh</p>
+            <p>Try a different search or filter</p>
+          </div>
+        ) : (
+          <div className="grid-2">
+            {filteredVendors.map(v => (
+              <LongPressCard
+                key={v.id}
+                onPress={() => router.push(`/vendor/${v.id}`)}
+                preview={
+                  <div>
+                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
+                }
+              >
+                <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="polaroid">
+                    <div style={{ position: 'relative' }}>
+                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
+                      {v.isPremium && (
+                        <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Icon name="crown" size={11} />
+                          Premium
+                        </div>
+                      )}
                       <button
                         className="heart-btn"
                         onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                        style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          width: '32px',
+                          height: '32px',
+                          color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)'
+                        }}
                       >
-                        <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                        <Icon name="heart" size={15} className={savedVendors.includes(v.id) ? 'filled' : ''} />
                       </button>
-                    </div>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                      {formatCategory(v.category)} · {v.neighborhood}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      {v.open ? (
-                        <>
-                          <span className="open-dot" />
-                          <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="closed-dot" />
-                          <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
-                        </>
-                      )}
                       {v.live && (
-                        <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
-                          · {v.whoThere} here now
-                        </span>
+                        <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px' }}>
+                          <span className="live-dot" />
+                          <span className="num-font">{v.whoThere}</span> here
+                        </div>
                       )}
                     </div>
-                    {v.rating && (
-                      <div className="rating-text">
-                        ★ <span className="num-font">{v.rating}</span>
-                        {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                    <div style={{ paddingTop: '8px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                        {formatCategory(v.category)} · {v.neighborhood}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {v.open ? (
+                          <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="open-dot" /> Open
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="closed-dot" /> Closed
+                          </span>
+                        )}
+                        <span className="price-tier">{v.priceRange}</span>
                       </div>
-                    )}
-                    <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
+                      {v.rating && (
+                        <div className="rating-text" style={{ marginTop: '2px' }}>
+                          ★ <span className="num-font">{v.rating}</span>
+                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </LongPressCard>
-          ))}
-        </div>
+                </Link>
+              </LongPressCard>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filter Sheet */}
@@ -275,32 +350,29 @@ export default function VendorsPage() {
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
-          
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Location</p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-            {['NEGRIL', 'MONTEGO_BAY'].map(c => (
-              <button
-                key={c}
-                onClick={() => handleCityChange(c as 'NEGRIL' | 'MONTEGO_BAY')}
-                className={`chip ${city === c ? 'active' : ''}`}
-                style={{ flex: 1, justifyContent: 'center' }}
-              >
-                {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
-              </button>
-            ))}
-          </div>
 
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {SORT_OPTIONS.map(option => (
               <button
                 key={option}
-                onClick={() => handleSortChange(option)}
+                onClick={() => setSortBy(option)}
                 className={`chip ${sortBy === option ? 'active' : ''}`}
               >
                 {option}
               </button>
             ))}
+          </div>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Show</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            <button
+              onClick={() => setPremiumOnly(!premiumOnly)}
+              className={`chip ${premiumOnly ? 'active' : ''}`}
+            >
+              <Icon name="crown" size={14} />
+              Premium only
+            </button>
           </div>
 
           <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowFilterSheet(false)}>

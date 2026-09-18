@@ -21,7 +21,9 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ user })
+    const { password: _password, ...safeUser } = user
+
+    return NextResponse.json({ user: safeUser })
   } catch (error) {
     return NextResponse.json(
       { error: 'Sumth nah wuk' },

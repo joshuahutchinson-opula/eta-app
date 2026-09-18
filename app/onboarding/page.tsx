@@ -49,8 +49,8 @@ export default function OnboardingPage() {
       <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.3), rgba(15,14,12,0.95))' }} />
 
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: '100vh', padding: '24px', paddingBottom: '48px' }}>
-        <h1 style={{ fontSize: '34px', fontWeight: 800, marginBottom: '12px' }}>{current.title}</h1>
-        <p style={{ fontSize: '16px', color: 'var(--sand-dim)', marginBottom: '28px' }}>{current.text}</p>
+        <h1 style={{ fontSize: '34px', fontWeight: 800, marginBottom: '12px', color: 'white' }}>{current.title}</h1>
+        <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.85)', marginBottom: '28px' }}>{current.text}</p>
 
         {current.vibeSelector && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '24px' }}>
@@ -60,12 +60,12 @@ export default function OnboardingPage() {
                 onClick={() => setVibe(v)}
                 style={{
                   padding: '18px',
-                  background: vibe === v ? 'var(--gradient-rum)' : 'rgba(26,24,21,0.8)',
-                  border: vibe === v ? 'none' : '1px solid var(--glass-border)',
+                  background: vibe === v ? 'var(--rum)' : 'rgba(26,24,21,0.8)',
+                  border: vibe === v ? 'none' : '1px solid rgba(255,255,255,0.2)',
                   borderRadius: '20px',
                   cursor: 'pointer',
                   textAlign: 'center',
-                  color: 'var(--sand)',
+                  color: 'white',
                   fontFamily: 'inherit',
                   fontSize: '14px',
                   fontWeight: 600
@@ -77,12 +77,12 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        <button className="btn-primary" onClick={handleNext}>
+        <button className="btn btn-primary" onClick={handleNext}>
           {current.button}
         </button>
 
         {step > 0 && (
-          <button className="btn-secondary" style={{ marginTop: '10px' }} onClick={() => router.push('/')}>
+          <button className="btn btn-secondary" style={{ marginTop: '10px' }} onClick={() => router.push('/')}>
             {patois.ctaSkip}
           </button>
         )}
@@ -95,7 +95,7 @@ export default function OnboardingPage() {
                 width: i === step ? '24px' : '8px',
                 height: '4px',
                 borderRadius: '999px',
-                background: i === step ? 'var(--rum)' : '#2A2723',
+                background: i === step ? 'var(--rum)' : 'rgba(255,255,255,0.3)',
                 transition: 'all 0.3s'
               }}
             />

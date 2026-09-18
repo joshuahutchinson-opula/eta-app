@@ -54,16 +54,16 @@ export default function StoriesPage() {
 
   if (loading) {
     return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, background: 'var(--black)' }}>
-        <div style={{ width: '48px', height: '48px', border: '3px solid var(--glass-border)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, background: '#000000' }}>
+        <div style={{ width: '48px', height: '48px', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </main>
     )
   }
 
   if (stories.length === 0) {
     return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, background: 'var(--black)' }}>
-        <p style={{ color: 'var(--sand-dim)' }}>Nuh nuh stories</p>
+      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, background: '#000000' }}>
+        <p style={{ color: 'rgba(255,255,255,0.7)' }}>Nuh nuh stories</p>
       </main>
     )
   }
@@ -71,14 +71,14 @@ export default function StoriesPage() {
   const currentStory = stories[currentIndex]
 
   return (
-    <main style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'var(--black)', display: 'flex', flexDirection: 'column' }}>
+    <main style={{ position: 'fixed', inset: 0, zIndex: 500, background: '#000000', display: 'flex', flexDirection: 'column' }}>
       {/* Progress bars */}
       <div style={{ position: 'absolute', top: '16px', left: '16px', right: '16px', display: 'flex', gap: '4px', zIndex: 10 }}>
         {stories.map((_, i) => (
           <div key={i} style={{ flex: 1, height: '2px', background: 'rgba(255,255,255,0.2)', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              background: 'var(--sand)',
+              background: 'white',
               width: i < currentIndex ? '100%' : i === currentIndex ? '50%' : '0%',
               transition: 'width 0.3s'
             }} />
@@ -98,19 +98,20 @@ export default function StoriesPage() {
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                border: currentStory.vendor.isPremium ? '2px solid var(--gold)' : '2px solid var(--sand)',
-                background: 'var(--glass-bg)',
+                border: currentStory.vendor.isPremium ? '2px solid var(--gold)' : '2px solid white',
+                background: 'rgba(255,255,255,0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '14px',
-                fontWeight: 700
+                fontWeight: 700,
+                color: 'white'
               }}>
                 {currentStory.vendor.name.charAt(0)}
               </div>
-              <span style={{ fontWeight: 700, fontSize: '14px' }}>{currentStory.vendor.name}</span>
+              <span style={{ fontWeight: 700, fontSize: '14px', color: 'white' }}>{currentStory.vendor.name}</span>
               {currentStory.vendor.isPremium && (
-                <span style={{ fontSize: '9px', background: 'var(--gradient-gold)', color: 'var(--black)', fontWeight: 800, padding: '2px 6px', borderRadius: '999px' }}>
+                <span style={{ fontSize: '9px', background: 'var(--gold)', color: '#0F0E0C', fontWeight: 800, padding: '2px 6px', borderRadius: '999px' }}>
                   PREMIUM
                 </span>
               )}
@@ -118,7 +119,7 @@ export default function StoriesPage() {
           )}
 
           <button
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--sand)', cursor: 'pointer' }}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}
             onClick={() => router.push('/')}
           >
             <Icon name="close" size={20} />
@@ -127,7 +128,7 @@ export default function StoriesPage() {
 
         {/* Story text */}
         <div style={{ position: 'absolute', bottom: '40px', left: '16px', zIndex: 5 }}>
-          <p style={{ fontSize: '18px', fontWeight: 700 }}>{currentStory.content}</p>
+          <p style={{ fontSize: '18px', fontWeight: 700, color: 'white' }}>{currentStory.content}</p>
         </div>
       </div>
     </main>

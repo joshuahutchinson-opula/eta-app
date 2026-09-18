@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { getCurrentUser } from '@/lib/auth-client'
+import SuccessAnimation from '@/components/SuccessAnimation'
 
 interface Accommodation {
   id: string
@@ -23,6 +24,9 @@ export default function AccommodationDetailPage() {
   const router = useRouter()
   const [accom, setAccom] = useState<Accommodation | null>(null)
   const [loading, setLoading] = useState(true)
+  const [booking, setBooking] = useState(false)
+  const [booked, setBooked] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
     fetchAccom()
@@ -40,10 +44,49 @@ export default function AccommodationDetailPage() {
     }
   }
 
+  const handleBook = async () => {
+    const user = getCurrentUser()
+    if (!user) {
+      alert('Log in to book')
+      router.push('/login')
+      return
+    }
+    if (!accom || booking || booked) return
+
+    setBooking(true)
+    try {
+      const date = new Date()
+      date.setDate(date.getDate() + 7)
+      const totalPrice = parseFloat((accom.priceRange || '').replace(/[^0-9.]/g, '')) || 0
+
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          accommodationId: params.id,
+          date: date.toISOString(),
+          totalPrice,
+          pointsEarned: 0,
+          status: 'CONFIRMED'
+        })
+      })
+
+      if (!response.ok) throw new Error('Booking failed')
+
+      setBooked(true)
+      setShowSuccess(true)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setBooking(false)
+    }
+  }
+
   if (loading) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ width: '48px', height: '48px', border: '3px solid var(--glass-border)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: '48px', height: '48px', border: '3px solid var(--separator)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </main>
     )
   }
@@ -51,7 +94,7 @@ export default function AccommodationDetailPage() {
   if (!accom) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <p style={{ color: 'var(--sand-dim)' }}>Nuttin nuh go suh</p>
+        <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>
       </main>
     )
   }
@@ -86,19 +129,29 @@ export default function AccommodationDetailPage() {
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95))' }} />
         <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 800 }}>{accom.name}</h1>
-          <p style={{ fontSize: '13px', color: 'var(--sand-dim)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
             ★ {accom.googleStars} • {accom.priceRange}
           </p>
         </div>
       </div>
 
       <div style={{ padding: '16px' }}>
-        <p style={{ fontSize: '15px', color: 'var(--sand-dim)', marginBottom: '16px' }}>{accom.description}</p>
+        <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{accom.description}</p>
 
         <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Amenities</h2>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
           {accom.amenities.map(amenity => (
-            <span key={amenity} className="glass-pill" style={{ padding: '6px 12px', fontSize: '12px' }}>
+            <span
+              key={amenity}
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                color: 'var(--label-primary)',
+                background: 'var(--system-bg-elevated)',
+                boxShadow: 'var(--shadow-card)',
+                borderRadius: 'var(--radius-full)'
+              }}
+            >
               {amenity}
             </span>
           ))}
@@ -115,12 +168,17 @@ export default function AccommodationDetailPage() {
           </>
         )}
 
-        <button className="btn-primary" style={{ marginTop: '20px' }}>
-          Book dis
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: '20px' }}
+          onClick={handleBook}
+          disabled={booking || booked}
+        >
+          {booked ? 'Booked!' : booking ? 'Booking...' : 'Book dis'}
         </button>
       </div>
 
-      <Dock />
+      <SuccessAnimation show={showSuccess} onComplete={() => setShowSuccess(false)} />
     </main>
   )
 }
