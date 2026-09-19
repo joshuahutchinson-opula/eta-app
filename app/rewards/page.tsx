@@ -195,7 +195,7 @@ export default function RewardsPage() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             <span className="chip" style={{ cursor: 'default' }}>
-              <Icon name="crown" size={14} style={{ color: 'var(--rum)' }} />
+              <Icon name="crown" size={14} style={{ color: 'var(--rum-text)' }} />
               {formatLevel(user.level)}
             </span>
             {user.streak > 0 && (
@@ -245,7 +245,7 @@ export default function RewardsPage() {
                       marginBottom: '10px'
                     }}
                   >
-                    <Icon name={reward.icon} size={20} style={{ color: 'var(--rum)' }} />
+                    <Icon name={reward.icon} size={20} style={{ color: 'var(--rum-text)' }} />
                   </div>
                   <p className="card-title">{reward.name}</p>
                   <p className="card-subtitle" style={{ marginBottom: '10px' }}>{reward.description}</p>
@@ -339,7 +339,7 @@ export default function RewardsPage() {
                 margin: '0 auto 14px'
               }}
             >
-              <Icon name={selectedReward.icon} size={26} style={{ color: 'var(--rum)' }} />
+              <Icon name={selectedReward.icon} size={26} style={{ color: 'var(--rum-text)' }} />
             </div>
             <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', textAlign: 'center', marginBottom: '4px' }}>
               {selectedReward.name}

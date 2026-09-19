@@ -5,11 +5,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
 import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
-import { hapticSurveyStepComplete, hapticSaved } from '@/lib/haptics'
+import { hapticSurveyStepComplete, hapticSaved, hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
+import SuccessAnimation from '@/components/SuccessAnimation'
 
 type Pin = { type: 'vendor'; data: MapVendor } | { type: 'photospot'; data: MapPhotoSpot }
 
@@ -65,6 +65,7 @@ interface Mood {
   icon: string
   description: string
   coverImage: string
+  videoUrl?: string | null
 }
 
 interface Booking {
@@ -91,6 +92,13 @@ const TIME_META: Record<string, { label: string; emoji: string }> = {
   'night': { label: 'All night', emoji: '🌙' }
 }
 
+const LOADING_MESSAGES = [
+  'Wi a look fi di best spot',
+  'Checking who\'s open right now',
+  'Matching yuh vibe',
+  'Almost deh'
+]
+
 const OCCASION_META: Record<string, { label: string; emoji: string }> = {
   birthday: { label: 'Celebration', emoji: '🎉' },
   romantic: { label: 'Just us two', emoji: '❤️' },
@@ -106,6 +114,14 @@ function avatarColor(name: string): string {
   let h = 0
   for (let i = 0; i < name.length; i++) { h = name.charCodeAt(i) + ((h << 5) - h) }
   return AV_COLORS[Math.abs(h) % AV_COLORS.length]
+}
+
+// Deterministic per-experience "social proof" count so it doesn't jitter
+// between re-renders.
+function socialProofCount(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h)
+  return 2 + (Math.abs(h) % 8)
 }
 
 function formatCity(city: string): string {
@@ -148,6 +164,8 @@ export default function ExperiencesPage() {
   const [planningPoints, setPlanningPoints] = useState(0)
   const [quickActionsBundle, setQuickActionsBundle] = useState<string | null>(null)
   const [booking, setBooking] = useState(false)
+  const [showBookingSuccess, setShowBookingSuccess] = useState(false)
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
   const [tabMode, setTabMode] = useState<'plan' | 'discover'>('plan')
   const [mapVendors, setMapVendors] = useState<MapVendor[]>([])
   const [mapPhotoSpots, setMapPhotoSpots] = useState<MapPhotoSpot[]>([])
@@ -168,6 +186,12 @@ export default function ExperiencesPage() {
       }, 2500)
       return () => clearInterval(etaTimer)
     }
+  }, [screen])
+
+  useEffect(() => {
+    if (screen !== 'loading') { setLoadingMsgIndex(0); return }
+    const timer = setInterval(() => setLoadingMsgIndex(prev => (prev + 1) % LOADING_MESSAGES.length), 900)
+    return () => clearInterval(timer)
   }, [screen])
 
   const fetchAll = async () => {
@@ -219,6 +243,7 @@ export default function ExperiencesPage() {
   }
 
   const triggerSelectAnim = (id: string) => {
+    triggerHaptic('selection')
     setSelectAnim(id)
     setTimeout(() => setSelectAnim(null), 300)
   }
@@ -255,6 +280,7 @@ export default function ExperiencesPage() {
   }
 
   const openExperience = (exp: Experience) => {
+    triggerHaptic('light')
     setSelectedExperience(exp)
     setScreen('detail')
   }
@@ -294,8 +320,11 @@ export default function ExperiencesPage() {
     if (currentUser) {
       setBooking(true)
       try {
-        const bookingDate = new Date(Date.now() + 3 * 24 * 3600000)
-        await fetch('/api/bookings', {
+        // Scheduled soon (not days out) so the newly-confirmed trip falls
+        // inside the Active Trip Banner's "happening now" detection window
+        // on Home/Experiences right after booking.
+        const bookingDate = new Date(Date.now() + 2 * 3600000)
+        const res = await fetch('/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -307,6 +336,15 @@ export default function ExperiencesPage() {
             status: 'CONFIRMED'
           })
         })
+        if (res.ok) {
+          setActiveBooking({
+            id: 'just-booked',
+            status: 'CONFIRMED',
+            date: bookingDate.toISOString(),
+            userId: currentUser.id,
+            experience: { name: selectedExperience.name }
+          })
+        }
       } catch (error) {
         console.error('Booking error:', error)
       } finally {
@@ -316,7 +354,8 @@ export default function ExperiencesPage() {
       console.warn('No signed-in user — booking was not saved.')
     }
 
-    setScreen('active')
+    hapticBookingConfirmed()
+    setShowBookingSuccess(true)
   }
 
   const realStops = () => activeStops.filter(s => s.type !== 'transport')
@@ -415,11 +454,11 @@ export default function ExperiencesPage() {
   // where the user left off.
   const renderModeSwitch = () => (
     <div className="segmented-control" style={{ margin: 'calc(env(safe-area-inset-top, 0px) + 40px) 0 16px' }}>
-      <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => setTabMode('plan')}>
+      <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('plan') }}>
         <Icon name="compass" size={16} />
         Plan
       </button>
-      <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => setTabMode('discover')}>
+      <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('discover') }}>
         <Icon name="mapPin" size={16} />
         Discover
       </button>
@@ -432,7 +471,6 @@ export default function ExperiencesPage() {
 
   const renderDiscover = () => (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
-      <FloatingPill />
       <div style={{ padding: '16px 16px 0' }}>
         {renderModeSwitch()}
       </div>
@@ -440,7 +478,7 @@ export default function ExperiencesPage() {
         {DISCOVER_CATEGORIES.map(cat => (
           <button
             key={cat.value}
-            onClick={() => setDiscoverCategory(discoverCategory === cat.value ? null : cat.value)}
+            onClick={() => { triggerHaptic('selection'); setDiscoverCategory(discoverCategory === cat.value ? null : cat.value) }}
             className={`mood-pill ${discoverCategory === cat.value ? 'centre' : ''}`}
           >
             <Icon name={cat.icon as any} size={16} />
@@ -452,8 +490,8 @@ export default function ExperiencesPage() {
         <ExploreMap
           vendors={filteredMapVendors}
           photoSpots={mapPhotoSpots}
-          onVendorTap={(v) => setSelectedPin({ type: 'vendor', data: v })}
-          onPhotoSpotTap={(s) => setSelectedPin({ type: 'photospot', data: s })}
+          onVendorTap={(v) => { triggerHaptic('light'); setSelectedPin({ type: 'vendor', data: v }) }}
+          onPhotoSpotTap={(s) => { triggerHaptic('light'); setSelectedPin({ type: 'photospot', data: s }) }}
         />
       </div>
 
@@ -506,7 +544,6 @@ export default function ExperiencesPage() {
   if (screen === 'survey') {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-        <FloatingPill />
         {activeBooking && (
           <div style={{ padding: '16px 16px 0' }}>
             <ActiveTripBanner
@@ -520,7 +557,15 @@ export default function ExperiencesPage() {
           {renderModeSwitch()}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--separator)', transition: 'background 0.3s ease' }} />
+              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: 'var(--separator)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: i < surveyStep ? '100%' : i === surveyStep ? '50%' : '0%',
+                  background: 'var(--rum)',
+                  borderRadius: '2px',
+                  transition: 'width 0.4s var(--spring-standard)'
+                }} />
+              </div>
             ))}
           </div>
 
@@ -550,15 +595,27 @@ export default function ExperiencesPage() {
                       onClick={() => toggleMood(m.id)}
                       className={`mood-video-tile ${survey.mood.includes(m.id) ? 'selected' : ''} ${selectAnim === m.id ? 'select-bounce' : ''}`}
                     >
-                      <img src={m.coverImage} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {m.videoUrl ? (
+                        <video
+                          src={m.videoUrl}
+                          poster={m.coverImage}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img src={m.coverImage} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
                       <div className="mood-video-tile-overlay" />
                       <div className="mood-video-tile-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Icon name={m.icon as any} size={14} />
                         {m.name}
                       </div>
                       {survey.mood.includes(m.id) && (
-                        <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Icon name="check" size={12} />
+                        <div key={`check-${m.id}`} className="check-pop-in" style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Icon name="check" size={12} style={{ color: 'white' }} />
                         </div>
                       )}
                     </div>
@@ -594,6 +651,11 @@ export default function ExperiencesPage() {
                 >
                   <span style={{ fontSize: '20px' }}>{meta.emoji}</span>
                   <span style={{ fontSize: '17px', fontWeight: 600, color: survey.time === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
+                  {survey.time === id && (
+                    <div key={`check-${id}`} className="check-pop-in" style={{ marginLeft: 'auto', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="check" size={12} style={{ color: 'white' }} />
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -678,6 +740,11 @@ export default function ExperiencesPage() {
                 >
                   <span style={{ fontSize: '20px' }}>{meta.emoji}</span>
                   <span style={{ fontSize: '17px', fontWeight: 600, color: survey.occasion === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
+                  {survey.occasion === id && (
+                    <div key={`check-${id}`} className="check-pop-in" style={{ marginLeft: 'auto', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="check" size={12} style={{ color: 'white' }} />
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -691,10 +758,13 @@ export default function ExperiencesPage() {
   // LOADING
   if (screen === 'loading') {
     return (
-      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', paddingBottom: '80px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--separator)', borderTopColor: 'var(--rum)', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>Wi a look fi di best spot</p>
-        <style jsx>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', paddingBottom: '80px' }}>
+        <div className="loading-icon-fade" style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--rum-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="sparkle" size={22} style={{ color: 'var(--rum)' }} />
+        </div>
+        <p key={loadingMsgIndex} className="loading-text-fade" style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+          {LOADING_MESSAGES[loadingMsgIndex]}
+        </p>
       </main>
     )
   }
@@ -706,7 +776,6 @@ export default function ExperiencesPage() {
 
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-        <FloatingPill />
         {showConfetti && (
           <>
             {[...Array(20)].map((_, i) => (
@@ -729,7 +798,7 @@ export default function ExperiencesPage() {
           <div style={{ marginBottom: '24px' }}>
             <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>Curated for You</p>
             <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginTop: '2px' }}>Yuh vibe, bundled.</h2>
-            <p style={{ fontSize: '15px', color: 'var(--rum)', fontWeight: 600, marginTop: '4px' }}>
+            <p style={{ fontSize: '15px', color: 'var(--rum-text)', fontWeight: 600, marginTop: '4px' }}>
               +{planningPoints} pts for planning your trip
             </p>
           </div>
@@ -757,8 +826,8 @@ export default function ExperiencesPage() {
                     }
                     openExperience(bestMatch)
                   }}
-                  className="card"
-                  style={{ position: 'relative', height: '280px', cursor: 'pointer', marginBottom: '16px' }}
+                  className="card stagger-in"
+                  style={{ position: 'relative', height: '280px', cursor: 'pointer', marginBottom: '16px', animationDelay: '0ms' }}
                 >
                   <img src={bestMatch.imageUrl} alt={bestMatch.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
@@ -790,8 +859,11 @@ export default function ExperiencesPage() {
                   <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '20px', color: 'white' }}>
                     <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{bestMatch.name}</h3>
                     <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>{bestMatch.tagline}</p>
-                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}>
                       {bestMatch.vendor?.name ? `Hosted by ${bestMatch.vendor.name}` : formatCity(bestMatch.city)} · {bestMatch.travelTime} min away
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
+                      {socialProofCount(bestMatch.id)} people booked this today
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '18px', fontWeight: 700 }}>${bestMatch.price}</span>
@@ -803,7 +875,7 @@ export default function ExperiencesPage() {
                 </div>
               )}
 
-              {others.map(exp => (
+              {others.map((exp, idx) => (
                 <div
                   key={exp.id}
                   onTouchStart={() => startBundleLongPress(exp.id)}
@@ -819,8 +891,8 @@ export default function ExperiencesPage() {
                     }
                     openExperience(exp)
                   }}
-                  className="card"
-                  style={{ position: 'relative', height: '180px', cursor: 'pointer', marginBottom: '12px' }}
+                  className="card stagger-in"
+                  style={{ position: 'relative', height: '180px', cursor: 'pointer', marginBottom: '12px', animationDelay: `${(idx + 1) * 70}ms` }}
                 >
                   <img src={exp.imageUrl} alt={exp.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.75))' }} />
@@ -848,8 +920,11 @@ export default function ExperiencesPage() {
 
                   <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
                     <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '2px' }}>{exp.name}</h3>
-                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>
+                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>
                       {exp.vendor?.name ? `Hosted by ${exp.vendor.name}` : formatCity(exp.city)} · {exp.travelTime} min away
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginBottom: '6px' }}>
+                      {socialProofCount(exp.id)} people booked this today
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '15px', fontWeight: 700 }}>${exp.price}</span>
@@ -872,18 +947,33 @@ export default function ExperiencesPage() {
   if (screen === 'detail' && selectedExperience) {
     const stops = experienceStops(selectedExperience)
     return (
-      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-        <FloatingPill />
-        <div style={{ height: '200px', position: 'relative', overflow: 'hidden', marginBottom: '16px' }}>
-          <img src={selectedExperience.imageUrl} alt={selectedExperience.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
-          <button onClick={() => setScreen('results')} style={{ position: 'absolute', top: '16px', left: '16px', width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+      <main className="screen-push-in" style={{ minHeight: '100dvh', background: '#0F0E0C', paddingBottom: '96px' }}>
+        <div style={{ height: '46vh', minHeight: '280px', position: 'relative', overflow: 'hidden' }}>
+          {selectedExperience.videoUrl ? (
+            <video
+              src={selectedExperience.videoUrl}
+              poster={selectedExperience.imageUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <img src={selectedExperience.imageUrl} alt={selectedExperience.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.35) 0%, transparent 30%, rgba(15,14,12,0.55) 75%, #0F0E0C 100%)' }} />
+          <button onClick={() => setScreen('results')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', left: '16px', width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
             <Icon name="back" size={18} />
           </button>
-          <h2 style={{ position: 'absolute', bottom: '16px', left: '16px', fontSize: '24px', fontWeight: 700, color: 'white' }}>{selectedExperience.name}</h2>
+          <div style={{ position: 'absolute', bottom: '24px', left: '16px', right: '16px' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, color: 'white', letterSpacing: '-0.02em', marginBottom: '4px' }}>{selectedExperience.name}</h2>
+            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.75)' }}>{selectedExperience.tagline}</p>
+          </div>
         </div>
 
-        <div style={{ padding: '0 16px' }}>
+        <div style={{ background: 'var(--system-bg-elevated)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--shadow-sheet)', marginTop: '-20px', position: 'relative', zIndex: 2, padding: '20px 16px 0' }}>
+          <div className="sheet-grabber" />
           {renderModeSwitch()}
           <div className="section-header">
             <div className="section-heading">
@@ -930,10 +1020,15 @@ export default function ExperiencesPage() {
             ))}
           </div>
 
+          <div style={{ height: '4px' }} />
+        </div>
+
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(50px + env(safe-area-inset-bottom, 0px))', zIndex: 30, background: 'var(--system-bg-elevated)', borderTop: '0.5px solid var(--separator)', padding: '10px 16px', boxShadow: 'var(--shadow-sheet)' }}>
           <button className="btn btn-primary" onClick={confirmExperience} disabled={booking} style={{ width: '100%' }}>
             {booking ? 'Booking...' : 'Dun — book dis'}
           </button>
         </div>
+        <SuccessAnimation show={showBookingSuccess} onComplete={() => { setShowBookingSuccess(false); setScreen('active') }} />
         <Dock />
       </main>
     )

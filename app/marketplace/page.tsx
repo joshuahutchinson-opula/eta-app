@@ -9,7 +9,6 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
 import BrandedRefresh from '@/components/BrandedRefresh'
-import FloatingPill from '@/components/FloatingPill'
 import { hapticSaved } from '@/lib/haptics'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
@@ -239,7 +238,6 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      <FloatingPill />
       <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
       <div className="content-fade-in" style={{ padding: '16px' }}>
@@ -400,7 +398,7 @@ export default function MarketplacePage() {
                   </p>
                   <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{dishesOfDay[0].dish}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="num-font" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--rum)' }}>
+                    <span className="num-font" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--rum-text)' }}>
                       ${dishesOfDay[0].price}
                     </span>
                     <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
@@ -431,7 +429,7 @@ export default function MarketplacePage() {
                       <div className="card-overlay" />
                     </div>
                     <div className="card-content">
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum)' }}>{fd.vendor.name}</p>
+                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }}>{fd.vendor.name}</p>
                       <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{fd.deal}</p>
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Icon name="clock" size={12} />
@@ -519,7 +517,7 @@ export default function MarketplacePage() {
                       </div>
                       <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{a.type}</p>
-                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum)' }}>
+                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum-text)' }}>
                         {a.priceRange}<span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> /night</span>
                       </p>
                     </div>

@@ -164,7 +164,7 @@ export default function ProfilePage() {
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px' }}>{memberSince}</p>
           )}
           <span className="chip" style={{ cursor: 'default', marginTop: '10px' }}>
-            <Icon name="crown" size={14} style={{ color: 'var(--rum)' }} />
+            <Icon name="crown" size={14} style={{ color: 'var(--rum-text)' }} />
             {formatLevel(user.level)}
           </span>
         </div>

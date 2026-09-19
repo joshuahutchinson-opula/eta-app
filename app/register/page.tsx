@@ -102,7 +102,7 @@ export default function RegisterPage() {
 
         <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--label-secondary)' }}>
           Already have an account?{' '}
-          <Link href="/login" style={{ color: 'var(--rum)', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/login" style={{ color: 'var(--rum-text)', fontWeight: 600, textDecoration: 'none' }}>
             Login
           </Link>
         </p>

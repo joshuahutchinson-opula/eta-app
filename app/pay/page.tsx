@@ -280,7 +280,7 @@ export default function PayPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--live)', fontSize: '15px', fontWeight: 600 }}>
                   <Icon name="sparkle" size={16} />
                   JAM-DEX → Lynk → Stripe
-                  <button onClick={() => setAutoRouting(false)} style={{ background: 'none', border: 'none', color: 'var(--rum)', cursor: 'pointer', fontSize: '15px', fontWeight: 600, marginLeft: 'auto', minHeight: '44px' }}>
+                  <button onClick={() => setAutoRouting(false)} style={{ background: 'none', border: 'none', color: 'var(--rum-text)', cursor: 'pointer', fontSize: '15px', fontWeight: 600, marginLeft: 'auto', minHeight: '44px' }}>
                     Override
                   </button>
                 </div>
@@ -300,7 +300,7 @@ export default function PayPage() {
             </div>
             <div style={{ marginBottom: '20px' }}>
               <p style={{ fontSize: '15px', color: 'var(--label-secondary)' }}>
-                Points earned: <span className="num-font" style={{ color: 'var(--rum)', fontWeight: 700 }}>+{Math.floor(parseFloat(amount || '0'))}</span>
+                Points earned: <span className="num-font" style={{ color: 'var(--rum-text)', fontWeight: 700 }}>+{Math.floor(parseFloat(amount || '0'))}</span>
               </p>
             </div>
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment} disabled={paying}>

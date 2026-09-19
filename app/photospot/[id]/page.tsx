@@ -115,7 +115,7 @@ export default function PhotoSpotDetailPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
+    <main className="screen-push-in" style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
       {/* Back button */}
       <button
         onClick={() => router.back()}

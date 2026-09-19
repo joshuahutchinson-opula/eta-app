@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from 'react'
 import Dock from '@/components/Dock'
-import FloatingPill from '@/components/FloatingPill'
 import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
 
 export default function ExplorePage() {
@@ -44,7 +43,6 @@ export default function ExplorePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
-      <FloatingPill />
       <div style={{ flex: 1, position: 'relative' }}>
         <ExploreMap vendors={vendors} photoSpots={photoSpots} />
       </div>

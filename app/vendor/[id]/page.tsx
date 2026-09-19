@@ -128,7 +128,7 @@ function renderMenuItems(items: any[]) {
       >
         <span style={{ fontSize: '15px', color: 'var(--label-primary)' }}>{name}</span>
         {price !== undefined && price !== null && (
-          <span className="num-font" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum)' }}>${price}</span>
+          <span className="num-font" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }}>${price}</span>
         )}
       </div>
     )
@@ -315,7 +315,7 @@ export default function VendorDetailPage() {
   const showPayButton = vendor.tipsJar || vendor.payItForward
 
   return (
-    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '92px' }}>
+    <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '92px' }}>
       {BackButton}
 
       {/* Hero */}

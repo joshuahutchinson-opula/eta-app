@@ -312,25 +312,30 @@ function VendorsContent() {
                         </div>
                       )}
                     </div>
+                    {/* .polaroid is a fixed white "paper photo" surface in both
+                        light and dark mode, so this caption text uses fixed
+                        light-mode-equivalent literals rather than the
+                        theme-adaptive --label-* vars, which would otherwise
+                        turn near-white (and disappear) in dark mode. */}
                     <div style={{ paddingTop: '8px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#000000', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'rgba(60, 60, 67, 0.6)', marginBottom: '4px' }}>
                         {formatCategory(v.category)} · {v.neighborhood}
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         {v.open ? (
-                          <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '11px', color: '#23873D', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span className="open-dot" /> Open
                           </span>
                         ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '11px', color: 'rgba(60, 60, 67, 0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span className="closed-dot" /> Closed
                           </span>
                         )}
-                        <span className="price-tier">{v.priceRange}</span>
+                        <span className="num-font" style={{ color: 'rgba(60, 60, 67, 0.6)', fontSize: '13px' }}>{v.priceRange}</span>
                       </div>
                       {v.rating && (
-                        <div className="rating-text" style={{ marginTop: '2px' }}>
+                        <div style={{ marginTop: '2px', fontSize: '13px', color: 'rgba(60, 60, 67, 0.6)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                           ★ <span className="num-font">{v.rating}</span>
                           {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                         </div>

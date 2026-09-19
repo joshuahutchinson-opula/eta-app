@@ -15,6 +15,7 @@
   --rum: #B82010;
   --rum-dark: #8B1A0A;
   --rum-tint: rgba(184, 32, 16, 0.1);
+  --rum-text: #B82010;
   --gold: #FFB800;
   --live: #00E5CC;
   
@@ -69,6 +70,13 @@
   --rum: #D43A2A;
   --rum-dark: #B82010;
   --rum-tint: rgba(212, 58, 42, 0.15);
+  /* Brighter than --rum specifically for text/icons sitting directly on a
+     dark surface (tab labels, secondary/tertiary button text, links). --rum
+     itself must stay dark enough that white text on a --rum-filled button
+     stays readable, which is the opposite constraint - a single color can't
+     satisfy both a WCAG AA text-on-black pairing and a white-on-fill pairing
+     at once, so this is a deliberate second token, not a duplicate. */
+  --rum-text: #F24230;
   
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.6);
   --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.8);
@@ -185,7 +193,7 @@ body[data-theme="dark"] {
   font-family: 'Space Mono', monospace;
   font-size: 15px;
   font-weight: 700;
-  color: var(--rum);
+  color: var(--rum-text);
 }
 
 /* ============ POLAROID ============ */
@@ -211,7 +219,11 @@ body[data-theme="dark"] {
 .polaroid-caption {
   font-family: 'Georgia', serif;
   font-style: italic;
-  color: var(--label-secondary);
+  /* .polaroid is a fixed white paper surface in both themes, so this uses a
+     fixed dark literal (the light-mode --label-secondary value) instead of
+     the theme-adaptive var, which turns near-white and disappears on this
+     background in dark mode. */
+  color: rgba(60, 60, 67, 0.6);
   text-align: center;
   margin-top: var(--space-2);
   font-size: 13px;
@@ -260,14 +272,14 @@ body[data-theme="dark"] {
 
 .btn-secondary {
   background: var(--rum-tint);
-  color: var(--rum);
+  color: var(--rum-text);
   padding: 0 20px;
   min-height: var(--tap-min);
 }
 
 .btn-tertiary {
   background: transparent;
-  color: var(--rum);
+  color: var(--rum-text);
   padding: 0 12px;
   min-height: var(--tap-min);
 }
@@ -315,7 +327,7 @@ body[data-theme="dark"] {
 }
 
 .tab-item.active {
-  color: var(--rum);
+  color: var(--rum-text);
 }
 
 .tab-item.inactive {
@@ -408,7 +420,7 @@ body[data-theme="dark"] {
 .section-link {
   font-size: 15px;
   font-weight: 500;
-  color: var(--rum);
+  color: var(--rum-text);
   cursor: pointer;
   text-decoration: none;
   display: flex;
@@ -843,7 +855,7 @@ body[data-theme="dark"] {
   justify-content: center;
   gap: 8px;
   padding: var(--space-4);
-  color: var(--rum);
+  color: var(--rum-text);
   font-size: 15px;
   font-weight: 600;
 }
@@ -982,6 +994,16 @@ body[data-theme="dark"] {
   animation: selectBounce var(--duration-fast) var(--spring-standard);
 }
 
+.check-pop-in {
+  animation: checkPopIn 0.35s var(--spring-overshoot) forwards;
+}
+
+@keyframes checkPopIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 @keyframes selectBounce {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
@@ -1108,6 +1130,46 @@ body[data-theme="dark"] {
   flex-shrink: 0;
 }
 
+/* ============ SCREEN PUSH TRANSITION ============ */
+.screen-push-in {
+  animation: screenPushIn 0.3s var(--spring-standard) both;
+}
+
+@keyframes screenPushIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ============ STAGGERED ENTRANCE ============ */
+.stagger-in {
+  animation: staggerIn 0.45s var(--spring-standard) both;
+}
+
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============ EXPERIENCES LOADING ============ */
+.loading-icon-fade {
+  animation: loadingIconFade 1.6s ease-in-out infinite;
+}
+
+@keyframes loadingIconFade {
+  0%, 100% { opacity: 0.5; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.loading-text-fade {
+  animation: fadeInContent 0.3s ease;
+}
+
+/* ============ STORIES ============ */
+@keyframes storyFill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
 /* ============ SEGMENTED CONTROL ============ */
 .segmented-control {
   display: flex;
@@ -1143,7 +1205,7 @@ body[data-theme="dark"] {
 
 .segmented-control-option.active {
   background: var(--system-bg-elevated);
-  color: var(--rum);
+  color: var(--rum-text);
   box-shadow: var(--shadow-card);
 }
 

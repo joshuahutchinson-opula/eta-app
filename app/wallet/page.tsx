@@ -185,7 +185,7 @@ export default function WalletPage() {
                   justifyContent: 'center',
                   flexShrink: 0
                 }}>
-                  <Icon name="card" size={20} style={{ color: 'var(--rum)' }} />
+                  <Icon name="card" size={20} style={{ color: 'var(--rum-text)' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>

@@ -90,7 +90,7 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--label-secondary)' }}>
           No account?{' '}
-          <Link href="/register" style={{ color: 'var(--rum)', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/register" style={{ color: 'var(--rum-text)', fontWeight: 600, textDecoration: 'none' }}>
             Register
           </Link>
         </p>
