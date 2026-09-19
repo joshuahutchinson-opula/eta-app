@@ -1108,6 +1108,45 @@ body[data-theme="dark"] {
   flex-shrink: 0;
 }
 
+/* ============ SEGMENTED CONTROL ============ */
+.segmented-control {
+  display: flex;
+  background: var(--system-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+
+.segmented-control-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: calc(var(--radius-md) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--label-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, transform var(--duration-fast) ease-out, opacity var(--duration-fast) ease-out;
+}
+
+.segmented-control-option:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+.segmented-control-option.active {
+  background: var(--system-bg-elevated);
+  color: var(--rum);
+  box-shadow: var(--shadow-card);
+}
+
 /* ============ UTILITY ============ */
 .num-font {
   font-family: 'Space Mono', monospace;

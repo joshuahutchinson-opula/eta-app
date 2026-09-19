@@ -7,8 +7,34 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
+import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
 import { hapticSurveyStepComplete, hapticSaved } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
+
+type Pin = { type: 'vendor'; data: MapVendor } | { type: 'photospot'; data: MapPhotoSpot }
+
+const DISCOVER_CATEGORIES = [
+  { value: 'FOOD', label: 'Food', icon: 'food' },
+  { value: 'DRINKS', label: 'Drinks', icon: 'glass' },
+  { value: 'ACTIVITY', label: 'Activity', icon: 'party' },
+  { value: 'WELLNESS', label: 'Wellness', icon: 'spa' },
+  { value: 'BEACH', label: 'Beach', icon: 'wave' }
+]
+
+// Maps a vendor's category to the same icon convention used by Mood.icon,
+// so "Plan a trip here" can pick a real, relevant mood instead of a fake one.
+const CATEGORY_TO_MOOD_ICON: Record<string, string> = {
+  FOOD: 'food',
+  DRINKS: 'glass',
+  ACTIVITY: 'party',
+  WELLNESS: 'spa',
+  BEACH: 'wave'
+}
+
+function formatCategory(category: string): string {
+  if (!category) return ''
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
 
 interface BundleStop {
   type: 'activity' | 'food' | 'transport'
@@ -122,6 +148,11 @@ export default function ExperiencesPage() {
   const [planningPoints, setPlanningPoints] = useState(0)
   const [quickActionsBundle, setQuickActionsBundle] = useState<string | null>(null)
   const [booking, setBooking] = useState(false)
+  const [tabMode, setTabMode] = useState<'plan' | 'discover'>('plan')
+  const [mapVendors, setMapVendors] = useState<MapVendor[]>([])
+  const [mapPhotoSpots, setMapPhotoSpots] = useState<MapPhotoSpot[]>([])
+  const [discoverCategory, setDiscoverCategory] = useState<string | null>(null)
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
 
   const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
@@ -141,10 +172,12 @@ export default function ExperiencesPage() {
 
   const fetchAll = async () => {
     try {
-      const [expRes, moodRes, bookingsRes] = await Promise.allSettled([
+      const [expRes, moodRes, bookingsRes, vendorsRes, spotsRes] = await Promise.allSettled([
         fetch('/api/experiences'),
         fetch('/api/moods'),
-        fetch('/api/bookings')
+        fetch('/api/bookings'),
+        fetch('/api/vendors'),
+        fetch('/api/photospots')
       ])
 
       if (expRes.status === 'fulfilled' && expRes.value.ok) {
@@ -154,6 +187,14 @@ export default function ExperiencesPage() {
       if (moodRes.status === 'fulfilled' && moodRes.value.ok) {
         const data = await moodRes.value.json()
         setMoods(Array.isArray(data) ? data : [])
+      }
+      if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
+        const data = await vendorsRes.value.json()
+        setMapVendors(Array.isArray(data) ? data.filter((v: MapVendor) => v.visibleOnMap && !v.isTransport) : [])
+      }
+      if (spotsRes.status === 'fulfilled' && spotsRes.value.ok) {
+        const data = await spotsRes.value.json()
+        setMapPhotoSpots(Array.isArray(data) ? data : [])
       }
       if (bookingsRes.status === 'fulfilled' && bookingsRes.value.ok) {
         const currentUser = getCurrentUser()
@@ -216,6 +257,26 @@ export default function ExperiencesPage() {
   const openExperience = (exp: Experience) => {
     setSelectedExperience(exp)
     setScreen('detail')
+  }
+
+  // "Plan a trip here" from a Discover-mode pin: pre-fill the survey's mood
+  // step with a real mood that matches the vendor's category (via the same
+  // icon convention both share), then hand off to Plan mode at step 0.
+  const planTripFromVendor = (vendor: MapVendor) => {
+    const icon = CATEGORY_TO_MOOD_ICON[vendor.category]
+    const matchedMood = icon ? moods.find(m => m.icon === icon) : undefined
+    setSurvey(prev => ({ ...prev, mood: matchedMood ? [matchedMood.id] : prev.mood }))
+    setSelectedPin(null)
+    setScreen('survey')
+    setSurveyStep(0)
+    setTabMode('plan')
+  }
+
+  const planTripFromPhotoSpot = () => {
+    setSelectedPin(null)
+    setScreen('survey')
+    setSurveyStep(0)
+    setTabMode('plan')
   }
 
   const confirmExperience = async () => {
@@ -348,6 +409,99 @@ export default function ExperiencesPage() {
     dismissQuickActions()
   }
 
+  // Persistent Plan/Discover segmented control, shown atop survey, results
+  // and detail screens. Switching modes never resets `screen`/`survey`/
+  // `selectedExperience` state, so flipping back to Plan resumes exactly
+  // where the user left off.
+  const renderModeSwitch = () => (
+    <div className="segmented-control" style={{ margin: 'calc(env(safe-area-inset-top, 0px) + 40px) 0 16px' }}>
+      <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => setTabMode('plan')}>
+        <Icon name="compass" size={16} />
+        Plan
+      </button>
+      <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => setTabMode('discover')}>
+        <Icon name="mapPin" size={16} />
+        Discover
+      </button>
+    </div>
+  )
+
+  const filteredMapVendors = discoverCategory
+    ? mapVendors.filter(v => v.category === discoverCategory)
+    : mapVendors
+
+  const renderDiscover = () => (
+    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
+      <FloatingPill />
+      <div style={{ padding: '16px 16px 0' }}>
+        {renderModeSwitch()}
+      </div>
+      <div className="mood-picker" style={{ padding: '0 16px 12px' }}>
+        {DISCOVER_CATEGORIES.map(cat => (
+          <button
+            key={cat.value}
+            onClick={() => setDiscoverCategory(discoverCategory === cat.value ? null : cat.value)}
+            className={`mood-pill ${discoverCategory === cat.value ? 'centre' : ''}`}
+          >
+            <Icon name={cat.icon as any} size={16} />
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ flex: 1, position: 'relative', minHeight: '360px' }}>
+        <ExploreMap
+          vendors={filteredMapVendors}
+          photoSpots={mapPhotoSpots}
+          onVendorTap={(v) => setSelectedPin({ type: 'vendor', data: v })}
+          onPhotoSpotTap={(s) => setSelectedPin({ type: 'photospot', data: s })}
+        />
+      </div>
+
+      <div className={`bottom-sheet-overlay ${selectedPin ? 'open' : ''}`} onClick={() => setSelectedPin(null)} />
+      <div className={`bottom-sheet ${selectedPin ? 'open' : ''}`}>
+        <div className="sheet-grabber" />
+        {selectedPin && selectedPin.type === 'vendor' && (
+          <div style={{ padding: '0 20px 20px' }}>
+            {selectedPin.data.images?.[0] && (
+              <img src={selectedPin.data.images[0]} alt={selectedPin.data.name} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: 'var(--radius-lg)', marginBottom: '12px' }} />
+            )}
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '4px' }}>{selectedPin.data.name}</h3>
+            <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '20px' }}>
+              {formatCategory(selectedPin.data.category)} · {selectedPin.data.neighborhood}
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={() => planTripFromVendor(selectedPin.data)}>
+              Plan a trip here
+            </button>
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => router.push(`/vendor/${selectedPin.data.id}`)}>
+              View Vendor
+            </button>
+          </div>
+        )}
+        {selectedPin && selectedPin.type === 'photospot' && (
+          <div style={{ padding: '0 20px 20px' }}>
+            {selectedPin.data.officialPhoto && (
+              <img src={selectedPin.data.officialPhoto} alt={selectedPin.data.name} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: 'var(--radius-lg)', marginBottom: '12px' }} />
+            )}
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '4px' }}>{selectedPin.data.name}</h3>
+            <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '20px' }}>{selectedPin.data.description}</p>
+            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={planTripFromPhotoSpot}>
+              Plan a trip here
+            </button>
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => router.push(`/photospot/${selectedPin.data.id}`)}>
+              View Photo Spot
+            </button>
+          </div>
+        )}
+      </div>
+
+      <Dock />
+    </main>
+  )
+
+  if (tabMode === 'discover' && (screen === 'survey' || screen === 'results' || screen === 'detail')) {
+    return renderDiscover()
+  }
+
   // SURVEY
   if (screen === 'survey') {
     return (
@@ -363,6 +517,7 @@ export default function ExperiencesPage() {
           </div>
         )}
         <div style={{ padding: '16px' }}>
+          {renderModeSwitch()}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
               <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: i < surveyStep ? 'var(--rum)' : 'var(--separator)', transition: 'background 0.3s ease' }} />
@@ -560,6 +715,7 @@ export default function ExperiencesPage() {
           </>
         )}
         <div style={{ padding: '16px' }}>
+          {renderModeSwitch()}
           {activeBooking && (
             <div style={{ marginBottom: '16px' }}>
               <ActiveTripBanner
@@ -728,6 +884,7 @@ export default function ExperiencesPage() {
         </div>
 
         <div style={{ padding: '0 16px' }}>
+          {renderModeSwitch()}
           <div className="section-header">
             <div className="section-heading">
               <span className="section-eyebrow">Your Route</span>
