@@ -29,7 +29,7 @@ export async function GET() {
     const withRatings = vendors.map(({ reviews, ...vendor }) => {
       const reviewCount = reviews.length
       const rating = reviewCount > 0
-        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10
+        ? Math.round((reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviewCount) * 10) / 10
         : undefined
       return { ...vendor, rating, reviewCount: reviewCount > 0 ? reviewCount : undefined }
     })
