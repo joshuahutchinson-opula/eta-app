@@ -15,6 +15,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError(patois.errorGeneric)
+      return
+    }
     try {
       setLoading(true)
       setError(null)

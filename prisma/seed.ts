@@ -21,6 +21,7 @@ async function main() {
   await prisma.experience.deleteMany()
   await prisma.accommodation.deleteMany()
   await prisma.vendor.deleteMany()
+  await prisma.photoSpot.deleteMany()
   await prisma.user.deleteMany()
 
   // Create users

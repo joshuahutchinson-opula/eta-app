@@ -225,7 +225,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
-        <div style={{ padding: '16px', paddingBottom: '100px' }}>
+        <div style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px', paddingBottom: '100px' }}>
           <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
             <div className="skeleton-image" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
           </div>

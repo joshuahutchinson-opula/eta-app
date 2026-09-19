@@ -16,6 +16,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
 
   const handleRegister = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError(patois.errorGeneric)
+      return
+    }
     try {
       setLoading(true)
       setError(null)

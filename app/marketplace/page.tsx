@@ -224,7 +224,7 @@ export default function MarketplacePage() {
   if (loading) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
-        <div style={{ padding: '16px', paddingBottom: '100px' }}>
+        <div style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px', paddingBottom: '100px' }}>
           <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
             <div className="skeleton-image" style={{ height: '100%' }} />
           </div>

@@ -48,7 +48,7 @@ export default function OnboardingPage() {
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `url(${current.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
       <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.3), rgba(15,14,12,0.95))' }} />
 
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: '100vh', padding: '24px', paddingBottom: '48px' }}>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', minHeight: '100vh', paddingTop: '24px', paddingLeft: '24px', paddingRight: '24px', paddingBottom: '48px' }}>
         <h1 style={{ fontSize: '34px', fontWeight: 800, marginBottom: '12px', color: 'white' }}>{current.title}</h1>
         <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.85)', marginBottom: '28px' }}>{current.text}</p>
 
