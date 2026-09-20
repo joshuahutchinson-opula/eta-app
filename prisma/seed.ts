@@ -222,11 +222,11 @@ async function main() {
       instagram: 'https://www.instagram.com/rockhousehotel/',
       website: 'https://www.rockhouse.com/eat',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881228/vendors/pushcart-restaurant-rum-bar/fobifxxw2xacl2lrfcyr.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881226/vendors/pushcart-restaurant-rum-bar/j3hl2uvsqs1mcdgrkzrx.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881226/vendors/pushcart-restaurant-rum-bar/tuzzsc2nyzqfqvdmksnv.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881227/vendors/pushcart-restaurant-rum-bar/vfvlgwj55mbwkiagff6m.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881227/vendors/pushcart-restaurant-rum-bar/bh2bnwfqsb4lgc6zo19y.webp',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881228/vendors/pushcart-restaurant-rum-bar/fobifxxw2xacl2lrfcyr.webp',
       ],
       videos: [
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881230/vendors/pushcart-restaurant-rum-bar/t8jo40fzqlbcy45ld9cp.mp4',
@@ -255,9 +255,9 @@ async function main() {
       instagram: 'https://www.instagram.com/zimbaliretreats/',
       website: 'https://zimbaliretreats.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881073/vendors/zimbali-retreats/i11gzybxmwjoaivmtxve.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881072/vendors/zimbali-retreats/gfycvpkdlekxwc0xoyc2.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881072/vendors/zimbali-retreats/au9geratrjjlxylmwzqg.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881073/vendors/zimbali-retreats/i11gzybxmwjoaivmtxve.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881074/vendors/zimbali-retreats/v6klwfxwahbjalyvlbih.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881074/vendors/zimbali-retreats/fahmfmuwjzre0on86dj2.jpg',
       ],
@@ -287,6 +287,7 @@ async function main() {
       description: 'Beach club with live reggae and themed parties nightly. Music runs til early morning. (Instagram: @bourbon_beach_negril)',
       instagram: 'https://www.instagram.com/bourbon_beach_negril/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/bourbonbeachimg.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881171/vendors/bourbon-beach/nughqevya8d4zovyn3q0.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881171/vendors/bourbon-beach/dcjwqbcmrofsobyp1kof.webp',
       ],
@@ -347,10 +348,10 @@ async function main() {
       instagram: 'https://www.instagram.com/ivanscatchafallingstar/',
       website: 'https://catchajamaica.com/ivans-restaurant-bar/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881136/vendors/ivan-s-bar-restaurant/gezjuesczggaao0vj56u.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881134/vendors/ivan-s-bar-restaurant/o76z90obxnpugsjavywq.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881135/vendors/ivan-s-bar-restaurant/botyxgotesnawma5jnfi.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881135/vendors/ivan-s-bar-restaurant/nboqe6hnfxajdhpzytd0.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881136/vendors/ivan-s-bar-restaurant/gezjuesczggaao0vj56u.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881137/vendors/ivan-s-bar-restaurant/uxmouasisgpmatcpnodu.jpg',
       ],
       videos: [
@@ -436,6 +437,7 @@ async function main() {
       instagram: 'https://www.instagram.com/doctorscavebeachjamaica/',
       website: 'https://doctorscavebathingclub.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/doctors-cave-bach.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881177/vendors/doctor-s-cave-beach-bar/lhimjtrk2mkirbyzftxh.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881178/vendors/doctor-s-cave-beach-bar/qisf08lb74xmcuevj1fi.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881178/vendors/doctor-s-cave-beach-bar/aeggk9igagwstbqf9f5t.jpg',
@@ -494,10 +496,10 @@ async function main() {
       instagram: 'https://www.instagram.com/rockhousehotel/',
       website: 'https://www.rockhouse.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881183/vendors/rockhouse-restaurant/biaogvbsbqp4a8igceus.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/ka19y18ywcaehtj23jn6.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/xzoewyeiuokxtkldkcgl.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881183/vendors/rockhouse-restaurant/riqyvzn7awvprqtreh6u.webp',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881183/vendors/rockhouse-restaurant/biaogvbsbqp4a8igceus.webp',
       ],
       videos: [
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881187/vendors/rockhouse-restaurant/wo4yrlf7zxu5ijd9rntv.mp4',
@@ -507,39 +509,6 @@ async function main() {
       open: true,
       live: false,
       isPremium: false,
-      whoThere: 0,
-      tipsJar: false,
-      payItForward: false,
-    },
-  })
-
-  const theLodgeRestaurant = await prisma.vendor.create({
-    data: {
-      name: 'The Lodge Restaurant',
-      category: VendorCategory.FOOD,
-      neighborhood: 'West End (Tensing Pen)',
-      city: City.NEGRIL,
-      lat: 18.2622,
-      lng: -78.3509,
-      priceRange: '$$$',
-      description: 'Caribbean dinners with ocean views at boutique hotel Tensing Pen. (Instagram: @tensingpen)',
-      instagram: 'https://www.instagram.com/tensingpen/',
-      website: 'https://www.tensingpen.com/',
-      images: [
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881259/vendors/the-lodge-restaurant/bsvalqdblyxymffa6l4v.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881260/vendors/the-lodge-restaurant/ut3atwfuirfd9zlqq3ru.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881260/vendors/the-lodge-restaurant/ck6qr93urpacnc6eh7mn.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881262/vendors/the-lodge-restaurant/pdbto1kcmhsdxlzpbias.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881263/vendors/the-lodge-restaurant/xvlfplz5mlvcx1qmwrc1.jpg',
-      ],
-      videos: [
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881266/vendors/the-lodge-restaurant/rn12qfbpawcve75hzrv3.mp4',
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881271/vendors/the-lodge-restaurant/wlie5thzkb4okmtpohwe.mp4',
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881275/vendors/the-lodge-restaurant/uvfs4brctzlwkgpy5xz2.mp4',
-      ],
-      open: true,
-      live: false,
-      isPremium: true,
       whoThere: 0,
       tipsJar: false,
       payItForward: false,
@@ -678,8 +647,8 @@ async function main() {
       description: 'Roadside jerk stand serving jerk pork and chicken — a local\'s pick, easy to miss if you\'re not looking.',
       instagram: 'https://www.instagram.com/border_jerk/',
       images: [
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881123/vendors/border-jerk/rqphsxsx2cutdc4tsqst.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881124/vendors/border-jerk/rhl8apnurgs9ccjideyx.jpg',
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881123/vendors/border-jerk/rqphsxsx2cutdc4tsqst.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881124/vendors/border-jerk/zweummfbl4m0lm4jmjtb.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881125/vendors/border-jerk/ffvlz5grglpp5rrob6so.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881125/vendors/border-jerk/p1chjoy5xhkrwu4uy3c7.jpg',
@@ -1004,9 +973,9 @@ async function main() {
       priceRange: '$$',
       description: 'Ital/vegetarian dishes and seafood, serving since 1998 — a longstanding local spot.',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881148/vendors/just-natural-veggie-seafood/jk7homavzvk6eswfjfv5.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881147/vendors/just-natural-veggie-seafood/ffavreotejqv3wdexwh5.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881148/vendors/just-natural-veggie-seafood/mjkeo3lxeqweegdcciwi.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881148/vendors/just-natural-veggie-seafood/jk7homavzvk6eswfjfv5.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881149/vendors/just-natural-veggie-seafood/bufnpqx1hg1nhu61zbgt.jpg',
       ],
       videos: [
@@ -1152,6 +1121,7 @@ async function main() {
       description: 'Multi-bar hopping experience — a good way to sample several small local bars in one night.',
       instagram: 'https://www.instagram.com/onelovebustour/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/one-love-bus-bar-crawl.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881254/vendors/one-love-bus-bar-crawl/cqvhq7bypnmjlx74aeko.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881254/vendors/one-love-bus-bar-crawl/urpornxeq2cvq0g92dmo.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881255/vendors/one-love-bus-bar-crawl/m1rgjidmcgedinwi6oym.jpg',
@@ -1183,6 +1153,7 @@ async function main() {
       instagram: 'https://www.instagram.com/woodstocknegril/',
       website: 'https://woodstocknegrilja.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/vendors/woodstock/p3xpg8chnvztuzefr4ss.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881276/vendors/woodstock/yg8httqlkqviegad8lr6.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881276/vendors/woodstock/suqqxjegfiojectjq1b1.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881277/vendors/woodstock/ygafqsmybbh2eixb86ye.jpg',
@@ -1229,7 +1200,7 @@ async function main() {
       ],
       open: true,
       live: false,
-      isPremium: false,
+      isPremium: true,
       whoThere: 0,
       tipsJar: false,
       payItForward: false,
@@ -1249,6 +1220,7 @@ async function main() {
       instagram: 'https://www.instagram.com/mvillecaribbean/',
       website: 'https://www.margaritavillecaribbean.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/26347002-2.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881237/vendors/margaritaville-negril/edvhybg4z19wi01ypbbd.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881238/vendors/margaritaville-negril/ma2dsbrtqumu8fhox4jz.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881238/vendors/margaritaville-negril/qczzz87ycidxohd0w3jf.jpg',
@@ -1259,6 +1231,41 @@ async function main() {
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881242/vendors/margaritaville-negril/t8xg8tnw0wuh3nzizbzi.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881248/vendors/margaritaville-negril/ijx8w2ca5yel2plzdsx1.mp4',
+      ],
+      open: true,
+      live: false,
+      isPremium: true,
+      whoThere: 0,
+      tipsJar: false,
+      payItForward: false,
+    },
+  })
+
+  // Created last (after Margaritaville) so its createdAt sorts most recent
+  // among isPremium vendors, making it the first Featured card.
+  const theLodgeRestaurant = await prisma.vendor.create({
+    data: {
+      name: 'The Lodge Restaurant',
+      category: VendorCategory.FOOD,
+      neighborhood: 'West End (Tensing Pen)',
+      city: City.NEGRIL,
+      lat: 18.2622,
+      lng: -78.3509,
+      priceRange: '$$$',
+      description: 'Caribbean dinners with ocean views at boutique hotel Tensing Pen. (Instagram: @tensingpen)',
+      instagram: 'https://www.instagram.com/tensingpen/',
+      website: 'https://www.tensingpen.com/',
+      images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881263/vendors/the-lodge-restaurant/xvlfplz5mlvcx1qmwrc1.jpg',
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881259/vendors/the-lodge-restaurant/bsvalqdblyxymffa6l4v.jpg',
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881260/vendors/the-lodge-restaurant/ut3atwfuirfd9zlqq3ru.jpg',
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881260/vendors/the-lodge-restaurant/ck6qr93urpacnc6eh7mn.jpg',
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881262/vendors/the-lodge-restaurant/pdbto1kcmhsdxlzpbias.jpg',
+      ],
+      videos: [
+        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881266/vendors/the-lodge-restaurant/rn12qfbpawcve75hzrv3.mp4',
+        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881271/vendors/the-lodge-restaurant/wlie5thzkb4okmtpohwe.mp4',
+        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881275/vendors/the-lodge-restaurant/uvfs4brctzlwkgpy5xz2.mp4',
       ],
       open: true,
       live: false,
@@ -1305,6 +1312,7 @@ async function main() {
       priceRange: '$$',
       description: 'Small independent beachside spa — ~$60+/session, transport often included via shuttle pickup from hotels. Warm and professional, oceanview setting.',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/482074751_2301449276896066_8138475623254717698_n.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881120/vendors/natasha-s-one-love-massage-spa/henxhi4cjkeavaixbakb.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881121/vendors/natasha-s-one-love-massage-spa/peqwana4qtrdnpcbzxly.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881122/vendors/natasha-s-one-love-massage-spa/dovjplvrunxozkcermtz.jpg',
@@ -1420,9 +1428,9 @@ async function main() {
       instagram: 'https://www.instagram.com/negrilhillsgolfclub/',
       website: 'https://negrilgolf.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881163/vendors/negril-hills-golf-club/pfyua2cdzwjjgydyajbq.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881149/vendors/negril-hills-golf-club/zzdxxaduvgsskp5rbbm4.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881150/vendors/negril-hills-golf-club/wrbbftn0hzrqm5i5ygsx.jpg',
-        'https://res.cloudinary.com/wspvflyn/image/upload/v1789881163/vendors/negril-hills-golf-club/pfyua2cdzwjjgydyajbq.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881163/vendors/negril-hills-golf-club/qwomygyksfexjpyg2kbc.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881164/vendors/negril-hills-golf-club/bpmbysdn6w9wjrupmmrt.webp',
       ],
