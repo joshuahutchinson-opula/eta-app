@@ -117,88 +117,79 @@ async function main() {
   })
 
   // Original mock Featured vendors, restored as standalone entries distinct from
-  // the real vendors below that now use similar variable names. Created first so
-  // their createdAt sorts oldest (isPremium vendors are ordered createdAt desc),
-  // keeping them out of the way of the real Featured rotation.
-  const pushCartOriginal = await prisma.vendor.create({
+  // the real vendors below that now use similar variable names.
+  const originalPushCart = await prisma.vendor.create({
     data: {
       name: 'Push Cart',
       category: VendorCategory.FOOD,
       neighborhood: 'West End',
       city: City.NEGRIL,
-      lat: 18.2856,
-      lng: -78.3397,
+      lat: 18.2668,
+      lng: -78.3502,
       priceRange: '$$',
-      description: 'Family-run. Catch of the day. Best jerk chicken on the west end. Wood fire, open grill, no shortcuts.',
+      description: 'Street-food-style Jamaican spot — jerk and local dishes with a twist. Lively, colorful, music-filled.',
       images: [
         'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
-        'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800',
-        'https://images.unsplash.com/photo-1562967914-608f82629710?w=800',
+        'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
+        'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800',
       ],
-      videos: [
-        'https://videos.pexels.com/video-files/5134443/5134443-hd_1920_1080_30fps.mp4',
-      ],
+      videos: ['https://videos.pexels.com/video-files/5134443/5134443-hd_1920_1080_30fps.mp4'],
       open: true,
       live: true,
       isPremium: true,
       whoThere: 14,
       tipsJar: true,
       payItForward: true,
-      ownerId: jordan.id,
     },
   })
 
-  const blueMahoeOriginal = await prisma.vendor.create({
+  const originalBlueMahoe = await prisma.vendor.create({
     data: {
       name: 'Blue Mahoe',
       category: VendorCategory.FOOD,
-      neighborhood: 'Cliffs',
+      neighborhood: 'Inland / jungle, off West End',
       city: City.NEGRIL,
-      lat: 18.2983,
-      lng: -78.3356,
-      priceRange: '$$$',
-      description: 'Ackee and saltfish with a view. Breakfast done right. Cliffside seating, sea breeze, freshly ground Blue Mountain coffee.',
+      lat: 18.2589,
+      lng: -78.3701,
+      priceRange: '$$$$',
+      description: 'Farm-to-table tasting menu — a 6-course chef\'s menu plus a working farm tour. Reservation required.',
       images: [
-        'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800',
-        'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
-        'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800',
+        'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+        'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=800',
+        'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800',
       ],
       videos: ['https://videos.pexels.com/video-files/5937335/5937335-uhd_3840_2160_25fps.mp4'],
       open: true,
       live: false,
       isPremium: true,
-      whoThere: 7,
-      tipsJar: true,
-      payItForward: true,
-      ownerId: sarah.id,
+      whoThere: 6,
+      tipsJar: false,
+      payItForward: false,
     },
   })
 
-  const coralReefBarOriginal = await prisma.vendor.create({
+  const originalCoralReef = await prisma.vendor.create({
     data: {
-      name: 'Coral Reef Bar',
+      name: 'Coral Reef',
       category: VendorCategory.DRINKS,
-      neighborhood: 'Seven Mile',
+      neighborhood: 'Seven Mile Beach',
       city: City.NEGRIL,
-      lat: 18.2695,
-      lng: -78.3512,
+      lat: 18.2914,
+      lng: -78.3641,
       priceRange: '$$',
-      description: 'Rum punch so good you\'ll forget your name. Live music on weekends. Right on the sand, toes in the water.',
+      description: 'Beach club with live reggae and themed parties nightly.',
       images: [
         'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
         'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800',
-        'https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=800',
+        'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800',
       ],
-      videos: [
-        'https://videos.pexels.com/video-files/35659845/15111600_1920_1080_60fps.mp4',
-      ],
+      videos: ['https://videos.pexels.com/video-files/35659845/15111600_1920_1080_60fps.mp4'],
       open: true,
       live: true,
       isPremium: true,
       whoThere: 23,
       tipsJar: true,
-      payItForward: true,
-      ownerId: marcus.id,
+      payItForward: false,
     },
   })
 
