@@ -114,7 +114,7 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+    const featuredList = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0)
     if (featuredList.length <= 1) return
 
     const autoScroll = setInterval(() => {
@@ -188,7 +188,7 @@ export default function HomePage() {
     setRefreshing(false)
   }
 
-  const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0).slice(0, 5)
+  const featuredVendors = vendors.filter(v => v.isPremium && v.videos && v.videos.length > 0)
 
   const trendingVendors = [...vendors]
     .filter(v => v.live)
