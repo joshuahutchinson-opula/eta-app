@@ -54,6 +54,8 @@ interface VendorDetail {
   lng: number
   priceRange: string
   description: string
+  instagram?: string | null
+  website?: string | null
   images: string[]
   videos: string[]
   open: boolean
@@ -139,7 +141,7 @@ function MenuSection({ menu }: { menu: any }) {
   if (Array.isArray(menu)) {
     if (menu.length === 0) return null
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '32px' }}>
         <div className="section-header">
           <div className="section-heading">
             <span className="section-title">Menu</span>
@@ -156,7 +158,7 @@ function MenuSection({ menu }: { menu: any }) {
     const entries = Object.entries(menu)
     if (entries.length === 0) return null
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '32px' }}>
         <div className="section-header">
           <div className="section-heading">
             <span className="section-title">Menu</span>
@@ -352,16 +354,16 @@ export default function VendorDetailPage() {
         )}
       </div>
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '20px 16px' }}>
         {/* Name / meta */}
-        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '4px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '6px' }}>
           {vendor.name}
         </h1>
-        <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <Icon name={CATEGORY_ICONS[vendor.category] || 'sparkle'} size={14} />
           {formatCategory(vendor.category)} · {vendor.neighborhood}, {formatCity(vendor.city)}
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: (vendor.instagram || vendor.website) ? '12px' : '20px' }}>
           {vendor.open ? (
             <span style={{ fontSize: '13px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span className="open-dot" /> Open
@@ -380,8 +382,37 @@ export default function VendorDetailPage() {
           )}
         </div>
 
+        {(vendor.instagram || vendor.website) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+            {vendor.instagram && (
+              <a
+                href={vendor.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${vendor.name} on Instagram`}
+                className="tappable"
+                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-primary)' }}
+              >
+                <Icon name="instagram" size={17} />
+              </a>
+            )}
+            {vendor.website && (
+              <a
+                href={vendor.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${vendor.name} official website`}
+                className="tappable"
+                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-primary)' }}
+              >
+                <Icon name="globe" size={17} />
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Description */}
-        <p style={{ fontSize: '15px', lineHeight: 1.5, color: 'var(--label-primary)', marginBottom: '8px' }}>
+        <p style={{ fontSize: '15px', lineHeight: 1.5, color: 'var(--label-primary)', marginBottom: '20px' }}>
           {vendor.description}
         </p>
 
@@ -390,7 +421,7 @@ export default function VendorDetailPage() {
 
         {/* Flash deals */}
         {vendor.flashDeals.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-eyebrow">Limited Time</span>
@@ -419,7 +450,7 @@ export default function VendorDetailPage() {
 
         {/* Experiences */}
         {vendor.experiences.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-eyebrow">From This Vendor</span>
@@ -448,7 +479,7 @@ export default function VendorDetailPage() {
 
         {/* Recent stories */}
         {vendor.stories.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-title">Recent Stories</span>

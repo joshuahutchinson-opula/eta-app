@@ -9,6 +9,7 @@ import SuccessAnimation from '@/components/SuccessAnimation'
 import { getCurrentUser, setCurrentUser, CurrentUser } from '@/lib/auth-client'
 import { patois } from '@/lib/patois'
 import { hapticRewardRedeemed } from '@/lib/haptics'
+import { REWARD_TIERS, getTierForPoints } from '@/lib/rewardTiers'
 
 interface RewardItem {
   id: string
@@ -16,6 +17,7 @@ interface RewardItem {
   cost: number
   description: string
   icon: string
+  minTier?: string
 }
 
 interface Redemption {
@@ -81,15 +83,16 @@ const REWARD_CATALOG: RewardItem[] = [
     cost: 2000,
     description: 'A full day in a private beachfront cabana.',
     icon: 'crown'
+  },
+  {
+    id: 'legend-concierge',
+    name: 'Personal Concierge Day',
+    cost: 2500,
+    description: 'A dedicated local concierge plans and runs your whole day. Legend tier exclusive.',
+    icon: 'star',
+    minTier: 'LOCAL_LEGEND'
   }
 ]
-
-function formatLevel(level: string) {
-  return level
-    .split('_')
-    .map(w => w[0] + w.slice(1).toLowerCase())
-    .join(' ')
-}
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -115,8 +118,15 @@ export default function RewardsPage() {
     setMounted(true)
   }, [])
 
+  const meetsTier = (reward: RewardItem) => {
+    if (!reward.minTier || !user) return true
+    const currentIdx = REWARD_TIERS.findIndex(t => t.key === getTierForPoints(user.points).key)
+    const requiredIdx = REWARD_TIERS.findIndex(t => t.key === reward.minTier)
+    return currentIdx >= requiredIdx
+  }
+
   const openConfirm = (reward: RewardItem) => {
-    if (!user || user.points < reward.cost) return
+    if (!user || user.points < reward.cost || !meetsTier(reward)) return
     setSelectedReward(reward)
     setSheetOpen(true)
   }
@@ -195,8 +205,8 @@ export default function RewardsPage() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             <span className="chip" style={{ cursor: 'default' }}>
-              <Icon name="crown" size={14} style={{ color: 'var(--rum-text)' }} />
-              {formatLevel(user.level)}
+              <Icon name={getTierForPoints(user.points).icon as any} size={14} style={{ color: 'var(--rum-text)' }} />
+              {getTierForPoints(user.points).label}
             </span>
             {user.streak > 0 && (
               <span className="chip" style={{ cursor: 'default' }}>
@@ -211,6 +221,44 @@ export default function RewardsPage() {
           </div>
         </div>
 
+        {/* TIER LADDER */}
+        <div className="section-header">
+          <div className="section-heading">
+            <span className="section-eyebrow">Loyalty</span>
+            <span className="section-title">Your Tier</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '28px' }}>
+          {REWARD_TIERS.map(tier => {
+            const isCurrent = tier.key === getTierForPoints(user.points).key
+            const unlocked = user.points >= tier.threshold
+            return (
+              <div
+                key={tier.key}
+                className="card"
+                style={{
+                  padding: '14px',
+                  cursor: 'default',
+                  border: isCurrent ? '1.5px solid var(--rum)' : undefined,
+                  opacity: unlocked ? 1 : 0.55
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: tier.perks.length ? '6px' : 0 }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isCurrent ? 'var(--rum)' : 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={tier.icon as any} size={15} style={{ color: isCurrent ? 'white' : 'var(--label-secondary)' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{tier.label}</p>
+                    <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-tertiary)' }}>{tier.threshold.toLocaleString()}+ pts</p>
+                  </div>
+                  {isCurrent && <span className="chip" style={{ cursor: 'default', fontSize: '11px' }}>Current</span>}
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--label-secondary)', lineHeight: 1.4 }}>{tier.perks.join(' · ')}</p>
+              </div>
+            )
+          })}
+        </div>
+
         {/* REWARD CATALOG */}
         <div className="section-header">
           <div className="section-heading">
@@ -221,7 +269,9 @@ export default function RewardsPage() {
 
         <div className="grid-2" style={{ marginBottom: '28px' }}>
           {REWARD_CATALOG.map(reward => {
-            const canAfford = user.points >= reward.cost
+            const tierOk = meetsTier(reward)
+            const canAfford = user.points >= reward.cost && tierOk
+            const requiredTier = reward.minTier ? REWARD_TIERS.find(t => t.key === reward.minTier) : null
             return (
               <div
                 key={reward.id}
@@ -258,7 +308,7 @@ export default function RewardsPage() {
                     disabled={!canAfford}
                     onClick={(e) => { e.stopPropagation(); openConfirm(reward) }}
                   >
-                    {canAfford ? 'Redeem' : `Need ${(reward.cost - user.points).toLocaleString()} more`}
+                    {!tierOk && requiredTier ? `${requiredTier.label} tier required` : canAfford ? 'Redeem' : `Need ${(reward.cost - user.points).toLocaleString()} more`}
                   </button>
                 </div>
               </div>

@@ -7,13 +7,7 @@ import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { getCurrentUser, logout, type CurrentUser } from '@/lib/auth-client'
-
-function formatLevel(level: string) {
-  return level
-    .split('_')
-    .map(w => w[0] + w.slice(1).toLowerCase())
-    .join(' ')
-}
+import { getTierForPoints } from '@/lib/rewardTiers'
 
 function formatMemberSince(createdAt?: string | null): string | null {
   if (!createdAt) return null
@@ -164,8 +158,8 @@ export default function ProfilePage() {
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px' }}>{memberSince}</p>
           )}
           <span className="chip" style={{ cursor: 'default', marginTop: '10px' }}>
-            <Icon name="crown" size={14} style={{ color: 'var(--rum-text)' }} />
-            {formatLevel(user.level)}
+            <Icon name={getTierForPoints(user.points).icon as any} size={14} style={{ color: 'var(--rum-text)' }} />
+            {getTierForPoints(user.points).label}
           </span>
         </div>
 

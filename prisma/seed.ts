@@ -133,6 +133,8 @@ async function main() {
       lng: -78.3502,
       priceRange: '$$',
       description: 'Street-food-style Jamaican spot at Rockhouse — jerk and local dishes with a twist. Lively, colorful, music-filled. (Instagram: @rockhousehotel)',
+      instagram: 'https://www.instagram.com/rockhousehotel/',
+      website: 'https://www.rockhouse.com/eat',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881226/vendors/pushcart-restaurant-rum-bar/j3hl2uvsqs1mcdgrkzrx.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881226/vendors/pushcart-restaurant-rum-bar/tuzzsc2nyzqfqvdmksnv.jpg',
@@ -164,6 +166,8 @@ async function main() {
       lng: -78.3701,
       priceRange: '$$$$',
       description: 'Farm-to-table tasting menu — a 6-course chef\'s menu plus a working farm tour. Reservation required, off the beaten path. (Instagram: @zimbaliretreats)',
+      instagram: 'https://www.instagram.com/zimbaliretreats/',
+      website: 'https://zimbaliretreats.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881072/vendors/zimbali-retreats/gfycvpkdlekxwc0xoyc2.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881072/vendors/zimbali-retreats/au9geratrjjlxylmwzqg.jpg',
@@ -195,6 +199,7 @@ async function main() {
       lng: -78.3641,
       priceRange: '$$',
       description: 'Beach club with live reggae and themed parties nightly. Music runs til early morning. (Instagram: @bourbon_beach_negril)',
+      instagram: 'https://www.instagram.com/bourbon_beach_negril/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881171/vendors/bourbon-beach/nughqevya8d4zovyn3q0.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881171/vendors/bourbon-beach/dcjwqbcmrofsobyp1kof.webp',
@@ -222,6 +227,8 @@ async function main() {
       lng: -78.3521,
       priceRange: '$$',
       description: 'Negril-born, NCTVET-certified owner-operator Claudette Nicholson. Massage, reflexology, facials, and hair braiding, beachfront. From $60/hr. (Instagram: @ocean_view_spa_negril_ja)',
+      instagram: 'https://www.instagram.com/ocean_view_spa_negril_ja/',
+      website: 'https://oceanviewspanegril.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881110/vendors/ocean-view-spa/didkurdni5plctfrxipq.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881111/vendors/ocean-view-spa/phy0ol0jzlrjaivyujld.jpg',
@@ -251,6 +258,8 @@ async function main() {
       lng: -78.3512,
       priceRange: '$$$',
       description: 'Jamaican fine dining at Catcha Falling Star — lobster and modern Jamaican plates with some of the best coastal views on the West End. Romantic.',
+      instagram: 'https://www.instagram.com/ivanscatchafallingstar/',
+      website: 'https://catchajamaica.com/ivans-restaurant-bar/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881134/vendors/ivan-s-bar-restaurant/o76z90obxnpugsjavywq.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881135/vendors/ivan-s-bar-restaurant/botyxgotesnawma5jnfi.webp',
@@ -336,6 +345,8 @@ async function main() {
       lng: -77.9358,
       priceRange: '$$',
       description: 'Beachfront drinks and snacks on the most famous beach in MoBay.',
+      instagram: 'https://www.instagram.com/doctorscavebeachjamaica/',
+      website: 'https://doctorscavebathingclub.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881177/vendors/doctor-s-cave-beach-bar/lhimjtrk2mkirbyzftxh.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881178/vendors/doctor-s-cave-beach-bar/qisf08lb74xmcuevj1fi.jpg',
@@ -392,6 +403,8 @@ async function main() {
       lng: -78.3499,
       priceRange: '$$$',
       description: 'Upscale Jamaican dining — blackened mahi-mahi, banana-leaf snapper. Romantic cliffside setting, candlelit at night. (Instagram: @rockhousehotel)',
+      instagram: 'https://www.instagram.com/rockhousehotel/',
+      website: 'https://www.rockhouse.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/ka19y18ywcaehtj23jn6.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/xzoewyeiuokxtkldkcgl.jpg',
@@ -422,6 +435,8 @@ async function main() {
       lng: -78.3509,
       priceRange: '$$$',
       description: 'Caribbean dinners with ocean views at boutique hotel Tensing Pen. (Instagram: @tensingpen)',
+      instagram: 'https://www.instagram.com/tensingpen/',
+      website: 'https://www.tensingpen.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881259/vendors/the-lodge-restaurant/bsvalqdblyxymffa6l4v.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881260/vendors/the-lodge-restaurant/ut3atwfuirfd9zlqq3ru.jpg',
@@ -453,6 +468,7 @@ async function main() {
       lng: -78.3505,
       priceRange: '$$',
       description: 'Family-run hidden gem — slow-cooked jerk chicken, granny sauce, lobster. Swim off the cliff between courses. Cash preferred. (Instagram: @3divesjerkcentre)',
+      instagram: 'https://www.instagram.com/3divesjerkcentre/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881235/vendors/3-dives-restaurant-cliff-bar/d2xwjtsyjszk3ndxmasi.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881235/vendors/3-dives-restaurant-cliff-bar/elmjbifdokpmyqpexheo.jpg',
@@ -482,6 +498,7 @@ async function main() {
       lng: -78.3421,
       priceRange: '$',
       description: 'Curry goat, oxtail, steamed snapper, and blended juices. A long-time local staple, unassuming from the outside.',
+      instagram: 'https://www.instagram.com/sweetspiceja/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881197/vendors/sweet-spice-restaurant/wh1thpqzhnetj03ujpac.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881198/vendors/sweet-spice-restaurant/p5c5dttpeg09hskpsd8q.jpg',
@@ -511,6 +528,7 @@ async function main() {
       lng: -78.3507,
       priceRange: '$',
       description: 'Small jerk hut with real local-favorite energy — jerk chicken and pork. (Instagram: @koolvybesbarandjerkcentre)',
+      instagram: 'https://www.instagram.com/koolvybesbarandjerkcentre/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881103/vendors/kool-vybes-bar-jerk-center/hm9pz8hhk5oh7s9zoser.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881103/vendors/kool-vybes-bar-jerk-center/donivvi6f9tkebhmqwbc.webp',
@@ -540,6 +558,7 @@ async function main() {
       lng: -78.3556,
       priceRange: '$',
       description: 'Hidden-gem jerk shack — jerk chicken, curry chicken, oxtail. Casual and cheap. (Instagram: @bestinthewestja)',
+      instagram: 'https://www.instagram.com/bestinthewestja/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881097/vendors/best-in-the-west-jerk-centre/ewtuotk7ug9smppjfcwg.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881098/vendors/best-in-the-west-jerk-centre/fjk8klltxkgxqixm13yr.jpg',
@@ -569,6 +588,7 @@ async function main() {
       lng: -78.3389,
       priceRange: '$',
       description: 'Roadside jerk stand serving jerk pork and chicken — a local\'s pick, easy to miss if you\'re not looking.',
+      instagram: 'https://www.instagram.com/border_jerk/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881123/vendors/border-jerk/rqphsxsx2cutdc4tsqst.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881124/vendors/border-jerk/rhl8apnurgs9ccjideyx.jpg',
@@ -681,6 +701,7 @@ async function main() {
       lng: -78.3455,
       priceRange: '$',
       description: 'Home-style Jamaican cooking. A local favorite, off the tourist radar.',
+      instagram: 'https://www.instagram.com/momsplacenegril1/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881249/vendors/mom-s-place/yyelyiuzchitxkobvqjx.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881250/vendors/mom-s-place/ub1lqmdiucpvqakqhbw2.jpg',
@@ -788,6 +809,8 @@ async function main() {
       lng: -78.3589,
       priceRange: '$',
       description: 'Local bakery known for Jamaican patties. Affordable snack stop away from the tourist strip.',
+      instagram: 'https://www.instagram.com/hammondsbakery/',
+      website: 'https://www.hammondspatties.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881108/vendors/hammond-s-bakery/krxuajc96muqjfxmgzas.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881108/vendors/hammond-s-bakery/pmvaz1ua3jx7gyiucfec.jpg',
@@ -920,6 +943,8 @@ async function main() {
       lng: -78.3617,
       priceRange: '$$',
       description: 'Long-running beach institution — live bands and beach party atmosphere. (Instagram: @alfredsnegril)',
+      instagram: 'https://www.instagram.com/alfredsnegril/',
+      website: 'https://www.alfredsoceanpalace.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881085/vendors/alfred-s-ocean-palace/pwrmusv0fhnzrmh5pny8.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881086/vendors/alfred-s-ocean-palace/aozzgar9dploxb9zjldt.jpg',
@@ -948,6 +973,7 @@ async function main() {
       lng: -78.3506,
       priceRange: '$',
       description: 'Small cliff pub for post-dinner cocktails and mingling with locals. Casual, low-key.',
+      website: 'https://www.ltugardenandcliff.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881077/vendors/ltu-pub-ltu-cliff-bar/d10vyldterzysoakzuwe.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881077/vendors/ltu-pub-ltu-cliff-bar/kd5ksovyeaifqd38u2kc.jpg',
@@ -975,6 +1001,7 @@ async function main() {
       lng: -78.351,
       priceRange: '$',
       description: 'Happy hour, steel pan drummers, great views — a private-feeling little beach.',
+      instagram: 'https://www.instagram.com/canoebar/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881079/vendors/canoe-canoe-beach-bar/ldbi6tjnom0lp10nwcym.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881080/vendors/canoe-canoe-beach-bar/fjjcbwizhedtrku8rdgm.jpg',
@@ -1004,6 +1031,8 @@ async function main() {
       lng: -78.3503,
       priceRange: '$',
       description: 'Very local small bar — Rastafarian drum circles and bonfires, off the tourist radar.',
+      instagram: 'https://www.instagram.com/canjamretreat/',
+      website: 'https://canjamretreat.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881129/vendors/can-jam/ygti1w3n2tird5sqjjmz.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881130/vendors/can-jam/w0yminjzacuv2ho1vxuo.jpg',
@@ -1033,6 +1062,7 @@ async function main() {
       lng: -78.355,
       priceRange: '$$',
       description: 'Multi-bar hopping experience — a good way to sample several small local bars in one night.',
+      instagram: 'https://www.instagram.com/onelovebustour/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881254/vendors/one-love-bus-bar-crawl/cqvhq7bypnmjlx74aeko.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881254/vendors/one-love-bus-bar-crawl/urpornxeq2cvq0g92dmo.jpg',
@@ -1062,6 +1092,8 @@ async function main() {
       lng: -78.3598,
       priceRange: '$',
       description: 'Small, family-friendly beach bar hangout. Popular with travelers, casual.',
+      instagram: 'https://www.instagram.com/woodstocknegril/',
+      website: 'https://woodstocknegrilja.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881276/vendors/woodstock/yg8httqlkqviegad8lr6.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881276/vendors/woodstock/suqqxjegfiojectjq1b1.jpg',
@@ -1093,6 +1125,8 @@ async function main() {
       lng: -78.35,
       priceRange: '$$',
       description: 'Local cliff bar/restaurant with swimming and snorkeling off the caves.',
+      instagram: 'https://www.instagram.com/xtabiresort/',
+      website: 'https://www.xtabijamaica.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881209/vendors/xtabi/eip4l9fzkhonm9ihowen.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881209/vendors/xtabi/j8dmjdexhxeajpapptk5.jpg',
@@ -1124,6 +1158,8 @@ async function main() {
       lng: -78.3692,
       priceRange: '$$$',
       description: 'Big Negril fixture — water trampolines, cliff jump, and DJ nights. (Instagram: @margaritavillenegril)',
+      instagram: 'https://www.instagram.com/mvillecaribbean/',
+      website: 'https://www.margaritavillecaribbean.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881237/vendors/margaritaville-negril/edvhybg4z19wi01ypbbd.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881238/vendors/margaritaville-negril/ma2dsbrtqumu8fhox4jz.jpg',
@@ -1209,6 +1245,7 @@ async function main() {
       lng: -78.3701,
       priceRange: '$$$',
       description: 'Jamaica\'s largest water park — also go-karts, paintball, and laser tag. (Instagram: @koolrunningsjm)',
+      instagram: 'https://www.instagram.com/koolrunningsjm/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881179/vendors/kool-runnings-water-park/foezubtjs0nq0kifmr2n.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881180/vendors/kool-runnings-water-park/jcirt9nnilizacg2gad9.jpg',
@@ -1238,6 +1275,8 @@ async function main() {
       lng: -78.3491,
       priceRange: '$',
       description: '30+ year old original craft market — authentic, locally made goods. Haggling expected. (Instagram: @rutlandpointcraft)',
+      instagram: 'https://www.instagram.com/rutlandpointcraft/',
+      website: 'http://rutlandpoint.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881075/vendors/rutland-point-negril-craft-market/ar77xq8e6gbet5vkgxzt.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881076/vendors/rutland-point-negril-craft-market/j7eugvvx0cj9gcepxhwj.jpg',
@@ -1290,6 +1329,8 @@ async function main() {
       lng: -78.3234,
       priceRange: '$$$',
       description: '9-hole course, more low-key than the resort courses.',
+      instagram: 'https://www.instagram.com/negrilhillsgolfclub/',
+      website: 'https://negrilgolf.com/',
       images: [
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881149/vendors/negril-hills-golf-club/zzdxxaduvgsskp5rbbm4.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881150/vendors/negril-hills-golf-club/wrbbftn0hzrqm5i5ygsx.jpg',
@@ -1793,15 +1834,15 @@ async function main() {
 
   // Create moods
   const moods = [
-    { name: 'R&R', description: 'Rest and relaxation.', icon: 'wellness', coverImage: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800', videoUrl: 'https://assets.mixkit.co/videos/51169/51169-720.mp4' },
+    { name: 'R&R', description: 'Rest and relaxation.', icon: 'wellness', coverImage: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800', videoUrl: 'https://assets.mixkit.co/videos/32173/32173-720.mp4' },
     { name: 'Just The Two Of Us', description: 'Romantic. Sunset dinners.', icon: 'sparkle', coverImage: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800', videoUrl: 'https://assets.mixkit.co/videos/1040/1040-720.mp4' },
     { name: 'Out Til Sunrise', description: 'Party. Late night.', icon: 'moon', coverImage: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800', videoUrl: 'https://assets.mixkit.co/videos/333/333-720.mp4' },
     { name: 'Golden Hour', description: 'Sunset chasing.', icon: 'sun', coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', videoUrl: 'https://assets.mixkit.co/videos/44498/44498-720.mp4' },
     { name: 'Water Life', description: 'Snorkeling, boats, cliffs.', icon: 'activity', coverImage: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800', videoUrl: 'https://assets.mixkit.co/videos/1582/1582-720.mp4' },
     { name: 'Street Food Crawl', description: 'Jerk stands, patties.', icon: 'food', coverImage: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800', videoUrl: 'https://assets.mixkit.co/videos/31348/31348-720.mp4' },
     { name: 'Hangover Cures', description: 'Recovery.', icon: 'drink', coverImage: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800', videoUrl: 'https://assets.mixkit.co/videos/41859/41859-720.mp4' },
-    { name: 'Solo Missions', description: 'For the lone explorer.', icon: 'user', coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', videoUrl: 'https://assets.mixkit.co/videos/28297/28297-720.mp4' },
-    { name: 'Family Day', description: 'Kid-friendly.', icon: 'users', coverImage: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800', videoUrl: 'https://assets.mixkit.co/videos/6221/6221-720.mp4' },
+    { name: 'Solo Missions', description: 'For the lone explorer.', icon: 'user', coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', videoUrl: 'https://assets.mixkit.co/videos/12987/12987-720.mp4' },
+    { name: 'Family Day', description: 'Kid-friendly.', icon: 'users', coverImage: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800', videoUrl: 'https://assets.mixkit.co/videos/14042/14042-720.mp4' },
     { name: 'Rum & Bass', description: 'Drinks and music.', icon: 'drink', coverImage: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800', videoUrl: 'https://assets.mixkit.co/videos/4295/4295-720.mp4' },
   ]
 

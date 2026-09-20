@@ -946,6 +946,27 @@ body[data-theme="dark"] {
   color: white;
 }
 
+/* Compact variant used by the Experiences mood-picker step so all mood
+   tiles fit on screen at once without scrolling. */
+.mood-video-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.mood-video-tile-compact {
+  height: 96px;
+  border-radius: var(--radius-sm, 10px);
+}
+
+.mood-video-tile-label-compact {
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 /* ============ WALLET CARD ============ */
 .wallet-branded-card {
   position: relative;
@@ -1207,6 +1228,16 @@ body[data-theme="dark"] {
   background: var(--system-bg-elevated);
   color: var(--rum-text);
   box-shadow: var(--shadow-card);
+}
+
+/* Sticky Plan/Discover switcher on Experiences — pinned to the top of the
+   viewport, does not scroll with the rest of the page content. */
+.mode-switch-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--system-bg);
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 12px;
 }
 
 /* ============ UTILITY ============ */

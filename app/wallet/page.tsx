@@ -9,6 +9,7 @@ import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import { getCurrentUser, CurrentUser } from '@/lib/auth-client'
+import { getTierForPoints, tierProgress } from '@/lib/rewardTiers'
 
 interface PaymentCard {
   id: string
@@ -36,8 +37,6 @@ const DEFAULT_CARDS: PaymentCard[] = [
   { id: 'card-2', brand: 'Mastercard', last4: '8888', label: 'Backup' },
 ]
 
-const NEXT_REWARD_THRESHOLD = 2000
-
 const TYPE_LABELS: Record<Transaction['type'], string> = {
   PAYMENT: 'Payment',
   REWARD: 'Reward earned',
@@ -47,10 +46,6 @@ const TYPE_LABELS: Record<Transaction['type'], string> = {
 
 function isCredit(type: Transaction['type']) {
   return type === 'REWARD' || type === 'TOPUP'
-}
-
-function formatLevel(level: string) {
-  return level.split('_').map(w => w[0] + w.slice(1).toLowerCase()).join(' ')
 }
 
 function formatDate(iso: string) {
@@ -110,8 +105,8 @@ export default function WalletPage() {
 
   const points = user?.points ?? 0
   const balance = user?.walletBalance ?? 0
-  const progressPercent = Math.min(100, Math.round((points / NEXT_REWARD_THRESHOLD) * 100))
-  const pointsToNext = Math.max(0, NEXT_REWARD_THRESHOLD - points)
+  const currentTier = getTierForPoints(points)
+  const { percent: progressPercent, pointsToNext, next: nextTier } = tierProgress(points)
 
   const saveCards = (updated: PaymentCard[]) => {
     setCards(updated)
@@ -253,7 +248,7 @@ export default function WalletPage() {
                   ETA
                 </h3>
                 <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', letterSpacing: '2px', color: 'rgba(255, 184, 0, 0.7)', textTransform: 'uppercase' }}>
-                  {user ? formatLevel(user.level) : 'Member'}
+                  {user ? currentTier.label : 'Member'}
                 </p>
                 <p style={{ fontFamily: 'Georgia, serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.4)', marginTop: '16px' }}>
                   Tap to open
@@ -312,7 +307,7 @@ export default function WalletPage() {
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '11px', color: 'rgba(15, 14, 12, 0.55)' }}>
-                      {pointsToNext} pts to next reward
+                      {nextTier ? `${pointsToNext} pts to ${nextTier.label}` : `${currentTier.label} — top tier`}
                     </span>
                     <span className="num-font" style={{ fontSize: '11px', color: 'rgba(15, 14, 12, 0.55)' }}>
                       {progressPercent}%

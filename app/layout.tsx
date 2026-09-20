@@ -24,6 +24,15 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light">
       <head>
+        {/* Applies the saved theme before first paint on every page (not
+            just Profile, where the preference is set) — otherwise dark mode
+            only "took" on whichever page set it and reverted to light on
+            every navigation, reload, or direct link. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}`
+          }}
+        />
         <meta name="theme-color" content="#F2F2F7" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

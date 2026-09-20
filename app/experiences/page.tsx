@@ -81,12 +81,11 @@ interface SurveyState {
   time: string | null
   crew: string[]
   mood: string[]
-  budget: number
-  occasion: string | null
+  transport: string | null
 }
 
 const TIME_META: Record<string, { label: string; emoji: string }> = {
-  '2hr': { label: '2 hrs', emoji: '⚡' },
+  '2hr': { label: '3 hrs', emoji: '⚡' },
   'half': { label: 'Half day', emoji: '🌤' },
   'full': { label: 'Full day', emoji: '☀️' },
   'night': { label: 'All night', emoji: '🌙' }
@@ -99,12 +98,15 @@ const LOADING_MESSAGES = [
   'Almost deh'
 ]
 
-const OCCASION_META: Record<string, { label: string; emoji: string }> = {
-  birthday: { label: 'Celebration', emoji: '🎉' },
-  romantic: { label: 'Just us two', emoji: '❤️' },
-  family: { label: 'Family day', emoji: '👨‍👩‍👧' },
-  none: { label: 'Surprise me', emoji: '🙅' }
+const TRANSPORT_META: Record<string, { label: string; emoji: string }> = {
+  drive: { label: "I'll drive myself", emoji: '🚗' },
+  walk: { label: 'I want to walk', emoji: '🚶' },
+  handled: { label: 'Handle transport for me', emoji: '🚕' }
 }
+
+// "Walk" biases stops toward this travel-time ceiling (minutes) so the
+// results stay within a realistic walking range from the user's start point.
+const WALK_TRAVEL_TIME_MAX = 20
 
 // Semantic design-system colors used for avatar initials & confetti,
 // in place of the old raw hex palette.
@@ -142,7 +144,7 @@ export default function ExperiencesPage() {
   const router = useRouter()
   const [screen, setScreen] = useState<'survey' | 'loading' | 'results' | 'detail' | 'active'>('survey')
   const [surveyStep, setSurveyStep] = useState(0)
-  const [survey, setSurvey] = useState<SurveyState>({ time: null, crew: [], mood: [], budget: 2, occasion: null })
+  const [survey, setSurvey] = useState<SurveyState>({ time: null, crew: [], mood: [], transport: null })
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -173,7 +175,7 @@ export default function ExperiencesPage() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
 
-  const surveySteps = ['mood', 'time', 'crew', 'budget', 'occasion']
+  const surveySteps = ['mood', 'time', 'crew', 'transport']
 
   useEffect(() => {
     fetchAll()
@@ -249,10 +251,20 @@ export default function ExperiencesPage() {
   }
 
   // Real experiences filtered by the moods picked in the survey (same
-  // matching pattern app/page.tsx uses).
-  const filteredExperiences = survey.mood.length > 0
-    ? experiences.filter(e => e.moods?.some(m => survey.mood.includes(m.id) || survey.mood.includes(m.name)))
-    : experiences
+  // matching pattern app/page.tsx uses), then biased by the transport
+  // preference: "walk" narrows to stops within a realistic walking range
+  // (using the experience's real travelTime field) when that leaves any
+  // options at all; driving or having transport handled removes that cap.
+  const filteredExperiences = (() => {
+    const byMood = survey.mood.length > 0
+      ? experiences.filter(e => e.moods?.some(m => survey.mood.includes(m.id) || survey.mood.includes(m.name)))
+      : experiences
+    if (survey.transport === 'walk') {
+      const walkable = byMood.filter(e => e.travelTime <= WALK_TRAVEL_TIME_MAX)
+      return walkable.length > 0 ? walkable : byMood
+    }
+    return byMood
+  })()
 
   const nextStep = () => {
     hapticSurveyStepComplete()
@@ -273,7 +285,7 @@ export default function ExperiencesPage() {
     setSurvey(prev => {
       const has = prev.mood.includes(moodId)
       if (has) return { ...prev, mood: prev.mood.filter(m => m !== moodId) }
-      if (prev.mood.length >= 2) return prev
+      if (prev.mood.length >= 3) return prev
       triggerSelectAnim(moodId)
       return { ...prev, mood: [...prev.mood, moodId] }
     })
@@ -453,15 +465,17 @@ export default function ExperiencesPage() {
   // `selectedExperience` state, so flipping back to Plan resumes exactly
   // where the user left off.
   const renderModeSwitch = () => (
-    <div className="segmented-control" style={{ margin: 'calc(env(safe-area-inset-top, 0px) + 40px) 0 16px' }}>
-      <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('plan') }}>
-        <Icon name="compass" size={16} />
-        Plan
-      </button>
-      <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('discover') }}>
-        <Icon name="mapPin" size={16} />
-        Discover
-      </button>
+    <div className="mode-switch-sticky">
+      <div className="segmented-control">
+        <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('plan') }}>
+          <Icon name="compass" size={16} />
+          Plan
+        </button>
+        <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('discover') }}>
+          <Icon name="mapPin" size={16} />
+          Discover
+        </button>
+      </div>
     </div>
   )
 
@@ -471,9 +485,7 @@ export default function ExperiencesPage() {
 
   const renderDiscover = () => (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '16px 16px 0' }}>
-        {renderModeSwitch()}
-      </div>
+      {renderModeSwitch()}
       <div className="mood-picker" style={{ padding: '0 16px 12px' }}>
         {DISCOVER_CATEGORIES.map(cat => (
           <button
@@ -544,6 +556,7 @@ export default function ExperiencesPage() {
   if (screen === 'survey') {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+        {renderModeSwitch()}
         {activeBooking && (
           <div style={{ padding: '16px 16px 0' }}>
             <ActiveTripBanner
@@ -554,7 +567,6 @@ export default function ExperiencesPage() {
           </div>
         )}
         <div style={{ padding: '16px' }}>
-          {renderModeSwitch()}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
             {surveySteps.map((_, i) => (
               <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: 'var(--separator)', overflow: 'hidden' }}>
@@ -571,13 +583,13 @@ export default function ExperiencesPage() {
 
           {surveyStep === 0 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 1 of 5</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 1 of 4</p>
               <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>What&apos;s calling you?</h2>
-              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>Pick up to two.</p>
+              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>Pick up to three.</p>
               {dataLoading ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="skeleton-card" style={{ height: '160px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                  {[0, 1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="skeleton-card" style={{ height: '96px' }}>
                       <div className="skeleton-image" style={{ height: '100%' }} />
                     </div>
                   ))}
@@ -588,12 +600,12 @@ export default function ExperiencesPage() {
                   <p style={{ fontSize: '17px', fontWeight: 600 }}>No vibes to pick from right now</p>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="mood-video-grid">
                   {moods.map(m => (
                     <div
                       key={m.id}
                       onClick={() => toggleMood(m.id)}
-                      className={`mood-video-tile ${survey.mood.includes(m.id) ? 'selected' : ''} ${selectAnim === m.id ? 'select-bounce' : ''}`}
+                      className={`mood-video-tile mood-video-tile-compact ${survey.mood.includes(m.id) ? 'selected' : ''} ${selectAnim === m.id ? 'select-bounce' : ''}`}
                     >
                       {m.videoUrl ? (
                         <video
@@ -609,13 +621,13 @@ export default function ExperiencesPage() {
                         <img src={m.coverImage} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       )}
                       <div className="mood-video-tile-overlay" />
-                      <div className="mood-video-tile-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Icon name={m.icon as any} size={14} />
+                      <div className="mood-video-tile-label mood-video-tile-label-compact" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Icon name={m.icon as any} size={12} />
                         {m.name}
                       </div>
                       {survey.mood.includes(m.id) && (
-                        <div key={`check-${m.id}`} className="check-pop-in" style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Icon name="check" size={12} style={{ color: 'white' }} />
+                        <div key={`check-${m.id}`} className="check-pop-in" style={{ position: 'absolute', top: '6px', right: '6px', width: '18px', height: '18px', borderRadius: '50%', background: 'var(--rum)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Icon name="check" size={10} style={{ color: 'white' }} />
                         </div>
                       )}
                     </div>
@@ -628,7 +640,7 @@ export default function ExperiencesPage() {
 
           {surveyStep === 1 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 2 of 5</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 2 of 4</p>
               <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>How much time?</h2>
               {Object.entries(TIME_META).map(([id, meta]) => (
                 <div
@@ -663,7 +675,7 @@ export default function ExperiencesPage() {
 
           {surveyStep === 2 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 3 of 5</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 3 of 4</p>
               <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>Who&apos;s coming?</h2>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input
@@ -692,37 +704,13 @@ export default function ExperiencesPage() {
 
           {surveyStep === 3 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 4 of 5</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '24px' }}>How yuh want to spend?</h2>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <span style={{ fontSize: '40px', fontWeight: 700, fontFamily: 'Space Mono, monospace', color: 'var(--rum)' }}>
-                  {['$', '$$', '$$$', '$$$$'][survey.budget - 1]}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="4"
-                value={survey.budget}
-                onChange={(e) => setSurvey(prev => ({ ...prev, budget: parseInt(e.target.value) }))}
-                style={{ width: '100%', height: '4px', borderRadius: '2px', background: 'var(--separator)', outline: 'none', WebkitAppearance: 'none', marginBottom: '8px', minHeight: '44px' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--label-secondary)', fontWeight: 500, marginBottom: '24px' }}>
-                <span>Local</span>
-                <span>No limit</span>
-              </div>
-              <button className="btn btn-primary" onClick={nextStep} style={{ width: '100%' }}>Fawud</button>
-            </>
-          )}
-
-          {surveyStep === 4 && (
-            <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 5 of 5</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>One more ting.</h2>
-              {Object.entries(OCCASION_META).map(([id, meta]) => (
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 4 of 4</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>Getting around?</h2>
+              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>This shapes how far we&apos;ll range for stops.</p>
+              {Object.entries(TRANSPORT_META).map(([id, meta]) => (
                 <div
                   key={id}
-                  onClick={() => { setSurvey(prev => ({ ...prev, occasion: id })); triggerSelectAnim(id); setTimeout(nextStep, 300) }}
+                  onClick={() => { setSurvey(prev => ({ ...prev, transport: id })); triggerSelectAnim(id); setTimeout(nextStep, 300) }}
                   className={selectAnim === id ? 'select-bounce' : ''}
                   style={{
                     padding: '16px',
@@ -732,15 +720,15 @@ export default function ExperiencesPage() {
                     alignItems: 'center',
                     gap: '12px',
                     marginBottom: '8px',
-                    background: survey.occasion === id ? 'var(--rum)' : 'var(--system-bg-elevated)',
+                    background: survey.transport === id ? 'var(--rum)' : 'var(--system-bg-elevated)',
                     border: '1px solid var(--separator)',
                     minHeight: '44px',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   <span style={{ fontSize: '20px' }}>{meta.emoji}</span>
-                  <span style={{ fontSize: '17px', fontWeight: 600, color: survey.occasion === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
-                  {survey.occasion === id && (
+                  <span style={{ fontSize: '17px', fontWeight: 600, color: survey.transport === id ? 'white' : 'var(--label-primary)' }}>{meta.label}</span>
+                  {survey.transport === id && (
                     <div key={`check-${id}`} className="check-pop-in" style={{ marginLeft: 'auto', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Icon name="check" size={12} style={{ color: 'white' }} />
                     </div>
@@ -783,8 +771,8 @@ export default function ExperiencesPage() {
             ))}
           </>
         )}
+        {renderModeSwitch()}
         <div style={{ padding: '16px' }}>
-          {renderModeSwitch()}
           {activeBooking && (
             <div style={{ marginBottom: '16px' }}>
               <ActiveTripBanner
@@ -972,9 +960,8 @@ export default function ExperiencesPage() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--system-bg-elevated)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--shadow-sheet)', marginTop: '-20px', position: 'relative', zIndex: 2, padding: '20px 16px 0' }}>
+        <div style={{ background: 'linear-gradient(180deg, rgba(15,14,12,0.12) 0%, var(--system-bg-elevated) 32px), var(--system-bg-elevated)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--shadow-sheet)', marginTop: '-20px', position: 'relative', zIndex: 2, padding: '20px 16px 0' }}>
           <div className="sheet-grabber" />
-          {renderModeSwitch()}
           <div className="section-header">
             <div className="section-heading">
               <span className="section-eyebrow">Your Route</span>

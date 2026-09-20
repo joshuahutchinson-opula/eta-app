@@ -6,12 +6,10 @@ import Icon from '@/lib/icons'
 import { patois } from '@/lib/patois'
 import { getCurrentUser, type CurrentUser } from '@/lib/auth-client'
 import SuccessAnimation from '@/components/SuccessAnimation'
+import Dock from '@/components/Dock'
+import { getTierForPoints } from '@/lib/rewardTiers'
 
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
-
-function formatLevel(level: string): string {
-  return level.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
-}
 
 export default function PayPage() {
   const [view, setView] = useState<'scan' | 'qr'>('scan')
@@ -223,7 +221,7 @@ export default function PayPage() {
               {user?.name || 'Guest'}
             </p>
             <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>
-              {user ? `${formatLevel(user.level)} · ${user.points.toLocaleString()} pts` : ''}
+              {user ? `${getTierForPoints(user.points).label} · ${user.points.toLocaleString()} pts` : ''}
             </p>
             <p className="caption-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
               Vendor scans this to charge you
@@ -311,6 +309,7 @@ export default function PayPage() {
       </div>
 
       <SuccessAnimation show={showSuccess} onComplete={() => setShowSuccess(false)} />
+      <Dock />
     </main>
   )
 }

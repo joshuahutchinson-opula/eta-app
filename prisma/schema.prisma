@@ -99,6 +99,8 @@ model Vendor {
   lng                   Float
   priceRange            String
   description           String
+  instagram             String?
+  website               String?
   images                String[]
   videos                String[]
   open                  Boolean         @default(false)
