@@ -1194,6 +1194,7 @@ async function main() {
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881211/vendors/xtabi/peyuaz0fusk5ni2qjtmx.jpg',
       ],
       videos: [
+        'https://res.cloudinary.com/wspvflyn/video/upload/vendors/xtabi/ju9gvah58tpeplpbyn0t.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881215/vendors/xtabi/rtw7brtnoallqteindco.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881220/vendors/xtabi/zo6vnj7nszogns6nfjxc.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881225/vendors/xtabi/mr4a9l6ymhnpn1z4qiqd.mp4',
