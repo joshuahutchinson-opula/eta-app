@@ -10,7 +10,7 @@ import LongPressCard from '@/components/LongPressCard'
 import BrandedRefresh from '@/components/BrandedRefresh'
 import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
-import { hapticSaved } from '@/lib/haptics'
+import { triggerHaptic } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
 
 interface Vendor {
@@ -205,6 +205,7 @@ export default function HomePage() {
   }
 
   const snapMoodToCentre = (moodId: string) => {
+    triggerHaptic('selection')
     setSelectedMood(selectedMood === moodId ? null : moodId)
     if (moodPickerRef.current) {
       const pill = moodPickerRef.current.querySelector(`[data-mood="${moodId}"]`)
@@ -291,7 +292,7 @@ export default function HomePage() {
         <div style={{ padding: '0 16px 12px' }}>
           <div className="section-heading">
             <span className="section-eyebrow">Featured</span>
-            <span className="section-title">Destinations</span>
+            <span className="section-title section-title-shimmer">Destinations</span>
           </div>
         </div>
 
@@ -308,6 +309,7 @@ export default function HomePage() {
                 <Link
                   key={vendor.id}
                   href={`/vendor/${vendor.id}`}
+                  onClick={() => triggerHaptic('light')}
                   style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
                 >
                   <div className="featured-hero" style={{ margin: '0 4px' }}>

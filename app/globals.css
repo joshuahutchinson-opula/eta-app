@@ -110,6 +110,24 @@ body[data-theme="dark"] {
   background: #000000;
 }
 
+/* Without this, native form controls (placeholder text, scrollbars, date
+   pickers) assume a light color-scheme regardless of --system-bg, so
+   placeholder text falls back to the browser's default dark gray and
+   goes low-contrast against a dark input surface. */
+:root {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--label-tertiary);
+  opacity: 1;
+}
+
 /* ============ GLOBAL TAP FEEDBACK ============ */
 .tappable {
   transition: transform var(--duration-fast) ease-out, opacity var(--duration-fast) ease-out;
@@ -415,6 +433,28 @@ body[data-theme="dark"] {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--label-primary);
+}
+
+/* One-off exception to the no-shimmer-text rule: the "Destinations" label only. */
+.section-title-shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--label-primary) 40%,
+    var(--rum-text) 50%,
+    var(--label-primary) 60%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: destinations-shimmer-sweep 3.5s ease-in-out infinite;
+}
+
+@keyframes destinations-shimmer-sweep {
+  0% { background-position: 160% 0; }
+  50% { background-position: -60% 0; }
+  100% { background-position: -60% 0; }
 }
 
 .section-link {
@@ -1149,6 +1189,25 @@ body[data-theme="dark"] {
   color: white;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* ============ SURVEY STEP TRANSITION ============ */
+.survey-step-forward {
+  animation: surveyStepInForward 0.32s var(--spring-standard) both;
+}
+
+.survey-step-back {
+  animation: surveyStepInBack 0.32s var(--spring-standard) both;
+}
+
+@keyframes surveyStepInForward {
+  from { opacity: 0; transform: translateX(36px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes surveyStepInBack {
+  from { opacity: 0; transform: translateX(-36px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 /* ============ SCREEN PUSH TRANSITION ============ */

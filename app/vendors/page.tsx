@@ -145,6 +145,8 @@ function VendorsContent() {
       return 0
     })
 
+  const activeFilterCount = [selectedCategory, city, selectedPriceTier, premiumOnly || null].filter(Boolean).length
+
   if (loading) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
@@ -196,6 +198,7 @@ function VendorsContent() {
           <button
             onClick={() => setShowFilterSheet(true)}
             style={{
+              position: 'relative',
               background: 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
@@ -210,48 +213,19 @@ function VendorsContent() {
             }}
           >
             <Icon name="filter" size={16} />
+            {activeFilterCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--rum)',
+                border: '1.5px solid var(--system-bg)'
+              }} />
+            )}
           </button>
-        </div>
-
-        {/* Category chips */}
-        <div className="mood-picker" style={{ padding: '4px 0 4px', margin: '0 -16px' }}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.name}
-              onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
-              className={`mood-pill ${selectedCategory === cat.name ? 'centre' : ''}`}
-            >
-              <Icon name={cat.icon as any} size={16} />
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Destination chips */}
-        <div className="mood-picker" style={{ padding: '4px 0 4px', margin: '0 -16px' }}>
-          {CITIES.map(c => (
-            <button
-              key={c.value}
-              onClick={() => setCity(city === c.value ? null : c.value)}
-              className={`mood-pill ${city === c.value ? 'centre' : ''}`}
-            >
-              <Icon name="mapPin" size={16} />
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Price tier quick filter */}
-        <div className="mood-picker" style={{ padding: '4px 0 12px', margin: '0 -16px' }}>
-          {PRICE_TIERS.map(tier => (
-            <button
-              key={tier}
-              onClick={() => setSelectedPriceTier(selectedPriceTier === tier ? null : tier)}
-              className={`mood-pill ${selectedPriceTier === tier ? 'centre' : ''}`}
-            >
-              <span className="num-font">{tier}</span>
-            </button>
-          ))}
         </div>
 
         {/* Count */}
@@ -260,7 +234,7 @@ function VendorsContent() {
           {city && ` in ${city === 'NEGRIL' ? 'Negril' : 'Montego Bay'}`}
         </p>
 
-        {/* Vendor grid - polaroid cards, 2 columns */}
+        {/* Vendor grid - flat iOS-style cards, 2 columns */}
         {filteredVendors.length === 0 ? (
           <div className="empty-state">
             <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
@@ -282,9 +256,9 @@ function VendorsContent() {
                 }
               >
                 <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                  <div className="polaroid">
-                    <div style={{ position: 'relative' }}>
-                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
+                  <div className="card">
+                    <div className="card-image" style={{ height: '120px' }}>
+                      <img src={v.images[0]} alt={v.name} />
                       {v.isPremium && (
                         <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Icon name="crown" size={11} />
@@ -312,30 +286,25 @@ function VendorsContent() {
                         </div>
                       )}
                     </div>
-                    {/* .polaroid is a fixed white "paper photo" surface in both
-                        light and dark mode, so this caption text uses fixed
-                        light-mode-equivalent literals rather than the
-                        theme-adaptive --label-* vars, which would otherwise
-                        turn near-white (and disappear) in dark mode. */}
-                    <div style={{ paddingTop: '8px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#000000', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'rgba(60, 60, 67, 0.6)', marginBottom: '4px' }}>
+                    <div className="card-content">
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
                         {formatCategory(v.category)} · {v.neighborhood}
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         {v.open ? (
-                          <span style={{ fontSize: '11px', color: '#23873D', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span className="open-dot" /> Open
                           </span>
                         ) : (
-                          <span style={{ fontSize: '11px', color: 'rgba(60, 60, 67, 0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span className="closed-dot" /> Closed
                           </span>
                         )}
-                        <span className="num-font" style={{ color: 'rgba(60, 60, 67, 0.6)', fontSize: '13px' }}>{v.priceRange}</span>
+                        <span className="num-font" style={{ color: 'var(--label-secondary)', fontSize: '13px' }}>{v.priceRange}</span>
                       </div>
                       {v.rating && (
-                        <div style={{ marginTop: '2px', fontSize: '13px', color: 'rgba(60, 60, 67, 0.6)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        <div className="rating-text" style={{ marginTop: '2px' }}>
                           ★ <span className="num-font">{v.rating}</span>
                           {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                         </div>
@@ -355,6 +324,47 @@ function VendorsContent() {
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Category</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
+                className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
+              >
+                <Icon name={cat.icon as any} size={14} />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Destination</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {CITIES.map(c => (
+              <button
+                key={c.value}
+                onClick={() => setCity(city === c.value ? null : c.value)}
+                className={`chip ${city === c.value ? 'active' : ''}`}
+              >
+                <Icon name="mapPin" size={14} />
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Price</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {PRICE_TIERS.map(tier => (
+              <button
+                key={tier}
+                onClick={() => setSelectedPriceTier(selectedPriceTier === tier ? null : tier)}
+                className={`chip ${selectedPriceTier === tier ? 'active' : ''}`}
+              >
+                <span className="num-font">{tier}</span>
+              </button>
+            ))}
+          </div>
 
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
@@ -380,9 +390,25 @@ function VendorsContent() {
             </button>
           </div>
 
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowFilterSheet(false)}>
-            Done
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {activeFilterCount > 0 && (
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setSelectedCategory(null)
+                  setCity(null)
+                  setSelectedPriceTier(null)
+                  setPremiumOnly(false)
+                }}
+              >
+                Clear all
+              </button>
+            )}
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowFilterSheet(false)}>
+              Done
+            </button>
+          </div>
         </div>
       </div>
 

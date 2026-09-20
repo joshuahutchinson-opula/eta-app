@@ -174,6 +174,10 @@ export default function ExperiencesPage() {
   const [discoverCategory, setDiscoverCategory] = useState<string | null>(null)
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const [stepDirection, setStepDirection] = useState<'forward' | 'back'>('forward')
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const surveySteps = ['mood', 'time', 'crew', 'transport']
 
@@ -268,6 +272,7 @@ export default function ExperiencesPage() {
 
   const nextStep = () => {
     hapticSurveyStepComplete()
+    setStepDirection('forward')
     if (surveyStep >= surveySteps.length - 1) {
       setScreen('loading')
       setPlanningPoints(25)
@@ -279,6 +284,51 @@ export default function ExperiencesPage() {
       return
     }
     setSurveyStep(prev => prev + 1)
+  }
+
+  const prevStep = () => {
+    if (surveyStep <= 0) return
+    triggerHaptic('selection')
+    setStepDirection('back')
+    setSurveyStep(prev => Math.max(0, prev - 1))
+  }
+
+  // Manual "Fawud"-equivalent steps (mood needs a pick, crew has no minimum);
+  // time and transport auto-advance the instant a card is tapped, so a
+  // forward swipe on those steps has nothing to confirm.
+  const canSwipeForward = () => {
+    if (surveyStep === 0) return survey.mood.length > 0
+    if (surveyStep === 2) return true
+    return false
+  }
+
+  const handleStepTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    setDragging(true)
+  }
+
+  const handleStepTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.touches[0].clientX - touchStartRef.current.x
+    const dy = e.touches[0].clientY - touchStartRef.current.y
+    if (Math.abs(dy) > Math.abs(dx)) return
+    const atStart = surveyStep === 0 && dx > 0
+    const blockedForward = dx < 0 && !canSwipeForward()
+    const eased = (atStart || blockedForward) ? dx * 0.25 : dx
+    setDragX(Math.max(-120, Math.min(120, eased)))
+  }
+
+  const handleStepTouchEnd = () => {
+    const dx = dragX
+    setDragging(false)
+    setDragX(0)
+    touchStartRef.current = null
+    const THRESHOLD = 56
+    if (dx <= -THRESHOLD && canSwipeForward()) {
+      nextStep()
+    } else if (dx >= THRESHOLD && surveyStep > 0) {
+      prevStep()
+    }
   }
 
   const toggleMood = (moodId: string) => {
@@ -567,20 +617,39 @@ export default function ExperiencesPage() {
           </div>
         )}
         <div style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '24px' }}>
-            {surveySteps.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: 'var(--separator)', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: i < surveyStep ? '100%' : i === surveyStep ? '50%' : '0%',
-                  background: 'var(--rum)',
-                  borderRadius: '2px',
-                  transition: 'width 0.4s var(--spring-standard)'
-                }} />
-              </div>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+            {surveyStep > 0 && (
+              <button
+                onClick={prevStep}
+                aria-label="Back"
+                style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'var(--system-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--label-secondary)' }}
+              >
+                <Icon name="chevronLeft" size={14} />
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+              {surveySteps.map((_, i) => (
+                <div key={i} style={{ flex: 1, height: '4px', borderRadius: '2px', background: 'var(--separator)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: i < surveyStep ? '100%' : i === surveyStep ? '50%' : '0%',
+                    background: 'var(--rum)',
+                    borderRadius: '2px',
+                    transition: 'width 0.4s var(--spring-standard)'
+                  }} />
+                </div>
+              ))}
+            </div>
           </div>
 
+          <div
+            key={surveyStep}
+            onTouchStart={handleStepTouchStart}
+            onTouchMove={handleStepTouchMove}
+            onTouchEnd={handleStepTouchEnd}
+            className={!dragging ? (stepDirection === 'forward' ? 'survey-step-forward' : 'survey-step-back') : ''}
+            style={dragging ? { transform: `translateX(${dragX}px)`, opacity: 1 - Math.min(0.6, Math.abs(dragX) / 300) } : undefined}
+          >
           {surveyStep === 0 && (
             <>
               <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 1 of 4</p>
@@ -737,6 +806,7 @@ export default function ExperiencesPage() {
               ))}
             </>
           )}
+          </div>
         </div>
         <Dock />
       </main>

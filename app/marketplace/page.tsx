@@ -216,7 +216,9 @@ export default function MarketplacePage() {
       return 0
     })
 
-  const filteredAccommodations = accommodations.filter(a => 
+  const activeFilterCount = [selectedMood, showSavedOnly || null].filter(Boolean).length
+
+  const filteredAccommodations = accommodations.filter(a =>
     !accommodationType || a.type === accommodationType
   )
 
@@ -305,7 +307,8 @@ export default function MarketplacePage() {
           </button>
           <button
             onClick={() => setShowFilterSheet(true)}
-            style={{ 
+            style={{
+              position: 'relative',
               background: 'var(--system-bg-elevated)',
               border: 'none',
               cursor: 'pointer',
@@ -320,28 +323,19 @@ export default function MarketplacePage() {
             }}
           >
             <Icon name="filter" size={16} />
+            {activeFilterCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--rum)',
+                border: '1.5px solid var(--system-bg)'
+              }} />
+            )}
           </button>
-        </div>
-
-        {/* Mood pills - same as homepage + Saved */}
-        <div className="mood-picker" style={{ padding: '4px 0 12px' }}>
-          <button
-            onClick={() => setShowSavedOnly(!showSavedOnly)}
-            className={`mood-pill ${showSavedOnly ? 'centre' : ''}`}
-          >
-            <Icon name="heart" size={16} className={showSavedOnly ? 'filled' : ''} />
-            Saved
-          </button>
-          {MOOD_NAMES.map(mood => (
-            <button
-              key={mood}
-              onClick={() => handleMoodChange(selectedMood === mood ? null : mood)}
-              className={`mood-pill ${selectedMood === mood ? 'centre' : ''}`}
-            >
-              <Icon name={MOOD_ICONS[mood] as any} size={16} />
-              {mood}
-            </button>
-          ))}
         </div>
 
         {/* Map view */}
@@ -603,7 +597,32 @@ export default function MarketplacePage() {
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
-          
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Mood / Category</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {MOOD_NAMES.map(mood => (
+              <button
+                key={mood}
+                onClick={() => handleMoodChange(selectedMood === mood ? null : mood)}
+                className={`chip ${selectedMood === mood ? 'active' : ''}`}
+              >
+                <Icon name={MOOD_ICONS[mood] as any} size={14} />
+                {mood}
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Show</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            <button
+              onClick={() => setShowSavedOnly(!showSavedOnly)}
+              className={`chip ${showSavedOnly ? 'active' : ''}`}
+            >
+              <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
+              Saved only
+            </button>
+          </div>
+
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Location</p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
             {['NEGRIL', 'MONTEGO_BAY'].map(c => (
@@ -631,9 +650,23 @@ export default function MarketplacePage() {
             ))}
           </div>
 
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowFilterSheet(false)}>
-            Done
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {activeFilterCount > 0 && (
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  handleMoodChange(null)
+                  setShowSavedOnly(false)
+                }}
+              >
+                Clear all
+              </button>
+            )}
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowFilterSheet(false)}>
+              Done
+            </button>
+          </div>
         </div>
       </div>
 

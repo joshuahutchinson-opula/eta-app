@@ -8,6 +8,7 @@ import { getCurrentUser, type CurrentUser } from '@/lib/auth-client'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import Dock from '@/components/Dock'
 import { getTierForPoints } from '@/lib/rewardTiers'
+import { hapticBookingConfirmed } from '@/lib/haptics'
 
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
 
@@ -59,6 +60,7 @@ export default function PayPage() {
       setCheckoutOpen(false)
       setAmount('')
       setShowSuccess(true)
+      hapticBookingConfirmed()
     } catch (error) {
       console.error('Payment error:', error)
     } finally {

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
 import SuccessAnimation from '@/components/SuccessAnimation'
+import { hapticBookingConfirmed } from '@/lib/haptics'
 
 interface Accommodation {
   id: string
@@ -76,6 +77,7 @@ export default function AccommodationDetailPage() {
 
       setBooked(true)
       setShowSuccess(true)
+      hapticBookingConfirmed()
     } catch (error) {
       console.error(error)
     } finally {
