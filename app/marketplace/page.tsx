@@ -103,7 +103,7 @@ export default function MarketplacePage() {
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 18.2723, lng: -78.3521 })
-  const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string }>>([])
+  const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string; videoUrl?: string }>>([])
 
   useEffect(() => {
     fetchData()
@@ -139,17 +139,21 @@ export default function MarketplacePage() {
       setAccommodations(Array.isArray(accomData) ? accomData : [])
       setFlashDeals(Array.isArray(flashDealsData) ? flashDealsData : [])
       
-      const foodVendors = Array.isArray(vendorsData) ? vendorsData.filter((v: Vendor) => v.category === 'FOOD').slice(0, 3) : []
-      const mockDishes = foodVendors.map((v: Vendor, i: number) => ({
-        id: `dish-${v.id}`,
-        vendorId: v.id,
-        vendorName: v.name,
-        dish: ['Jerk Chicken Plate', 'Curry Goat Special', 'Fresh Catch of the Day'][i] || 'Daily Special',
-        price: [15, 18, 22][i] || 20,
-        eta: ['15 min', '20 min', '25 min'][i] || '20 min',
-        imageUrl: v.images[0] || ''
-      }))
-      setDishesOfDay(mockDishes)
+      const margaritaville = Array.isArray(vendorsData) ? vendorsData.find((v: Vendor) => v.name === 'Margaritaville Negril') : null
+      if (margaritaville) {
+        setDishesOfDay([{
+          id: `dish-${margaritaville.id}`,
+          vendorId: margaritaville.id,
+          vendorName: margaritaville.name,
+          dish: 'Beach Burgers',
+          price: 16,
+          eta: '20 min',
+          imageUrl: margaritaville.images[0] || '',
+          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
+        }])
+      } else {
+        setDishesOfDay([])
+      }
     } catch (error) {
       console.error(error)
     } finally {
@@ -384,7 +388,20 @@ export default function MarketplacePage() {
             </div>
             <Link href={`/vendor/${dishesOfDay[0].vendorId}`} style={{ textDecoration: 'none' }}>
               <div className="card" style={{ position: 'relative', height: '200px' }}>
-                <img src={dishesOfDay[0].imageUrl} alt={dishesOfDay[0].dish} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                {dishesOfDay[0].videoUrl ? (
+                  <video
+                    src={dishesOfDay[0].videoUrl}
+                    poster={dishesOfDay[0].imageUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                  />
+                ) : (
+                  <img src={dishesOfDay[0].imageUrl} alt={dishesOfDay[0].dish} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                )}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
                 <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
                   <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.7)' }}>
@@ -581,7 +598,6 @@ export default function MarketplacePage() {
                           {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
                         </div>
                       )}
-                      <p className="price-tier" style={{ marginTop: '4px' }}>{v.priceRange}</p>
                     </div>
                   </div>
                 </Link>

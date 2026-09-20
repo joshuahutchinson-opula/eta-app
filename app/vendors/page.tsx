@@ -301,7 +301,6 @@ function VendorsContent() {
                             <span className="closed-dot" /> Closed
                           </span>
                         )}
-                        <span className="num-font" style={{ color: 'var(--label-secondary)', fontSize: '13px' }}>{v.priceRange}</span>
                       </div>
                       {v.rating && (
                         <div className="rating-text" style={{ marginTop: '2px' }}>

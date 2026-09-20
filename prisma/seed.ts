@@ -140,6 +140,7 @@ async function main() {
       whoThere: 14,
       tipsJar: true,
       payItForward: true,
+      createdAt: new Date('2020-01-01T00:00:01Z'),
     },
   })
 
@@ -165,6 +166,7 @@ async function main() {
       whoThere: 6,
       tipsJar: false,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:02Z'),
     },
   })
 
@@ -190,6 +192,7 @@ async function main() {
       whoThere: 23,
       tipsJar: true,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:04Z'),
     },
   })
 
@@ -230,6 +233,7 @@ async function main() {
       whoThere: 14,
       tipsJar: true,
       payItForward: true,
+      createdAt: new Date('2020-01-01T00:00:03Z'),
     },
   })
 
@@ -356,6 +360,7 @@ async function main() {
       whoThere: 9,
       tipsJar: false,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:07Z'),
     },
   })
 
@@ -408,7 +413,7 @@ async function main() {
       ],
       open: true,
       live: true,
-      isPremium: true,
+      isPremium: false,
       whoThere: 18,
       tipsJar: true,
       payItForward: true,
@@ -469,6 +474,7 @@ async function main() {
       whoThere: 12,
       tipsJar: true,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:08Z'),
     },
   })
 
@@ -487,6 +493,7 @@ async function main() {
       instagram: 'https://www.instagram.com/rockhousehotel/',
       website: 'https://www.rockhouse.com/',
       images: [
+        'https://res.cloudinary.com/wspvflyn/image/upload/rockhouse-hotel.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881183/vendors/rockhouse-restaurant/biaogvbsbqp4a8igceus.webp',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/ka19y18ywcaehtj23jn6.jpg',
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881182/vendors/rockhouse-restaurant/xzoewyeiuokxtkldkcgl.jpg',
@@ -645,14 +652,16 @@ async function main() {
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881125/vendors/border-jerk/p1chjoy5xhkrwu4uy3c7.jpg',
       ],
       videos: [
+        'https://res.cloudinary.com/wspvflyn/video/upload/vendors/border-jerk/g0o9rkwvpy7gr69ezqyf.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881128/vendors/border-jerk/vfdorrcl351m8l3s1yez.mp4',
       ],
       open: true,
       live: false,
-      isPremium: false,
+      isPremium: true,
       whoThere: 0,
       tipsJar: false,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:05Z'),
     },
   })
 
@@ -1195,6 +1204,7 @@ async function main() {
       whoThere: 0,
       tipsJar: false,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:09Z'),
     },
   })
 
@@ -1229,11 +1239,10 @@ async function main() {
       whoThere: 0,
       tipsJar: false,
       payItForward: false,
+      createdAt: new Date('2020-01-01T00:00:06Z'),
     },
   })
 
-  // Created last (after Margaritaville) so its createdAt sorts most recent
-  // among isPremium vendors, making it the first Featured card.
   const theLodgeRestaurant = await prisma.vendor.create({
     data: {
       name: 'The Lodge Restaurant',
@@ -1254,13 +1263,14 @@ async function main() {
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881262/vendors/the-lodge-restaurant/pdbto1kcmhsdxlzpbias.jpg',
       ],
       videos: [
+        'https://res.cloudinary.com/wspvflyn/video/upload/vendors/the-lodge-restaurant/emdugvzk8wgblhlpjtlh.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881266/vendors/the-lodge-restaurant/rn12qfbpawcve75hzrv3.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881271/vendors/the-lodge-restaurant/wlie5thzkb4okmtpohwe.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881275/vendors/the-lodge-restaurant/uvfs4brctzlwkgpy5xz2.mp4',
       ],
       open: true,
       live: false,
-      isPremium: true,
+      isPremium: false,
       whoThere: 0,
       tipsJar: false,
       payItForward: false,

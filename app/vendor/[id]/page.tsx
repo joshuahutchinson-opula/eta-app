@@ -277,7 +277,7 @@ export default function VendorDetailPage() {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
         {BackButton}
-        <div className="skeleton-card" style={{ height: '320px' }}>
+        <div className="skeleton-card" style={{ height: '45vh' }}>
           <div className="skeleton-image" style={{ height: '100%' }} />
         </div>
         <div style={{ padding: '16px' }}>
@@ -321,7 +321,7 @@ export default function VendorDetailPage() {
       {BackButton}
 
       {/* Hero */}
-      <div style={{ position: 'relative', height: '320px', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: '45vh', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
         {vendor.videos && vendor.videos.length > 0 ? (
           <video
             autoPlay
