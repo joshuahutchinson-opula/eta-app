@@ -149,7 +149,7 @@ export default function MarketplacePage() {
           price: 16,
           eta: '20 min',
           imageUrl: margaritaville.images[0] || '',
-          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
+          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
         }])
       } else {
         setDishesOfDay([])

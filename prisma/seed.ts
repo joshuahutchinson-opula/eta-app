@@ -1194,9 +1194,12 @@ async function main() {
         'https://res.cloudinary.com/wspvflyn/image/upload/v1789881211/vendors/xtabi/peyuaz0fusk5ni2qjtmx.jpg',
       ],
       videos: [
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789859109/vendors/xtabi/ju9gvah58tpeplpbyn0t.mp4',
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881215/vendors/xtabi/rtw7brtnoallqteindco.mp4',
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881220/vendors/xtabi/zo6vnj7nszogns6nfjxc.mp4',
+        // vc_h264: these were encoded VP9-in-.mp4 by Cloudinary, which Safari/iOS
+        // can't decode (silent black-screen playback failure, not a load error).
+        // Forcing H.264 delivery via transformation fixes it without re-uploading.
+        'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789859109/vendors/xtabi/ju9gvah58tpeplpbyn0t.mp4',
+        'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789881215/vendors/xtabi/rtw7brtnoallqteindco.mp4',
+        'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789881220/vendors/xtabi/zo6vnj7nszogns6nfjxc.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881225/vendors/xtabi/mr4a9l6ymhnpn1z4qiqd.mp4',
       ],
       open: true,
@@ -1231,7 +1234,8 @@ async function main() {
       ],
       videos: [
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881242/vendors/margaritaville-negril/t8xg8tnw0wuh3nzizbzi.mp4',
-        'https://res.cloudinary.com/wspvflyn/video/upload/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4',
+        // vc_h264: VP9-in-.mp4 as uploaded, which Safari/iOS can't decode.
+        'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4',
         'https://res.cloudinary.com/wspvflyn/video/upload/v1789881248/vendors/margaritaville-negril/ijx8w2ca5yel2plzdsx1.mp4',
       ],
       open: true,
