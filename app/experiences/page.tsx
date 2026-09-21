@@ -670,7 +670,7 @@ export default function ExperiencesPage() {
                 </div>
               ) : (
                 <div className="mood-video-grid">
-                  {moods.map(m => (
+                  {moods.map((m, i) => (
                     <div
                       key={m.id}
                       onClick={() => toggleMood(m.id)}
@@ -684,7 +684,7 @@ export default function ExperiencesPage() {
                           muted
                           loop
                           playsInline
-                          preload="metadata"
+                          preload={i < 3 ? 'auto' : 'metadata'}
                         />
                       ) : (
                         <img src={m.coverImage} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

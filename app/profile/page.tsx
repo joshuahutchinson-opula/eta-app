@@ -90,7 +90,7 @@ export default function ProfilePage() {
   const menuItems: { label: string; icon: string; href?: string; onClick?: () => void }[] = [
     { label: 'My Bookings', icon: 'clock', href: '/experiences' },
     { label: 'Saved Vendors', icon: 'heart', href: '/marketplace' },
-    { label: 'Wallet & Rewards', icon: 'sparkle', href: '/wallet' },
+    { label: 'Wallet', icon: 'sparkle', href: '/wallet' },
     { label: 'Rewards', icon: 'gift', href: '/rewards' },
     { label: 'Settings', icon: 'settings', onClick: () => setShowSettingsSheet(true) }
   ]

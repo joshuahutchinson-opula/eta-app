@@ -108,9 +108,26 @@ export default function HomePage() {
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
+  const isTouchingRef = useRef(false)
 
   useEffect(() => {
     fetchAll()
+  }, [])
+
+  // Pause the Featured auto-advance while a touch is active anywhere on the
+  // page (not just on the carousel), so it doesn't fight the user mid-swipe
+  // or mid-scroll elsewhere, then resumes on release.
+  useEffect(() => {
+    const handleTouchStart = () => { isTouchingRef.current = true }
+    const handleTouchEnd = () => { isTouchingRef.current = false }
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
+    document.addEventListener('touchend', handleTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('touchcancel', handleTouchEnd)
+    }
   }, [])
 
   useEffect(() => {
@@ -118,6 +135,7 @@ export default function HomePage() {
     if (featuredList.length <= 1) return
 
     const autoScroll = setInterval(() => {
+      if (isTouchingRef.current) return
       setFeaturedIndex(prevIndex => {
         const nextIndex = (prevIndex + 1) % featuredList.length
         if (featuredScrollRef.current) {
@@ -326,7 +344,7 @@ export default function HomePage() {
                         muted
                         loop
                         playsInline
-                        preload="auto"
+                        preload={index === featuredIndex || index === (featuredIndex + 1) % featuredVendors.length ? 'auto' : 'metadata'}
                         poster={vendor.images[0]}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />

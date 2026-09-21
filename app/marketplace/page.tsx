@@ -149,7 +149,7 @@ export default function MarketplacePage() {
           price: 16,
           eta: '20 min',
           imageUrl: margaritaville.images[0] || '',
-          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
+          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264,q_auto/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
         }])
       } else {
         setDishesOfDay([])
@@ -396,7 +396,7 @@ export default function MarketplacePage() {
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
                   />
                 ) : (
