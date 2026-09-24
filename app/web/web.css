@@ -553,3 +553,61 @@ html .web-root .w-logo-dark { display: block; }
   .fv-collage-item { transform: none !important; }
   .fv-paper { margin-top: 72px; padding-bottom: 72px; }
 }
+
+/* ================= Dark browser chrome for the web app =================
+   The web app shares the mobile app's root <html>, which declares a light
+   color-scheme. html.w-web (set before first paint, removed when leaving
+   /web) overrides everything the browser draws itself. */
+
+/* Native UI: page scrollbar, <select> menus, date pickers, checkboxes,
+   spell-check squiggles — all rendered in their dark variants. */
+html.w-web,
+html.w-web .web-root { color-scheme: dark; }
+
+/* Overscroll / rubber-band areas and the canvas behind the page. */
+html.w-web,
+html.w-web body { background: #14120E; }
+
+/* Scrollbars — standard properties (Chrome 121+, Edge, Firefox). */
+html.w-web { scrollbar-color: rgba(251, 248, 244, 0.26) #14120E; }
+html.w-web .web-root * { scrollbar-color: rgba(251, 248, 244, 0.22) transparent; }
+
+/* Scrollbars — WebKit fallback (Safari, older Chromium). Chrome ignores these
+   once scrollbar-color is supported, so both are needed. */
+html.w-web::-webkit-scrollbar { width: 12px; height: 12px; }
+html.w-web::-webkit-scrollbar-track { background: #14120E; }
+html.w-web::-webkit-scrollbar-thumb { background: rgba(251, 248, 244, 0.22); border-radius: 999px; border: 3px solid #14120E; }
+html.w-web::-webkit-scrollbar-thumb:hover { background: rgba(251, 248, 244, 0.36); }
+html.w-web::-webkit-scrollbar-corner { background: #14120E; }
+html.w-web .web-root ::-webkit-scrollbar { width: 8px; height: 8px; }
+html.w-web .web-root ::-webkit-scrollbar-track { background: transparent; }
+html.w-web .web-root ::-webkit-scrollbar-thumb { background: rgba(251, 248, 244, 0.2); border-radius: 999px; }
+html.w-web .web-root ::-webkit-scrollbar-thumb:hover { background: rgba(251, 248, 244, 0.34); }
+html.w-web .web-root ::-webkit-scrollbar-corner { background: transparent; }
+
+/* Text selection in the brand accent rather than the OS default blue. */
+html.w-web .web-root ::selection { background: rgba(255, 75, 43, 0.42); color: #FBF8F4; }
+
+/* Chrome paints autofilled fields pale yellow/white; keep them on-theme. */
+html.w-web .web-root input:-webkit-autofill,
+html.w-web .web-root input:-webkit-autofill:hover,
+html.w-web .web-root input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--w-ink);
+  -webkit-box-shadow: 0 0 0 100px var(--w-card) inset;
+  caret-color: var(--w-ink);
+  transition: background-color 9999s ease-out;
+}
+/* ...except the white email field on the orange apply band, which stays white. */
+html.w-web .fv-apply input:-webkit-autofill,
+html.w-web .fv-apply input:-webkit-autofill:hover,
+html.w-web .fv-apply input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #14120E;
+  -webkit-box-shadow: 0 0 0 100px #FFFFFF inset;
+  caret-color: #14120E;
+}
+/* Dark-scheme native controls in white-surfaced spots (the apply-band input)
+   would otherwise get light placeholder text on white. */
+html.w-web .fv-apply input { color-scheme: light; }
+
+/* <select> option list on platforms that honour option colours (Windows). */
+html.w-web .web-root select option { background: #211E18; color: #FBF8F4; }

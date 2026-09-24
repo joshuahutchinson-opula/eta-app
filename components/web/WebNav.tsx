@@ -7,6 +7,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useLang } from '@/lib/i18n-client'
 import type { DictKey } from '@/lib/i18n'
 
+const WEB_TINT = '#14120E'
+
 const LINKS: Array<{ href: string; key: DictKey }> = [
   { href: '/web/explore', key: 'nav.explore' },
   { href: '/web/experiences', key: 'nav.experiences' },
@@ -21,6 +23,23 @@ export default function WebNav() {
   const { lang, setLang, t } = useLang()
   const [scrolled, setScrolled] = useState(false)
   const [refreshing, startRefresh] = useTransition()
+
+  // Dark browser chrome while the web app is mounted; handed back to the
+  // mobile app's light theme on the way out (client-side navigation doesn't
+  // re-run the layout's inline script).
+  useEffect(() => {
+    const root = document.documentElement
+    // Next emits its own theme-color tag(s) beside the root layout's; set them all.
+    const setTint = (value: string) =>
+      document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', value))
+    root.classList.add('w-web')
+    setTint(WEB_TINT)
+    return () => {
+      root.classList.remove('w-web', 'w-anim')
+      // Back to the mobile app's tint for whichever theme it's showing.
+      setTint(root.getAttribute('data-theme') === 'dark' ? '#000000' : '#F2F2F7')
+    }
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4)
