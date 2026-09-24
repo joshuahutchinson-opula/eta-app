@@ -53,7 +53,8 @@ export default function WebNav() {
     <header className={`w-nav ${scrolled ? 'scrolled' : ''}`}>
       <div className="w-container w-nav-inner">
         <Link href="/web" className="w-nav-logo" aria-label="ETA home">
-          <img src="/logo.png" alt="ETA" />
+          <img className="w-logo-light" src="/logo.png" alt="ETA" />
+          <img className="w-logo-dark" src="/logo-dark.png" alt="ETA" />
         </Link>
         <nav className="w-nav-links" aria-label="Main">
           {LINKS.map(link => (

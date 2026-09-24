@@ -8,7 +8,8 @@ export default function WebFooter({ lang }: { lang: Lang }) {
       <div className="w-container">
         <div className="w-footer-top">
           <div className="w-footer-brand">
-            <img src="/logo.png" alt="ETA" />
+            <img className="w-logo-light" src="/logo.png" alt="ETA" />
+            <img className="w-logo-dark" src="/logo-dark.png" alt="ETA" />
             <p className="w-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>{t(lang, 'footer.tagline')}</p>
           </div>
           <div className="w-footer-cols">

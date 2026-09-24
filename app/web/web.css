@@ -39,7 +39,7 @@
   overflow-x: clip;
 }
 
-[data-web-theme="dark"] .web-root {
+[data-theme="dark"] .web-root {
   --w-bg: #14120E;
   --w-bg-2: #1D1A15;
   --w-card: #211E18;
@@ -98,7 +98,7 @@ main:has(> .web-root) {
 .w-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .w-btn-primary { background: var(--w-accent-strong); color: #fff !important; }
 .w-btn-primary:hover { background: #A8301B; box-shadow: 0 8px 20px rgba(194, 58, 33, 0.28); }
-[data-web-theme="dark"] .w-btn-primary { background: #C23A21; }
+[data-theme="dark"] .w-btn-primary { background: #C23A21; }
 .w-btn-dark { background: var(--w-ink); color: var(--w-bg) !important; }
 .w-btn-ghost { background: transparent; color: var(--w-ink) !important; border: 1px solid var(--w-line); }
 .w-btn-ghost:hover { background: var(--w-bg-2); }
@@ -376,3 +376,8 @@ a.w-mini-card:hover, a.w-stop:hover { transform: translateY(-2px); box-shadow: v
 @media (max-width: 860px) {
   .w-pillars { grid-template-columns: 1fr !important; }
 }
+
+/* Logo swap: dark-ink logo on light, light logo on dark. */
+.web-root .w-logo-dark { display: none; }
+[data-theme="dark"] .web-root .w-logo-light { display: none; }
+[data-theme="dark"] .web-root .w-logo-dark { display: block; }
