@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: '#F2F2F7',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -28,17 +28,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="en" data-theme="light">
       <head>
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#F2F2F7" />
         {/* Applies the saved theme before first paint on every page (not
             just Profile, where the preference is set) — otherwise the choice
             only "took" on whichever page set it and reverted on every
-            navigation, reload, or direct link. Dark is the default; light
+            navigation, reload, or direct link. Light is the default; dark
             applies only when the user has chosen it. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try { var t = localStorage.getItem('theme'); if (t === 'light') { document.documentElement.setAttribute('data-theme', 'light'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#F2F2F7'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
+            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#000000'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

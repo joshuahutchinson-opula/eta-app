@@ -39,7 +39,9 @@
   overflow-x: clip;
 }
 
-[data-theme="dark"] .web-root {
+/* The web app is always dark, independent of the mobile app theme
+   (which now defaults to light). `html .web-root` outranks the base block. */
+html .web-root {
   --w-bg: #14120E;
   --w-bg-2: #1D1A15;
   --w-card: #211E18;
@@ -98,7 +100,8 @@ main:has(> .web-root) {
 .w-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .w-btn-primary { background: var(--w-accent-strong); color: #fff !important; }
 .w-btn-primary:hover { background: #A8301B; box-shadow: 0 8px 20px rgba(194, 58, 33, 0.28); }
-[data-theme="dark"] .w-btn-primary { background: #C23A21; }
+html .web-root .w-btn-primary { background: #C23A21; }
+html .web-root .w-btn-primary:hover { background: #A8301B; }
 .w-btn-dark { background: var(--w-ink); color: var(--w-bg) !important; }
 .w-btn-ghost { background: transparent; color: var(--w-ink) !important; border: 1px solid var(--w-line); }
 .w-btn-ghost:hover { background: var(--w-bg-2); }
@@ -385,8 +388,8 @@ a.w-mini-card:hover, a.w-stop:hover { transform: translateY(-2px); box-shadow: v
 
 /* Logo swap: dark-ink logo on light, light logo on dark. */
 .web-root .w-logo-dark { display: none; }
-[data-theme="dark"] .web-root .w-logo-light { display: none; }
-[data-theme="dark"] .web-root .w-logo-dark { display: block; }
+html .web-root .w-logo-light { display: none; }
+html .web-root .w-logo-dark { display: block; }
 
 /* ---------- Loading skeleton (static — no looping shimmer) ---------- */
 .w-skel { background: var(--w-bg-2); border-radius: 10px; }
@@ -395,16 +398,6 @@ a.w-mini-card:hover, a.w-stop:hover { transform: translateY(-2px); box-shadow: v
 
 
 /* ---------- Hero parallax layers ---------- */
-.w-hero { position: relative; }
-.w-hero-bg { position: absolute; left: -10%; right: -10%; top: -140px; height: 620px; z-index: 0; pointer-events: none; will-change: transform;
-  background:
-    radial-gradient(ellipse 55% 60% at 12% 30%, rgba(255, 75, 43, 0.20), transparent 70%),
-    radial-gradient(ellipse 40% 50% at 88% 10%, rgba(255, 180, 90, 0.10), transparent 70%),
-    radial-gradient(rgba(255, 75, 43, 0.16) 1.3px, transparent 1.3px) 0 0 / 26px 26px;
-  -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
-  mask-image: linear-gradient(180deg, #000 45%, transparent);
-}
-.w-hero > :not(.w-hero-bg) { position: relative; z-index: 1; }
 /* Photo layer inside a hero tile: taller than the tile so it can drift. */
 .w-parallax-img { position: absolute; left: 0; right: 0; top: -14%; bottom: -14%; will-change: transform; }
 .w-hero-tile .w-parallax-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

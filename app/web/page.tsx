@@ -41,8 +41,6 @@ export default async function WebHome() {
   return (
     <div className="w-container">
       <ParallaxScope className="w-hero">
-        {/* Background layer: drifts slower than the headline in front of it. */}
-        <div className="w-hero-bg" data-parallax="0.35" aria-hidden />
         <Parallax speed={0.18}>
           <div className="w-hero-head">
             <div>
