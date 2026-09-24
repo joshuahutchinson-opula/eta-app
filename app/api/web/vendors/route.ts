@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { filterFromParams, queryVendors, vendorFacets } from '@/lib/vendor-query'
+import { filterFromParams, queryVendors, vendorFacets, USER_SORTS } from '@/lib/vendor-query'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const take = Math.min(48, Math.max(1, Number(params.get('take')) || 12))
     const withFacets = params.get('facets') !== '0'
     const [result, facets] = await Promise.all([
-      queryVendors(filter, { sort, skip, take }),
+      queryVendors(filter, { sort, skip, take, prioritize: !USER_SORTS.includes(sort) }),
       withFacets ? vendorFacets(filter) : Promise.resolve(null)
     ])
     return NextResponse.json({ ...result, facets })

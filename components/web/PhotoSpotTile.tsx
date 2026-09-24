@@ -1,6 +1,7 @@
 // components/web/PhotoSpotTile.tsx
 import { t, type Lang } from '@/lib/i18n'
-import { formatCity, type PhotoSpotData } from '@/lib/web-data'
+import { formatCity } from '@/lib/format'
+import type { PhotoSpotData } from '@/lib/web-data'
 
 /** Image tile with best-time + location overlay; used in the masonry guide, home rail and editorial rows. */
 export default function PhotoSpotTile({ spot, lang = 'en', fixedHeight }: { spot: PhotoSpotData; lang?: Lang; fixedHeight?: number }) {

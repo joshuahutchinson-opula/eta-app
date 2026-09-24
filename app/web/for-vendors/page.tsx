@@ -3,9 +3,14 @@
 // same dark hero, why-join cards, 3-step onboarding and apply band, same
 // copy, colors (#14120E / #FBF8F4 / #FF4B2B) and Fraunces + Inter type.
 // The artboard's own floating pill nav and footer are replaced by the
-// shared web nav/footer; the apply form now actually submits.
+// shared web nav/footer; the apply form now actually submits. A "More than
+// a listing" section and a live proof strip were added on top of the
+// original design to say what ETA actually does for vendors.
 import type { Metadata } from 'next'
 import WaitlistForm from '@/components/web/WaitlistForm'
+import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'For local businesses — list your business on ETA',
@@ -19,7 +24,7 @@ const PAPER = '#FBF8F4'
 const WHY = [
   {
     title: 'Zero listing fees',
-    body: 'Getting vetted and listed costs nothing — ever. No pay-to-rank, no hidden tiers.',
+    body: 'Getting vetted and listed costs nothing — ever.',
     icon: <><circle cx="12" cy="12" r="10" /><path d="M8 12 L11 15 L16 9" /></>
   },
   {
@@ -40,9 +45,41 @@ const STEPS = [
   { n: 3, title: 'Go live', body: 'Your listing goes live once you’ve reviewed and approved everything on it.' }
 ]
 
+// What ETA does beyond listing a business — the core of the pitch.
+const PILLARS = [
+  {
+    n: '01',
+    title: 'We run the whole day, not just your listing.',
+    body: 'Travelers tell ETA their mood, their time and their crew, and we build the day around it — the route, the timing, the booking, the split payment. Your business becomes a stop in a planned trip, so people arrive ready to spend, not still deciding.'
+  },
+  {
+    n: '02',
+    title: 'We get them to your door.',
+    body: 'Getting there and back is part of what travelers book with ETA. You don’t arrange pickups and they don’t haggle with a driver — transport is handled, so the hard-to-reach spots get visited too.'
+  },
+  {
+    n: '03',
+    title: 'A partner, not a directory.',
+    body: 'We know the people behind every listing. We vet in person, we keep in touch when your hours, menu or busy nights change, and we work with you on what gets shown. You have someone to call, not a form to fill in.'
+  },
+  {
+    n: '04',
+    title: 'The roadside jerk pan gets the same spotlight as the cliffside restaurant.',
+    body: 'A cart by the roundabout and a resort kitchen go through the same vetting and are shown on the same terms. Some of the best food and the best stories in Negril come from small, informal operators — ETA is built to put them in front of travelers, not bury them.'
+  }
+]
+
 const serif = 'var(--w-display)'
 
-export default function ForVendorsPage() {
+export default async function ForVendorsPage() {
+  // Live numbers for the proof strip — straight from the vendor table.
+  const listed = { visibleInMarketplace: true, isTransport: false }
+  const [total, budget, independent] = await Promise.all([
+    prisma.vendor.count({ where: listed }),
+    prisma.vendor.count({ where: { ...listed, priceRange: '$' } }),
+    prisma.vendor.count({ where: { ...listed, isPremium: false } })
+  ])
+
   return (
     <div style={{ background: INK, color: PAPER, marginBottom: -96 }}>
       {/* Hero */}
@@ -56,10 +93,43 @@ export default function ForVendorsPage() {
           <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 64, lineHeight: 1.05, letterSpacing: '-0.01em', maxWidth: 640 }}>
             Travelers are already looking for you.
           </h1>
-          <p style={{ margin: 0, maxWidth: 540, fontSize: 18, lineHeight: 1.6, color: 'rgba(251,248,244,0.7)' }}>
-            ETA puts your business in front of people actively planning what to do, right now — with zero listing fees and full control over what gets shown.
+          <p style={{ margin: 0, maxWidth: 560, fontSize: 18, lineHeight: 1.6, color: 'rgba(251,248,244,0.7)' }}>
+            ETA doesn’t just list your business — it plans the day around it, gets travelers to your door, and stays in your corner. Zero listing fees, full control over what gets shown.
           </p>
           <a href="#apply" className="w-btn" style={{ background: ACCENT, color: '#fff', alignSelf: 'flex-start' }}>Apply to List</a>
+        </div>
+      </section>
+
+      {/* More than a listing */}
+      <section style={{ padding: '96px 32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 56 }}>
+        <div style={{ textAlign: 'center', maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>More than a listing</div>
+          <h2 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 40, lineHeight: 1.1 }}>We handle everything around your business, so you can focus on running it.</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 28, width: '100%', maxWidth: 1240 }} className="w-pillars">
+          {PILLARS.map(p => (
+            <article key={p.n} className="w-pillar w-reveal" style={{ position: 'relative', background: 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 22, padding: '40px 40px 44px', display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
+              <span aria-hidden style={{ fontFamily: serif, fontSize: 64, fontWeight: 700, lineHeight: 1, color: 'rgba(255,75,43,0.9)' }}>{p.n}</span>
+              <h3 style={{ margin: 0, fontFamily: serif, fontSize: 26, fontWeight: 600, lineHeight: 1.2, color: PAPER }}>{p.title}</h3>
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: 'rgba(251,248,244,0.68)' }}>{p.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Proof strip — live counts */}
+      <section style={{ padding: '32px 32px 0' }}>
+        <div className="w-reveal" style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', borderTop: '1px solid rgba(255,255,255,0.12)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+          {[
+            { v: total, l: 'local businesses already on ETA' },
+            { v: budget, l: 'of them street-side stalls, cookshops and budget spots' },
+            { v: independent, l: 'independent operators with no paid premium placement' }
+          ].map((stat, i) => (
+            <div key={stat.l} style={{ padding: '36px 28px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.12)' : 'none' }}>
+              <div style={{ fontFamily: serif, fontSize: 56, fontWeight: 600, lineHeight: 1, color: PAPER }}>{stat.v}</div>
+              <div style={{ fontSize: 15, marginTop: 10, color: 'rgba(251,248,244,0.6)', lineHeight: 1.5 }}>{stat.l}</div>
+            </div>
+          ))}
         </div>
       </section>
 

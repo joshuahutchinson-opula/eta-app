@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'ETA — Experience Travel Adventure',
+    name: 'ETA — Experience, Travel, Adventure.',
     short_name: 'ETA',
-    description: 'Premium membership app for Negril and Montego Bay, Jamaica',
+    description: 'See the Real Jamaica.',
     theme_color: '#0F0E0C',
     background_color: '#0F0E0C',
     display: 'standalone',

@@ -1,7 +1,8 @@
 // components/web/ExperienceCard.tsx
 import Link from 'next/link'
 import { t, type Lang } from '@/lib/i18n'
-import { formatCity, type ExperienceCardData } from '@/lib/web-data'
+import { formatCity } from '@/lib/format'
+import type { ExperienceCardData } from '@/lib/web-data'
 
 export default function ExperienceCard({ experience: e, lang = 'en' }: { experience: ExperienceCardData; lang?: Lang }) {
   return (

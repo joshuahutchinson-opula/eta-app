@@ -39,7 +39,7 @@
   overflow-x: clip;
 }
 
-[data-theme="dark"] .web-root {
+[data-web-theme="dark"] .web-root {
   --w-bg: #14120E;
   --w-bg-2: #1D1A15;
   --w-card: #211E18;
@@ -86,9 +86,11 @@ main:has(> .web-root) {
 .w-nav-link:hover { background: var(--w-bg-2); color: var(--w-ink); }
 .w-nav-link.active { color: var(--w-ink); background: var(--w-bg-2); }
 .w-nav-right { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
-.w-lang { display: flex; border: 1px solid var(--w-line); border-radius: 999px; padding: 3px; }
-.w-lang button { border: none; background: none; color: var(--w-ink-2); font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
-.w-lang button[aria-pressed="true"] { background: var(--w-ink); color: var(--w-bg); }
+.w-lang { position: relative; display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--w-line); border-radius: 999px; padding: 3px; }
+.w-lang::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--w-ink); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); }
+.w-lang[data-lang="es"]::before { transform: translateX(100%); }
+.w-lang button { position: relative; z-index: 1; border: none; background: none; color: var(--w-ink-2); font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; transition: color 0.3s ease; }
+.w-lang button[aria-pressed="true"] { color: var(--w-bg); }
 
 /* ---------- Buttons ---------- */
 .w-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 22px; border-radius: 999px; font-size: 15px; font-weight: 700; border: none; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; white-space: nowrap; }
@@ -96,7 +98,7 @@ main:has(> .web-root) {
 .w-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .w-btn-primary { background: var(--w-accent-strong); color: #fff !important; }
 .w-btn-primary:hover { background: #A8301B; box-shadow: 0 8px 20px rgba(194, 58, 33, 0.28); }
-[data-theme="dark"] .w-btn-primary { background: #C23A21; }
+[data-web-theme="dark"] .w-btn-primary { background: #C23A21; }
 .w-btn-dark { background: var(--w-ink); color: var(--w-bg) !important; }
 .w-btn-ghost { background: transparent; color: var(--w-ink) !important; border: 1px solid var(--w-line); }
 .w-btn-ghost:hover { background: var(--w-bg-2); }
@@ -308,4 +310,69 @@ main:has(> .web-root) {
   .w-cta-band { flex-direction: column; align-items: flex-start; padding: 32px; }
   .w-editorial-hero-body { left: 24px; right: 24px; bottom: 24px; }
   .w-editorial-hero-body h1, .w-page-title, .w-detail-title { font-size: 36px; }
+}
+
+
+/* ---------- Featured Destinations carousel ---------- */
+.w-featured { position: relative; height: 100%; border-radius: 22px; overflow: hidden; background: var(--w-dark); box-shadow: var(--w-shadow); }
+.w-featured-track { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.w-featured-track::-webkit-scrollbar { display: none; }
+.w-featured-slide { position: relative; flex: 0 0 100%; height: 100%; scroll-snap-align: center; overflow: hidden; display: block; color: #fff !important; }
+.w-featured-media { position: absolute; inset: 0; will-change: transform; transition: transform 0.12s linear; }
+.w-featured-media video { width: 100%; height: 100%; object-fit: cover; }
+.w-featured-slide::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.75)); pointer-events: none; }
+.w-featured-body { position: absolute; left: 28px; right: 28px; bottom: 52px; z-index: 1; }
+.w-featured-live { background: rgba(255, 255, 255, 0.92); color: #14120E; margin-bottom: 12px; }
+.w-featured-title { font-family: var(--w-display); font-size: 42px; font-weight: 600; line-height: 1.05; letter-spacing: -0.015em; }
+.w-featured-meta { font-size: 15px; color: rgba(255, 255, 255, 0.85); margin-top: 8px; }
+.w-featured-dots { position: absolute; left: 0; right: 0; bottom: 20px; display: flex; justify-content: center; gap: 6px; z-index: 2; }
+.w-featured-dot { width: 8px; height: 8px; padding: 0; border: none; border-radius: 999px; background: rgba(255, 255, 255, 0.5); cursor: pointer; transition: width 0.35s cubic-bezier(0.32, 0.72, 0, 1), background 0.2s ease; }
+.w-featured-dot:hover { background: rgba(255, 255, 255, 0.85); }
+.w-featured-dot.active { width: 22px; background: #fff; }
+
+/* ---------- Choose your vibe ---------- */
+.w-vibes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.w-vibe { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--w-line); background: var(--w-card); color: var(--w-ink); font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.w-vibe:hover { transform: translateY(-2px); box-shadow: var(--w-shadow); border-color: var(--w-ink-3); }
+.w-vibe[aria-pressed="true"] { background: var(--w-accent-strong); border-color: var(--w-accent-strong); color: #fff; }
+
+/* ---------- Scroll reveal (one-time; see components/web/ScrollReveal.tsx) ---------- */
+.w-anim .web-root :is(.w-section, .w-page-head, .w-editorial-copy, .w-editorial-hero, .w-cta-band, .w-grid-3 > *, .w-grid-4 > *, .w-rail > *, .w-teasers > *, .w-masonry > *, .w-reveal):not(.is-visible) {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.w-anim .web-root :is(.w-section, .w-page-head, .w-editorial-copy, .w-editorial-hero, .w-cta-band, .w-grid-3 > *, .w-grid-4 > *, .w-rail > *, .w-teasers > *, .w-masonry > *, .w-reveal) {
+  transition: opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.22s ease;
+}
+/* Cards keep their quicker hover lift once revealed. */
+.w-anim .web-root .w-card.is-visible { transition: opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.22s ease; }
+
+/* ---------- Consistent hover transitions ---------- */
+.web-root a, .web-root button { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease; }
+.w-link-arrow { display: inline-block; }
+.w-link-arrow:hover { transform: translateX(3px); text-decoration: none !important; }
+.w-footer-col a:hover { transform: translateX(2px); }
+.w-mini-card, .w-stop, .w-social, .w-thumb, .w-tier, .w-icon-btn { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease; }
+a.w-mini-card:hover, a.w-stop:hover { transform: translateY(-2px); box-shadow: var(--w-shadow-lift); }
+.w-social:hover, .w-icon-btn:not(:disabled):hover { transform: translateY(-2px); }
+.w-tier:hover { transform: translateY(-1px); }
+.w-hero-tile img, .w-teaser img, .w-spot img { transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.w-hero-tile:hover img { transform: scale(1.04); }
+.w-btn:active { transform: translateY(0) scale(0.98); }
+.w-nav-logo img { transition: transform 0.25s ease; }
+.w-nav-logo:hover img { transform: scale(1.05); }
+
+/* ---------- Language switch transition ---------- */
+.w-main { transition: opacity 0.28s ease, transform 0.28s ease; }
+.web-root.w-lang-switching .w-main { opacity: 0.25; transform: translateY(4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .web-root *, .web-root *::before { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ---------- For Vendors pillars ---------- */
+.w-pillar { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
+.w-pillar.is-visible:hover, .w-pillar:not(.w-reveal):hover { transform: translateY(-4px); border-color: rgba(255, 75, 43, 0.45) !important; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); }
+@media (max-width: 860px) {
+  .w-pillars { grid-template-columns: 1fr !important; }
 }

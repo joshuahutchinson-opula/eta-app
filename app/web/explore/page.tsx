@@ -1,7 +1,7 @@
 // app/web/explore/page.tsx — A3 Explore / vendor directory
 import type { Metadata } from 'next'
 import ExploreClient from '@/components/web/ExploreClient'
-import { filterFromParams, queryVendors, vendorFacets } from '@/lib/vendor-query'
+import { filterFromParams, queryVendors, vendorFacets, USER_SORTS } from '@/lib/vendor-query'
 import { getServerLang } from '@/lib/i18n-server'
 import { t } from '@/lib/i18n'
 
@@ -16,7 +16,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Reco
   const lang = getServerLang()
   const { filter, sort } = filterFromParams(searchParams)
   const [result, facets] = await Promise.all([
-    queryVendors(filter, { sort, take: 12 }),
+    queryVendors(filter, { sort, take: 12, prioritize: !USER_SORTS.includes(sort) }),
     vendorFacets(filter)
   ])
 

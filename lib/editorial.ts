@@ -23,6 +23,8 @@ export interface EditorialPage {
   dek: string
   seoDescription: string
   area?: AreaSlug
+  /** Vendor (by exact name) whose thumbnail is the panel image for this guide. */
+  coverVendor?: string
   sections: EditorialSection[]
 }
 
@@ -31,6 +33,7 @@ export const GUIDES: EditorialPage[] = [
     slug: 'seven-mile-beach',
     kind: 'guide',
     area: 'seven-mile-beach',
+    coverVendor: "Doctor's Cave Beach Bar",
     eyebrow: 'Negril guide',
     title: 'Seven Mile Beach',
     dek: 'The long curve of white sand that made Negril famous — calm water by day, beach bars and bonfires by night.',
@@ -68,6 +71,7 @@ export const GUIDES: EditorialPage[] = [
     slug: 'west-end',
     kind: 'guide',
     area: 'west-end',
+    coverVendor: 'Rockhouse Restaurant',
     eyebrow: 'Negril guide',
     title: 'West End & the Cliffs',
     dek: 'No sand, all drama — limestone cliffs, ladders into deep blue water, and the best sunsets on the island.',
@@ -124,6 +128,7 @@ export const GUIDES: EditorialPage[] = [
     slug: 'inland-negril',
     kind: 'guide',
     area: 'inland-negril',
+    coverVendor: 'The Lodge Restaurant',
     eyebrow: 'Negril guide',
     title: 'Inland Negril',
     dek: 'Wetlands, hills and farm-to-table dining a short drive from the coast.',

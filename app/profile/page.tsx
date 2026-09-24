@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<CurrentUser | null>(null)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   const [notifications, setNotifications] = useState(false)
   const [alertPrefs, setAlertPrefs] = useState({ liveAlerts: true, dealAlerts: true })
   const [alertsBusy, setAlertsBusy] = useState(false)
@@ -57,11 +57,11 @@ export default function ProfilePage() {
         .catch(() => {})
     }
 
+    // Dark is the default; only an explicit 'light' choice turns it off.
     const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'dark') {
-      setDarkMode(true)
-      document.documentElement.setAttribute('data-theme', 'dark')
-    }
+    const isDark = savedTheme !== 'light'
+    setDarkMode(isDark)
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
 
     // Alerts are real push subscriptions now, so the toggle reflects the
     // browser's actual state rather than a stored flag.

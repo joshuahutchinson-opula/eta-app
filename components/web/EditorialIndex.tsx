@@ -3,6 +3,7 @@
 // come from running that page's first vendor query.
 import Link from 'next/link'
 import { queryVendors } from '@/lib/vendor-query'
+import { getGuideCover } from '@/lib/web-data'
 import type { EditorialPage } from '@/lib/editorial'
 import { t, type Lang } from '@/lib/i18n'
 
@@ -11,7 +12,7 @@ export default async function EditorialIndex({ pages, lang, eyebrow, title, dek 
     const first = p.sections.find(s => s.type === 'vendors')
     if (!first || first.type !== 'vendors') return { image: null, total: 0 }
     const res = await queryVendors(first.filter, { sort: first.sort ?? 'recommended' })
-    return { image: res.items.find(v => v.image)?.image ?? null, total: res.total }
+    return { image: await getGuideCover(p.coverVendor, res.items), total: res.total }
   }))
 
   return (

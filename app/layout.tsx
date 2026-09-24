@@ -10,12 +10,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'ETA — Experience Travel Adventure',
-  description: 'Premium membership app for Negril and Montego Bay, Jamaica'
+  title: 'ETA — Experience, Travel, Adventure.',
+  description: 'See the Real Jamaica.'
 }
 
 export const viewport: Viewport = {
-  themeColor: '#F2F2F7',
+  themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -28,18 +28,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="light">
+    <html lang="en" data-theme="dark">
       <head>
+        <meta name="theme-color" content="#000000" />
         {/* Applies the saved theme before first paint on every page (not
-            just Profile, where the preference is set) — otherwise dark mode
-            only "took" on whichever page set it and reverted to light on
-            every navigation, reload, or direct link. */}
+            just Profile, where the preference is set) — otherwise the choice
+            only "took" on whichever page set it and reverted on every
+            navigation, reload, or direct link. Dark is the default; light
+            applies only when the user has chosen it. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
+            __html: `try { var t = localStorage.getItem('theme'); if (t === 'light') { document.documentElement.setAttribute('data-theme', 'light'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#F2F2F7'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
           }}
         />
-        <meta name="theme-color" content="#F2F2F7" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Pacifico&display=swap" rel="stylesheet" />

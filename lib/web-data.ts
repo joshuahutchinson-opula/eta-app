@@ -145,6 +145,51 @@ export async function getVendorDetail(id: string) {
   }
 }
 
-export function formatCity(city: string): string {
-  return city === 'MONTEGO_BAY' ? 'Montego Bay' : city === 'NEGRIL' ? 'Negril' : city
+export { formatCity } from '@/lib/format'
+
+/**
+ * Featured Destinations: exactly mobile Home's set and order — premium
+ * vendors with video, as /api/vendors orders them (premium, then newest).
+ * Exempt from the editorial display priority.
+ */
+export async function getFeaturedVendors() {
+  const rows = await prisma.vendor.findMany({
+    where: { visibleInMarketplace: true, isTransport: false, isPremium: true, videos: { isEmpty: false } },
+    orderBy: [{ isPremium: 'desc' }, { createdAt: 'desc' }],
+    select: { id: true, name: true, category: true, neighborhood: true, city: true, videos: true, images: true, live: true, whoThere: true }
+  })
+  return rows.map(v => ({
+    id: v.id,
+    name: v.name,
+    category: v.category,
+    area: areaForNeighborhood(v.neighborhood, v.city),
+    video: v.videos[0],
+    image: v.images[0] ?? null,
+    live: v.live,
+    whoThere: v.whoThere
+  }))
+}
+
+// Mobile Home renames two moods and assigns these icons; the web picker matches it.
+const MOOD_RENAMES: Record<string, string> = { 'Out Til Sunrise': 'Party Time', 'Golden Hour': 'Sunset Chaser' }
+const MOOD_ICONS: Record<string, string> = {
+  'R&R': 'spa', 'Just The Two Of Us': 'heart', 'Party Time': 'party', 'Sunset Chaser': 'sun', 'Water Life': 'wave',
+  'Street Food Crawl': 'food', 'Hangover Cures': 'recharge', 'Solo Missions': 'user', 'Family Day': 'users', 'Rum & Bass': 'glass'
+}
+
+export async function getVibeMoods() {
+  const moods = await prisma.mood.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true, name: true, icon: true, description: true } })
+  return moods.map(m => {
+    const name = MOOD_RENAMES[m.name] ?? m.name
+    return { id: m.id, name, icon: MOOD_ICONS[name] ?? m.icon, description: m.description }
+  })
+}
+
+/** Cover image for a guide panel: its pinned vendor's thumbnail, else the first vendor image in the area. */
+export async function getGuideCover(coverVendor: string | undefined, fallback: Array<{ image: string | null }>): Promise<string | null> {
+  if (coverVendor) {
+    const v = await prisma.vendor.findFirst({ where: { name: coverVendor }, select: { images: true } })
+    if (v?.images[0]) return v.images[0]
+  }
+  return fallback.find(x => x.image)?.image ?? null
 }

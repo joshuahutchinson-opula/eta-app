@@ -8,10 +8,14 @@
 import type { Prisma, VendorCategory } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { AREAS, areaForNeighborhood, type AreaSlug } from '@/lib/areas'
+import { applyVendorPriority } from '@/lib/vendor-priority'
 import { CATEGORY_LABELS, PRICE_TIERS, type VendorFilter, type VendorSort, type VendorCardData, type VendorFacets } from '@/lib/vendor-types'
 
 export type { VendorFilter, VendorSort, VendorCardData, FacetCount, VendorFacets } from '@/lib/vendor-types'
 export { CATEGORY_LABELS, PRICE_TIERS } from '@/lib/vendor-types'
+
+/** Sorts a user picks explicitly in Explore — editorial priority stays out of these. */
+export const USER_SORTS: VendorSort[] = ['rating', 'price', 'price-desc']
 
 const BASE_WHERE: Prisma.VendorWhereInput = { visibleInMarketplace: true, isTransport: false }
 
@@ -150,10 +154,13 @@ function sortCards(cards: Array<VendorCardData & { createdAt: Date }>, sort: Ven
  */
 export async function queryVendors(
   filter: VendorFilter,
-  opts: { sort?: VendorSort; skip?: number; take?: number } = {}
+  opts: { sort?: VendorSort; skip?: number; take?: number; prioritize?: boolean } = {}
 ): Promise<{ total: number; items: VendorCardData[] }> {
   const rows = await prisma.vendor.findMany({ where: await buildWhere(filter), select: CARD_SELECT })
-  const sorted = sortCards(rows.map(toCard), opts.sort ?? 'recommended')
+  const base = sortCards(rows.map(toCard), opts.sort ?? 'recommended')
+  // Editorial priority applies unless the caller says the order was an
+  // explicit user choice (Explore's Rating / Price sorts).
+  const sorted = opts.prioritize === false ? base : applyVendorPriority(base, c => c.name)
   const skip = opts.skip ?? 0
   const page = opts.take !== undefined ? sorted.slice(skip, skip + opts.take) : sorted.slice(skip)
   return { total: sorted.length, items: page.map(({ createdAt: _c, ...card }) => card) }

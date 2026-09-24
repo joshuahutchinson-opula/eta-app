@@ -61,23 +61,6 @@ interface Mood {
   coverImage: string
 }
 
-interface ContextSuggestion {
-  title: string
-  desc: string
-  icon: string
-  action: 'vendor' | 'map' | 'experiences'
-  vendorId?: string
-  reason?: string
-  vendor?: { id: string; name: string; image: string | null } | null
-}
-
-interface WeatherNow {
-  tempC: number
-  label: string
-  isRaining: boolean
-  condition: string
-}
-
 interface Booking {
   id: string
   status: string
@@ -123,8 +106,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [suggestion, setSuggestion] = useState<ContextSuggestion | null>(null)
-  const [weather, setWeather] = useState<WeatherNow | null>(null)
   const [firstName, setFirstName] = useState<string | null>(null)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
@@ -175,20 +156,12 @@ export default function HomePage() {
 
   const fetchAll = async () => {
     try {
-      const [vendorsRes, experiencesRes, moodsRes, bookingsRes, contextRes] = await Promise.allSettled([
+      const [vendorsRes, experiencesRes, moodsRes, bookingsRes] = await Promise.allSettled([
         fetch('/api/vendors'),
         fetch('/api/experiences'),
         fetch('/api/moods'),
-        fetch('/api/bookings'),
-        fetch('/api/context?city=NEGRIL')
+        fetch('/api/bookings')
       ])
-
-      // Weather-aware "what now" suggestion from the context engine (B9).
-      if (contextRes.status === 'fulfilled' && contextRes.value.ok) {
-        const data = await contextRes.value.json()
-        setSuggestion(data.suggestion ?? null)
-        setWeather(data.weather ?? null)
-      }
 
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
         const data = await vendorsRes.value.json()
@@ -297,35 +270,6 @@ export default function HomePage() {
         <div style={{ padding: '16px 16px 0' }}>
           <h1 className="greeting-text">Wah Gwan{firstName ? `, ${firstName}` : ''}</h1>
         </div>
-
-        {suggestion && (
-          <div style={{ padding: '12px 16px 0' }}>
-            <Link
-              href={suggestion.action === 'vendor' && suggestion.vendorId ? `/vendor/${suggestion.vendorId}` : suggestion.action === 'map' ? '/experiences?mode=discover' : '/experiences'}
-              onClick={() => triggerHaptic('light')}
-              className="card"
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', textDecoration: 'none' }}
-            >
-              {suggestion.vendor?.image ? (
-                <img src={suggestion.vendor.image} alt="" style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
-              ) : (
-                <span style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'var(--rum-tint)', color: 'var(--rum-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name={suggestion.icon} size={20} />
-                </span>
-              )}
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{suggestion.title}</span>
-                <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)', lineHeight: 1.35 }}>{suggestion.desc}</span>
-              </span>
-              {weather && (
-                <span className="num-font" style={{ flexShrink: 0, fontSize: '12px', fontWeight: 600, color: weather.isRaining ? 'var(--info)' : 'var(--label-secondary)', textAlign: 'right' }}>
-                  {weather.tempC}°<br />
-                  <span style={{ fontWeight: 500 }}>{weather.label}</span>
-                </span>
-              )}
-            </Link>
-          </div>
-        )}
 
         {activeBooking && (
           <div style={{ paddingTop: '12px' }}>
