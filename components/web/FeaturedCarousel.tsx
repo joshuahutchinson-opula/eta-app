@@ -3,8 +3,12 @@
 // order, videos autoplay, auto-advance every 5s, and the same pause rule —
 // while a touch/press is held anywhere on the page it stops, then resumes
 // on release. On desktop it also pauses while hovered or focused, so it
-// never moves out from under a pointer or keyboard user. Restrained
-// parallax on scroll gives the media a little depth.
+// never moves out from under a pointer or keyboard user.
+//
+// Videos are fitted (object-fit: contain), never cropped; a blurred copy of
+// the vendor's photo fills any letterbox space behind them. That backdrop
+// and the caption are parallax layers (see ParallaxScope) — the video itself
+// stays pinned to the frame so nothing is ever cut off.
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -34,7 +38,6 @@ export default function FeaturedCarousel({ vendors }: { vendors: FeaturedVendor[
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([])
   const pressingRef = useRef(false)
   const hoverRef = useRef(false)
-  const [parallax, setParallax] = useState(0)
 
   const goTo = useCallback((i: number, smooth = true) => {
     const el = scrollerRef.current
@@ -84,23 +87,6 @@ export default function FeaturedCarousel({ vendors }: { vendors: FeaturedVendor[
     })
   }, [index])
 
-  // Restrained scroll parallax (none for reduced-motion users).
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let frame = 0
-    const onScroll = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const r = rootRef.current?.getBoundingClientRect()
-        if (!r || r.bottom < 0 || r.top > window.innerHeight) return
-        setParallax(Math.max(-40, Math.min(40, -r.top * 0.12)))
-      })
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll) }
-  }, [])
-
   const onScroll = () => {
     const el = scrollerRef.current
     if (!el) return
@@ -131,7 +117,14 @@ export default function FeaturedCarousel({ vendors }: { vendors: FeaturedVendor[
             aria-label={`${i + 1} of ${vendors.length}: ${v.name}`}
             tabIndex={i === index ? 0 : -1}
           >
-            <div className="w-featured-media" style={{ transform: `translate3d(0, ${parallax}px, 0) scale(1.12)` }}>
+            <div
+              className="w-featured-backdrop"
+              data-parallax="0.22"
+              data-parallax-max="80"
+              aria-hidden
+              style={v.image ? { backgroundImage: `url("${v.image}")` } : undefined}
+            />
+            <div className="w-featured-media">
               <video
                 ref={el => { videoRefs.current[i] = el }}
                 src={v.video}
@@ -142,7 +135,7 @@ export default function FeaturedCarousel({ vendors }: { vendors: FeaturedVendor[
                 preload={i === index || i === (index + 1) % vendors.length ? 'auto' : 'metadata'}
               />
             </div>
-            <div className="w-featured-body">
+            <div className="w-featured-body" data-parallax="-0.06" data-parallax-max="28">
               {v.live ? (
                 <span className="w-pill w-featured-live"><span className="w-dot w-dot-live" /> {v.whoThere} {t('common.hereNow')}</span>
               ) : null}

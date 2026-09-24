@@ -4,8 +4,16 @@
 // destination guides and best-of pages, and "You might also like". A filter
 // is a plain serializable object, so the same definition can live in a URL,
 // in an editorial page config, or in an API request.
+//
+// The whole visible catalog (~50 vendors) is read ONCE per request —
+// memoized with React cache() — and every listing, facet count and editorial
+// row on the page filters that one result in memory. Pages used to issue a
+// separate full-table query per row (Home fired ~20 at once), which
+// exhausted the connection pool against the remote database and crashed
+// server renders.
 
-import type { Prisma, VendorCategory } from '@prisma/client'
+import { cache } from 'react'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { AREAS, areaForNeighborhood, type AreaSlug } from '@/lib/areas'
 import { applyVendorPriority } from '@/lib/vendor-priority'
@@ -21,60 +29,27 @@ const BASE_WHERE: Prisma.VendorWhereInput = { visibleInMarketplace: true, isTran
 
 type Dimension = 'categories' | 'areas' | 'priceTiers' | 'accessibility'
 
-async function neighborhoodsForAreas(areas: string[]): Promise<string[]> {
-  const rows = await prisma.vendor.findMany({
-    where: BASE_WHERE,
-    distinct: ['neighborhood', 'city'],
-    select: { neighborhood: true, city: true }
-  })
-  return rows.filter(r => areas.includes(areaOfRow(r))).map(r => r.neighborhood)
+function includesCI(haystack: string, needle: string): boolean {
+  return haystack.toLowerCase().includes(needle.toLowerCase())
 }
 
-function areaOfRow(r: { neighborhood: string; city: string }): AreaSlug {
-  return areaForNeighborhood(r.neighborhood, r.city)
-}
-
-async function buildWhere(filter: VendorFilter, skip?: Dimension): Promise<Prisma.VendorWhereInput> {
-  const and: Prisma.VendorWhereInput[] = [BASE_WHERE]
-  if (filter.city) and.push({ city: filter.city })
-  if (filter.liveOnly) and.push({ live: true })
-  if (filter.premiumOnly) and.push({ isPremium: true })
-  if (filter.excludeIds?.length) and.push({ id: { notIn: filter.excludeIds } })
-  if (skip !== 'categories' && filter.categories?.length) {
-    and.push({ category: { in: filter.categories as VendorCategory[] } })
-  }
-  if (skip !== 'priceTiers' && filter.priceTiers?.length) {
-    and.push({ priceRange: { in: filter.priceTiers } })
-  }
-  if (skip !== 'accessibility' && filter.accessibility?.length) {
-    and.push({ accessibility: { hasEvery: filter.accessibility } })
-  }
-  if (skip !== 'areas' && filter.areas?.length) {
-    and.push({ neighborhood: { in: await neighborhoodsForAreas(filter.areas) } })
-  }
-  if (filter.keywords?.length) {
-    and.push({
-      OR: filter.keywords.flatMap(k => [
-        { name: { contains: k, mode: 'insensitive' as const } },
-        { description: { contains: k, mode: 'insensitive' as const } }
-      ])
-    })
-  }
+/** In-memory equivalent of the filter; `skip` leaves one dimension out (for facet counts). */
+function matches(c: VendorCardData, filter: VendorFilter, skip?: Dimension): boolean {
+  if (filter.city && c.city !== filter.city) return false
+  if (filter.liveOnly && !c.live) return false
+  if (filter.premiumOnly && !c.isPremium) return false
+  if (filter.excludeIds?.includes(c.id)) return false
+  if (skip !== 'categories' && filter.categories?.length && !filter.categories.includes(c.category)) return false
+  if (skip !== 'priceTiers' && filter.priceTiers?.length && !filter.priceTiers.includes(c.priceRange)) return false
+  if (skip !== 'accessibility' && filter.accessibility?.length && !filter.accessibility.every(k => c.accessibility.includes(k))) return false
+  if (skip !== 'areas' && filter.areas?.length && !filter.areas.includes(c.area)) return false
+  if (filter.keywords?.length && !filter.keywords.some(k => includesCI(c.name, k) || includesCI(c.description, k))) return false
   const q = filter.q?.trim()
   if (q) {
-    const categoryMatches = Object.entries(CATEGORY_LABELS)
-      .filter(([, label]) => label.toLowerCase().startsWith(q.toLowerCase()))
-      .map(([key]) => key as VendorCategory)
-    and.push({
-      OR: [
-        { name: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-        { neighborhood: { contains: q, mode: 'insensitive' } },
-        ...(categoryMatches.length ? [{ category: { in: categoryMatches } }] : [])
-      ]
-    })
+    const categoryHit = (CATEGORY_LABELS[c.category] ?? '').toLowerCase().startsWith(q.toLowerCase())
+    if (!categoryHit && !includesCI(c.name, q) && !includesCI(c.description, q) && !includesCI(c.neighborhood, q)) return false
   }
-  return { AND: and }
+  return true
 }
 
 const CARD_SELECT = {
@@ -147,17 +122,23 @@ function sortCards(cards: Array<VendorCardData & { createdAt: Date }>, sort: Ven
   })
 }
 
+/** Every listed vendor as a card, read once per request. */
+const loadCatalog = cache(async (): Promise<Array<VendorCardData & { createdAt: Date }>> => {
+  const rows = await prisma.vendor.findMany({ where: BASE_WHERE, select: CARD_SELECT })
+  return rows.map(toCard)
+})
+
 /**
- * Filters run in Postgres; sorting happens after, because "rating" is an
- * average over the Review relation that Prisma can't order by. At the
- * current catalog size (~50 vendors) that's a single cheap query.
+ * Filters and sorts the per-request catalog. Sorting is done here anyway,
+ * because "rating" is an average over the Review relation that Prisma can't
+ * order by.
  */
 export async function queryVendors(
   filter: VendorFilter,
   opts: { sort?: VendorSort; skip?: number; take?: number; prioritize?: boolean } = {}
 ): Promise<{ total: number; items: VendorCardData[] }> {
-  const rows = await prisma.vendor.findMany({ where: await buildWhere(filter), select: CARD_SELECT })
-  const base = sortCards(rows.map(toCard), opts.sort ?? 'recommended')
+  const catalog = await loadCatalog()
+  const base = sortCards(catalog.filter(c => matches(c, filter)), opts.sort ?? 'recommended')
   // Editorial priority applies unless the caller says the order was an
   // explicit user choice (Explore's Rating / Price sorts).
   const sorted = opts.prioritize === false ? base : applyVendorPriority(base, c => c.name)
@@ -168,17 +149,13 @@ export async function queryVendors(
 
 /** Live counts per filter option, each computed with every *other* active filter applied. */
 export async function vendorFacets(filter: VendorFilter): Promise<VendorFacets> {
-  const [catRows, areaRows, priceRows, accessRows] = await Promise.all([
-    prisma.vendor.findMany({ where: await buildWhere(filter, 'categories'), select: { category: true } }),
-    prisma.vendor.findMany({ where: await buildWhere(filter, 'areas'), select: { neighborhood: true, city: true } }),
-    prisma.vendor.findMany({ where: await buildWhere(filter, 'priceTiers'), select: { priceRange: true } }),
-    prisma.vendor.findMany({ where: await buildWhere(filter, 'accessibility'), select: { accessibility: true } })
-  ])
+  const catalog = await loadCatalog()
+  const without = (dim: Dimension) => catalog.filter(c => matches(c, filter, dim))
   const tally = (values: string[]) => values.reduce<Record<string, number>>((m, v) => { m[v] = (m[v] || 0) + 1; return m }, {})
-  const cat = tally(catRows.map(r => r.category))
-  const area = tally(areaRows.map(r => areaForNeighborhood(r.neighborhood, r.city)))
-  const price = tally(priceRows.map(r => r.priceRange))
-  const access = tally(accessRows.flatMap(r => r.accessibility))
+  const cat = tally(without('categories').map(c => c.category))
+  const area = tally(without('areas').map(c => c.area))
+  const price = tally(without('priceTiers').map(c => c.priceRange))
+  const access = tally(without('accessibility').flatMap(c => c.accessibility))
   return {
     categories: Object.keys(CATEGORY_LABELS)
       .filter(k => cat[k] || filter.categories?.includes(k))

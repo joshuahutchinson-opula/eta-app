@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { areaForNeighborhood } from '@/lib/areas'
+import { queryVendors } from '@/lib/vendor-query'
 
 export interface ExperienceCardData {
   id: string
@@ -188,8 +189,10 @@ export async function getVibeMoods() {
 /** Cover image for a guide panel: its pinned vendor's thumbnail, else the first vendor image in the area. */
 export async function getGuideCover(coverVendor: string | undefined, fallback: Array<{ image: string | null }>): Promise<string | null> {
   if (coverVendor) {
-    const v = await prisma.vendor.findFirst({ where: { name: coverVendor }, select: { images: true } })
-    if (v?.images[0]) return v.images[0]
+    // Reads the per-request vendor catalog — no extra database query.
+    const { items } = await queryVendors({}, { prioritize: false })
+    const pinned = items.find(v => v.name === coverVendor)
+    if (pinned?.image) return pinned.image
   }
   return fallback.find(x => x.image)?.image ?? null
 }

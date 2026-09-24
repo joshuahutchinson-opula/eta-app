@@ -10,7 +10,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'ETA — Experience, Travel, Adventure.',
+  title: 'Experience, Travel, Adventure.',
   description: 'See the Real Jamaica.'
 }
 

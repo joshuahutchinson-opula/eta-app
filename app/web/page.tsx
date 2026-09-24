@@ -3,6 +3,7 @@ import Link from 'next/link'
 import FeaturedCarousel from '@/components/web/FeaturedCarousel'
 import VibeSection from '@/components/web/VibeSection'
 import Parallax from '@/components/web/Parallax'
+import ParallaxScope from '@/components/web/ParallaxScope'
 import VendorCard from '@/components/web/VendorCard'
 import ExperienceCard from '@/components/web/ExperienceCard'
 import PhotoSpotTile from '@/components/web/PhotoSpotTile'
@@ -39,7 +40,9 @@ export default async function WebHome() {
 
   return (
     <div className="w-container">
-      <section className="w-hero">
+      <ParallaxScope className="w-hero">
+        {/* Background layer: drifts slower than the headline in front of it. */}
+        <div className="w-hero-bg" data-parallax="0.35" aria-hidden />
         <Parallax speed={0.18}>
           <div className="w-hero-head">
             <div>
@@ -56,7 +59,9 @@ export default async function WebHome() {
           </div>
           {side.map(v => (
             <Link key={v.id} href={`/web/vendor/${v.id}`} className="w-hero-tile">
-              <img src={v.image!} alt={v.name} />
+              <div className="w-parallax-img" data-parallax="0.1" data-parallax-max="24">
+                <img src={v.image!} alt={v.name} />
+              </div>
               <div className="w-hero-tile-body">
                 <h3 className="w-hero-tile-title">{v.name}</h3>
                 <p className="w-hero-tile-meta">{CATEGORY_LABELS[v.category]} · {areaLabel(v.area)}</p>
@@ -64,7 +69,7 @@ export default async function WebHome() {
             </Link>
           ))}
         </div>
-      </section>
+      </ParallaxScope>
 
       <VibeSection moods={moods} experiences={byRating} />
 

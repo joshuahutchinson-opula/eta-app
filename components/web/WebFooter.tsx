@@ -26,7 +26,7 @@ export default function WebFooter({ lang }: { lang: Lang }) {
               <h4>{t(lang, 'footer.vendors')}</h4>
               <Link href="/web/for-vendors">{t(lang, 'nav.forVendors')}</Link>
               <Link href="/web/for-vendors#apply">{t(lang, 'footer.applyToList')}</Link>
-              <Link href="/web/for-vendors#how-it-works">{t(lang, 'footer.howVetting')}</Link>
+              <Link href="/web/for-vendors#vetting">{t(lang, 'footer.howVetting')}</Link>
             </div>
             <div className="w-footer-col">
               <h4>{t(lang, 'footer.company')}</h4>

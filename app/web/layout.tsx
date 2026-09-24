@@ -14,7 +14,7 @@ const fraunces = Fraunces({ subsets: ['latin'], weight: ['400', '600', '700'], v
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-inter', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: { default: 'ETA — Experience, Travel, Adventure.', template: '%s · ETA' },
+  title: { default: 'Experience, Travel, Adventure.', template: '%s' },
   description: 'See the Real Jamaica. Vetted local vendors, experiences and photo spots — live on ETA.'
 }
 
