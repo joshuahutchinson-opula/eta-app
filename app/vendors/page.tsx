@@ -7,6 +7,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import LongPressCard from '@/components/LongPressCard'
+import AddToTripSheet from '@/components/AddToTripSheet'
+import { syncAlerts } from '@/lib/alerts-client'
+import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { hapticSaved } from '@/lib/haptics'
 
 interface Vendor {
@@ -26,6 +29,7 @@ interface Vendor {
   reviewCount?: number
   lat: number
   lng: number
+  accessibility?: string[]
 }
 
 const CATEGORIES = [
@@ -77,10 +81,12 @@ function VendorsContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedPriceTier, setSelectedPriceTier] = useState<string | null>(null)
   const [premiumOnly, setPremiumOnly] = useState(false)
+  const [selectedAccess, setSelectedAccess] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION)
+  const [addToTripVendor, setAddToTripVendor] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     fetchVendors()
@@ -123,6 +129,7 @@ function VendorsContent() {
       : [...savedVendors, vendorId]
     setSavedVendors(newSaved)
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
+    syncAlerts()
   }
 
   const filteredVendors = vendors
@@ -135,6 +142,7 @@ function VendorsContent() {
     .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
     .filter(v => !selectedPriceTier || v.priceRange === selectedPriceTier)
     .filter(v => !premiumOnly || v.isPremium)
+    .filter(v => selectedAccess.every(k => v.accessibility?.includes(k)))
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').length - (b.priceRange || '').length
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
@@ -145,7 +153,7 @@ function VendorsContent() {
       return 0
     })
 
-  const activeFilterCount = [selectedCategory, city, selectedPriceTier, premiumOnly || null].filter(Boolean).length
+  const activeFilterCount = [selectedCategory, city, selectedPriceTier, premiumOnly || null].filter(Boolean).length + selectedAccess.length
 
   if (loading) {
     return (
@@ -279,6 +287,21 @@ function VendorsContent() {
                       >
                         <Icon name="heart" size={15} className={savedVendors.includes(v.id) ? 'filled' : ''} />
                       </button>
+                      <button
+                        className="heart-btn"
+                        aria-label={`Add ${v.name} to a trip`}
+                        onClick={(e) => { e.preventDefault(); setAddToTripVendor({ id: v.id, name: v.name }) }}
+                        style={{
+                          position: 'absolute',
+                          top: '42px',
+                          right: '6px',
+                          width: '32px',
+                          height: '32px',
+                          color: 'var(--label-secondary)'
+                        }}
+                      >
+                        <Icon name="plus" size={15} />
+                      </button>
                       {v.live && (
                         <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px' }}>
                           <span className="live-dot" />
@@ -365,6 +388,21 @@ function VendorsContent() {
             ))}
           </div>
 
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Accessibility</p>
+          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>Only vendors who&apos;ve confirmed a feature show up.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {ACCESSIBILITY_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setSelectedAccess(prev => prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key])}
+                className={`chip ${selectedAccess.includes(opt.key) ? 'active' : ''}`}
+                aria-pressed={selectedAccess.includes(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {SORT_OPTIONS.map(option => (
@@ -399,6 +437,7 @@ function VendorsContent() {
                   setCity(null)
                   setSelectedPriceTier(null)
                   setPremiumOnly(false)
+                  setSelectedAccess([])
                 }}
               >
                 Clear all
@@ -410,6 +449,8 @@ function VendorsContent() {
           </div>
         </div>
       </div>
+
+      <AddToTripSheet vendor={addToTripVendor} onClose={() => setAddToTripVendor(null)} />
 
       <Dock />
     </main>

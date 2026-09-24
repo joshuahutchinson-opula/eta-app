@@ -3,31 +3,33 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
+import type { PatoisKey } from '@/lib/patois'
 
 const steps = [
   {
     title: 'Welcome to Negril.',
     text: 'The real one. Not the brochure.',
-    button: patois.ctaPrimary,
+    button: 'ctaPrimary' as PatoisKey,
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
   },
   {
     title: 'What brings you here?',
     text: 'Pick your vibe.',
-    button: patois.ctaVibe,
+    button: 'ctaVibe' as PatoisKey,
     image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800',
     vibeSelector: true
   },
   {
     title: 'Explore. Earn. Repeat.',
     text: 'Going out of your way earns more.',
-    button: patois.ctaPrimary,
+    button: 'ctaPrimary' as PatoisKey,
     image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'
   },
 ]
 
 export default function OnboardingPage() {
+  const patois = usePatois()
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [vibe, setVibe] = useState('')
@@ -78,7 +80,7 @@ export default function OnboardingPage() {
         )}
 
         <button className="btn btn-primary" onClick={handleNext}>
-          {current.button}
+          {patois[current.button]}
         </button>
 
         {step > 0 && (

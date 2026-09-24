@@ -5,9 +5,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 
 export default function LoginPage() {
+  const patois = usePatois()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

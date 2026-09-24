@@ -10,6 +10,10 @@ import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/Expl
 import { hapticSurveyStepComplete, hapticSaved, hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
 import SuccessAnimation from '@/components/SuccessAnimation'
+import TripPlanner from '@/components/TripPlanner'
+import { createTrip, fetchMyTrips, tripApi, type TripView } from '@/lib/trip-client'
+import { useLang } from '@/lib/i18n-client'
+import { cacheTripForOffline, clearTripCache, getActiveCachedTrip, getCachedTrip, updateCachedTrip, useOnline } from '@/lib/trip-offline'
 
 type Pin = { type: 'vendor'; data: MapVendor } | { type: 'photospot'; data: MapPhotoSpot }
 
@@ -140,9 +144,24 @@ function experienceStops(exp: Experience): BundleStop[] {
   ]
 }
 
+const FOOD_CATEGORIES = ['FOOD', 'DRINKS']
+
+// Converts a trip's real stops into the active-screen itinerary shape.
+function tripStops(trip: TripView): BundleStop[] {
+  const legs: BundleStop[] = []
+  if (trip.experience) {
+    legs.push({ type: 'transport', name: '', time: '', img: '', label: `${trip.experience.travelMode || 'Travel'} · ${trip.experience.travelTime} min from ${trip.experience.startLocation}` })
+  }
+  for (const stop of trip.stops) {
+    const food = stop.kind === 'vendor' && FOOD_CATEGORIES.some(c => stop.subtitle.toUpperCase().startsWith(c))
+    legs.push({ type: food ? 'food' : 'activity', name: stop.name, time: stop.time || stop.subtitle, img: stop.image || '' })
+  }
+  return legs
+}
+
 export default function ExperiencesPage() {
   const router = useRouter()
-  const [screen, setScreen] = useState<'survey' | 'loading' | 'results' | 'detail' | 'active'>('survey')
+  const [screen, setScreen] = useState<'survey' | 'loading' | 'results' | 'detail' | 'trip' | 'active'>('survey')
   const [surveyStep, setSurveyStep] = useState(0)
   const [survey, setSurvey] = useState<SurveyState>({ time: null, crew: [], mood: [], transport: null })
   const [experiences, setExperiences] = useState<Experience[]>([])
@@ -154,8 +173,17 @@ export default function ExperiencesPage() {
   const [currentStopIndex, setCurrentStopIndex] = useState(0)
   const [points, setPoints] = useState(640)
   const [etaSeconds, setEtaSeconds] = useState(12 * 60)
-  const [groupMembers, setGroupMembers] = useState<Array<{ name: string; status: string }>>([])
-  const [payments, setPayments] = useState<Array<{ name: string; amount: number; paid: boolean }>>([])
+  const [groupMembers, setGroupMembers] = useState<Array<{ id?: string; name: string; status: string }>>([])
+  const [payments, setPayments] = useState<Array<{ id?: string; name: string; amount: number; paid: boolean }>>([])
+  // The trip behind the current plan/booking (B1 group planning, B3 add-to-trip).
+  const [activeTrip, setActiveTrip] = useState<TripView | null>(null)
+  const [tripsInProgress, setTripsInProgress] = useState<TripView[]>([])
+  const [startingTrip, setStartingTrip] = useState(false)
+  const [tripError, setTripError] = useState<string | null>(null)
+  const [finishing, setFinishing] = useState(false)
+  const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null)
+  const online = useOnline()
+  const { t } = useLang()
   const [crewInput, setCrewInput] = useState('')
   const [showChangePlan, setShowChangePlan] = useState(false)
   const [showRouteSheet, setShowRouteSheet] = useState(false)
@@ -183,7 +211,63 @@ export default function ExperiencesPage() {
 
   useEffect(() => {
     fetchAll()
+    fetchMyTrips(['PLANNING']).then(setTripsInProgress).catch(() => {})
+    // Deep link from "Add to trip", a shared trip page, or a push alert.
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('mode') === 'discover') setTabMode('discover')
+    const slug = params.get('trip')
+    if (slug) {
+      openTrip(slug)
+    } else if (!navigator.onLine) {
+      // No signal mid-trip: reopen the booked trip saved on this device.
+      const cached = getActiveCachedTrip()
+      if (cached) {
+        enterActiveFromTrip(cached.trip)
+        setOfflineSavedAt(cached.savedAt)
+        setScreen('active')
+      }
+    }
   }, [])
+
+  const openTrip = async (slug: string) => {
+    try {
+      const trip = await tripApi(slug, '')
+      if (trip.status === 'BOOKED') {
+        enterActiveFromTrip(trip)
+        setScreen('active')
+      } else {
+        setActiveTrip(trip)
+        setScreen('trip')
+      }
+      setTabMode('plan')
+    } catch {
+      // Offline (or the server is unreachable): fall back to the saved copy.
+      const cached = getCachedTrip(slug)
+      if (cached) {
+        enterActiveFromTrip(cached.trip)
+        setOfflineSavedAt(cached.savedAt)
+        setScreen('active')
+      }
+    }
+  }
+
+  const enterActiveFromTrip = (trip: TripView) => {
+    setActiveTrip(trip)
+    setActiveStops(tripStops(trip))
+    setCurrentStopIndex(0)
+    setGroupMembers(trip.members.map(m => ({ id: m.id, name: m.name, status: m.status })))
+    setPayments(trip.members.map(m => ({ id: m.id, name: m.name, amount: m.share, paid: m.paid })))
+    if (trip.experience?.travelTime) setEtaSeconds(trip.experience.travelTime * 60)
+    if (trip.booking) {
+      setActiveBooking({
+        id: trip.booking.id,
+        status: trip.booking.status,
+        date: trip.booking.date,
+        userId: getCurrentUser()?.id ?? '',
+        experience: { name: trip.name }
+      })
+    }
+  }
 
   useEffect(() => {
     if (screen === 'active') {
@@ -367,76 +451,127 @@ export default function ExperiencesPage() {
     setTabMode('plan')
   }
 
+  // "Plan with crew first": turn the chosen experience + the crew from the
+  // survey into a shared trip the crew can vote on before anything is booked.
+  const startCrewTrip = async () => {
+    if (!selectedExperience) return
+    setStartingTrip(true)
+    setTripError(null)
+    try {
+      const trip = await createTrip({ name: selectedExperience.name, experienceId: selectedExperience.id, crew: survey.crew, city: selectedExperience.city })
+      setActiveTrip(trip)
+      setTripsInProgress(prev => [trip, ...prev.filter(t => t.slug !== trip.slug)])
+      triggerHaptic('medium')
+      setScreen('trip')
+    } catch (e) {
+      setTripError(e instanceof Error ? e.message : 'Sumth nah wuk')
+    } finally {
+      setStartingTrip(false)
+    }
+  }
+
+  // Books a trip server-side (creates the CONFIRMED Booking) and moves to
+  // the active screen with the trip's real stops and crew.
+  const bookTrip = async (trip: TripView) => {
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      setTripError('Log in to book — your trip is saved on this device.')
+      return
+    }
+    setBooking(true)
+    setTripError(null)
+    try {
+      const booked = await tripApi(trip.slug, '/book', { method: 'POST', body: { userId: currentUser.id } })
+      setPoints(currentUser.points ?? 0)
+      enterActiveFromTrip({ ...booked, canEdit: true })
+      // Save everything the active screen needs in case the signal drops (B2).
+      cacheTripForOffline({ ...booked, canEdit: true })
+      setTripsInProgress(prev => prev.filter(t => t.slug !== trip.slug))
+      hapticBookingConfirmed()
+      setShowBookingSuccess(true)
+    } catch (e) {
+      setTripError(e instanceof Error ? e.message : 'Sumth nah wuk')
+    } finally {
+      setBooking(false)
+    }
+  }
+
   const confirmExperience = async () => {
     if (!selectedExperience) return
-    setActiveStops(experienceStops(selectedExperience))
-    setCurrentStopIndex(0)
     const currentUser = getCurrentUser()
-    setPoints(currentUser?.points ?? 640)
-    setEtaSeconds(selectedExperience.travelTime ? selectedExperience.travelTime * 60 : 12 * 60)
-    const crew = ['You', ...(survey.crew.length ? survey.crew : ['Jules', 'Ken', 'Priya'])]
-    const per = Math.round(selectedExperience.price)
-    setGroupMembers(crew.map((n, i) => ({ name: n, status: i === 0 ? 'arrived' : i === 1 ? 'enroute' : 'pending' })))
-    setPayments(crew.map((n, i) => ({ name: n, amount: per, paid: i === 0 })))
-
     if (currentUser) {
+      // Every signed-in booking goes through a Trip so it gets the shared
+      // link, offline copy and post-trip recap.
       setBooking(true)
       try {
-        // Scheduled soon (not days out) so the newly-confirmed trip falls
-        // inside the Active Trip Banner's "happening now" detection window
-        // on Home/Experiences right after booking.
-        const bookingDate = new Date(Date.now() + 2 * 3600000)
-        const res = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            experienceId: selectedExperience.id,
-            date: bookingDate.toISOString(),
-            totalPrice: selectedExperience.price,
-            pointsEarned: Math.floor(selectedExperience.price),
-            status: 'CONFIRMED'
-          })
-        })
-        if (res.ok) {
-          setActiveBooking({
-            id: 'just-booked',
-            status: 'CONFIRMED',
-            date: bookingDate.toISOString(),
-            userId: currentUser.id,
-            experience: { name: selectedExperience.name }
-          })
-        }
+        const trip = await createTrip({ name: selectedExperience.name, experienceId: selectedExperience.id, crew: survey.crew, city: selectedExperience.city })
+        await bookTrip(trip)
       } catch (error) {
         console.error('Booking error:', error)
+        setTripError(error instanceof Error ? error.message : 'Sumth nah wuk')
       } finally {
         setBooking(false)
       }
-    } else {
-      console.warn('No signed-in user — booking was not saved.')
+      return
     }
 
+    // Not signed in: nothing can be saved, so run the trip locally.
+    console.warn('No signed-in user — booking was not saved.')
+    setActiveTrip(null)
+    setActiveStops(experienceStops(selectedExperience))
+    setCurrentStopIndex(0)
+    setPoints(0)
+    setEtaSeconds(selectedExperience.travelTime ? selectedExperience.travelTime * 60 : 12 * 60)
+    const crew = ['You', ...survey.crew]
+    const per = Math.round(selectedExperience.price)
+    setGroupMembers(crew.map((n, i) => ({ name: n, status: i === 0 ? 'arrived' : 'pending' })))
+    setPayments(crew.map((n, i) => ({ name: n, amount: per, paid: i === 0 })))
     hapticBookingConfirmed()
     setShowBookingSuccess(true)
+  }
+
+  // Finishing a booked trip completes the booking (points credited) and
+  // opens the shareable recap (B5). The offline copy is no longer needed.
+  const finishTrip = async () => {
+    if (!activeTrip) return
+    setFinishing(true)
+    setTripError(null)
+    try {
+      await tripApi(activeTrip.slug, '/complete', { method: 'POST' })
+      clearTripCache(activeTrip.slug)
+      hapticBookingConfirmed()
+      router.push(`/trip/${activeTrip.slug}/recap`)
+    } catch (e) {
+      setTripError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setFinishing(false)
+    }
   }
 
   const realStops = () => activeStops.filter(s => s.type !== 'transport')
 
   const cycleStatus = (i: number) => {
     const order = ['pending', 'enroute', 'arrived']
-    setGroupMembers(prev => {
-      const next = [...prev]
-      next[i].status = order[(order.indexOf(next[i].status) + 1) % order.length]
-      return next
-    })
+    const member = groupMembers[i]
+    const status = order[(order.indexOf(member.status) + 1) % order.length]
+    setGroupMembers(prev => prev.map((m, j) => (j === i ? { ...m, status } : m)))
+    if (activeTrip && member.id) {
+      tripApi(activeTrip.slug, '/members', { method: 'PATCH', body: { memberId: member.id, status } })
+        .then(t => updateCachedTrip({ ...t, canEdit: activeTrip.canEdit }))
+        .catch(() => {})
+    }
   }
 
+  // Split payment toggles persist to the trip's crew when there is one.
   const togglePaid = (i: number) => {
-    setPayments(prev => {
-      const next = [...prev]
-      next[i].paid = !next[i].paid
-      return next
-    })
+    const p = payments[i]
+    setPayments(prev => prev.map((x, j) => (j === i ? { ...x, paid: !x.paid } : x)))
+    if (activeTrip && p.id) {
+      tripApi(activeTrip.slug, '/members', { method: 'PATCH', body: { memberId: p.id, paid: !p.paid } })
+        .then(t => updateCachedTrip({ ...t, canEdit: activeTrip.canEdit }))
+        .catch(() => {
+          setPayments(prev => prev.map((x, j) => (j === i ? { ...x, paid: p.paid } : x)))
+        })
+    }
   }
 
   // Data-driven swap choices for the "Change plan" sheet: other real
@@ -617,6 +752,32 @@ export default function ExperiencesPage() {
           </div>
         )}
         <div style={{ padding: '16px' }}>
+          {tripsInProgress.length > 0 && surveyStep === 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.survey.tripsInProgress')}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {tripsInProgress.slice(0, 3).map(t => (
+                  <button
+                    key={t.slug}
+                    onClick={() => { triggerHaptic('light'); setActiveTrip(t); setScreen('trip') }}
+                    className="card"
+                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: 'none', textAlign: 'left', fontFamily: 'inherit', width: '100%' }}
+                  >
+                    <span style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--rum-tint)', color: 'var(--rum-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="route" size={18} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)' }}>{t.name}</span>
+                      <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>
+                        {t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'} · {t.members.length} in crew
+                      </span>
+                    </span>
+                    <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
             {surveyStep > 0 && (
               <button
@@ -652,9 +813,9 @@ export default function ExperiencesPage() {
           >
           {surveyStep === 0 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 1 of 4</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>What&apos;s calling you?</h2>
-              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>Pick up to three.</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.survey.step', { n: 1 })}</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>{t('m.survey.moodTitle')}</h2>
+              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{t('m.survey.moodSub')}</p>
               {dataLoading ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                   {[0, 1, 2, 3, 4, 5].map(i => (
@@ -709,8 +870,8 @@ export default function ExperiencesPage() {
 
           {surveyStep === 1 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 2 of 4</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>How much time?</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.survey.step', { n: 2 })}</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.survey.timeTitle')}</h2>
               {Object.entries(TIME_META).map(([id, meta]) => (
                 <div
                   key={id}
@@ -744,13 +905,13 @@ export default function ExperiencesPage() {
 
           {surveyStep === 2 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 3 of 4</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>Who&apos;s coming?</h2>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.survey.step', { n: 3 })}</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.survey.crewTitle')}</h2>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input
                   value={crewInput}
                   onChange={(e) => setCrewInput(e.target.value)}
-                  placeholder="Add a name"
+                  placeholder={t('m.survey.crewAdd')}
                   style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '1px solid var(--separator)', background: 'var(--system-bg-elevated)', fontSize: '17px', fontFamily: 'inherit', color: 'var(--label-primary)', outline: 'none', minHeight: '44px' }}
                 />
                 <button onClick={() => { if (crewInput.trim()) { setSurvey(prev => ({ ...prev, crew: [...prev.crew, crewInput.trim()] })); setCrewInput(''); triggerSelectAnim('crew') } }} style={{ width: '44px', borderRadius: '14px', background: 'var(--rum)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px' }}>
@@ -773,9 +934,9 @@ export default function ExperiencesPage() {
 
           {surveyStep === 3 && (
             <>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Step 4 of 4</p>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>Getting around?</h2>
-              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>This shapes how far we&apos;ll range for stops.</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.survey.step', { n: 4 })}</p>
+              <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '8px' }}>{t('m.survey.transportTitle')}</h2>
+              <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{t('m.survey.transportSub')}</p>
               {Object.entries(TRANSPORT_META).map(([id, meta]) => (
                 <div
                   key={id}
@@ -854,10 +1015,10 @@ export default function ExperiencesPage() {
           )}
 
           <div style={{ marginBottom: '24px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>Curated for You</p>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginTop: '2px' }}>Yuh vibe, bundled.</h2>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.results.eyebrow')}</p>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginTop: '2px' }}>{t('m.results.title')}</h2>
             <p style={{ fontSize: '15px', color: 'var(--rum-text)', fontWeight: 600, marginTop: '4px' }}>
-              +{planningPoints} pts for planning your trip
+              {t('m.results.points', { points: planningPoints })}
             </p>
           </div>
 
@@ -1066,7 +1227,7 @@ export default function ExperiencesPage() {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            {['You', ...(survey.crew.length ? survey.crew : ['Jules', 'Ken', 'Priya'])].map((name, i) => (
+            {['You', ...survey.crew].map((name, i) => (
               <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ width: '32px', height: '32px', borderRadius: '50%', background: avatarColor(name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'white' }}>{name[0].toUpperCase()}</span>
@@ -1081,9 +1242,43 @@ export default function ExperiencesPage() {
         </div>
 
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(50px + env(safe-area-inset-bottom, 0px))', zIndex: 30, background: 'var(--system-bg-elevated)', borderTop: '0.5px solid var(--separator)', padding: '10px 16px', boxShadow: 'var(--shadow-sheet)' }}>
-          <button className="btn btn-primary" onClick={confirmExperience} disabled={booking} style={{ width: '100%' }}>
-            {booking ? 'Booking...' : 'Dun — book dis'}
+          {tripError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{tripError}</p>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-secondary" onClick={startCrewTrip} disabled={startingTrip || booking} style={{ flex: 1, padding: '0 12px' }}>
+              <Icon name="users" size={16} />
+              {startingTrip ? '…' : t('m.detail.planWithCrew')}
+            </button>
+            <button className="btn btn-primary" onClick={confirmExperience} disabled={booking || startingTrip} style={{ flex: 1 }}>
+              {booking ? '…' : t('m.detail.book')}
+            </button>
+          </div>
+        </div>
+        <SuccessAnimation show={showBookingSuccess} onComplete={() => { setShowBookingSuccess(false); setScreen('active') }} />
+        <Dock />
+      </main>
+    )
+  }
+
+  // TRIP — group planning before booking
+  if (screen === 'trip' && activeTrip) {
+    return (
+      <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '96px' }}>
+        <div style={{ padding: '16px' }}>
+          <button
+            onClick={() => setScreen(selectedExperience ? 'detail' : 'survey')}
+            aria-label="Back"
+            style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: 'var(--system-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--label-primary)', marginBottom: '12px', boxShadow: 'var(--shadow-card)' }}
+          >
+            <Icon name="back" size={16} />
           </button>
+          <TripPlanner
+            trip={activeTrip}
+            mode="owner"
+            onTripChange={t => { setActiveTrip(t); setTripsInProgress(prev => prev.map(x => (x.slug === t.slug ? t : x))) }}
+            onBook={() => bookTrip(activeTrip)}
+            booking={booking}
+          />
+          {tripError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginTop: '10px' }}>{tripError}</p>}
         </div>
         <SuccessAnimation show={showBookingSuccess} onComplete={() => { setShowBookingSuccess(false); setScreen('active') }} />
         <Dock />
@@ -1113,7 +1308,7 @@ export default function ExperiencesPage() {
         </div>
 
         <div style={{ position: 'absolute', top: '0', left: '0', right: '0', zIndex: 20, padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => setScreen('results')} style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--system-bg-elevated)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-primary)', boxShadow: 'var(--shadow-card)' }}>
+          <button onClick={() => setScreen(survey.mood.length ? 'results' : 'survey')} aria-label="Back" style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--system-bg-elevated)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-primary)', boxShadow: 'var(--shadow-card)' }}>
             <Icon name="back" size={18} />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--system-bg-elevated)', padding: '8px 12px', borderRadius: '999px', minHeight: '44px', boxShadow: 'var(--shadow-card)' }}>
@@ -1180,8 +1375,24 @@ export default function ExperiencesPage() {
                 Full route
               </button>
             </div>
+            {activeTrip?.canEdit && activeTrip.status === 'BOOKED' && (
+              <button className="btn btn-primary" onClick={finishTrip} disabled={finishing || !online} style={{ width: '100%', marginTop: '8px' }}>
+                <Icon name="sparkle" size={16} />
+                {finishing ? 'Wrapping up…' : online ? 'Finish trip & see recap' : 'Finish trip (needs signal)'}
+              </button>
+            )}
+            {tripError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginTop: '8px' }}>{tripError}</p>}
           </div>
         </div>
+
+        {(!online || offlineSavedAt) && activeTrip && (
+          <div role="status" style={{ position: 'absolute', top: '72px', left: '50%', transform: 'translateX(-50%)', zIndex: 25, background: 'var(--system-bg-elevated)', padding: '8px 14px', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-elevated)', whiteSpace: 'nowrap' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: online ? 'var(--success)' : 'var(--warning)' }} />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>
+              {online ? 'Back online' : 'Offline — showing your saved trip'}
+            </span>
+          </div>
+        )}
 
         {adapting && (
           <div style={{ position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 200, background: 'var(--system-bg-elevated)', padding: '12px 16px', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-elevated)' }}>

@@ -2,8 +2,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 export default function LaunchScreen() {
+  // The desktop web app (/web/*) is a website, not an app launch — no splash.
+  const isWeb = usePathname()?.startsWith('/web') ?? false
   const [visible, setVisible] = useState(true)
   const [fading, setFading] = useState(false)
 
@@ -22,7 +25,7 @@ export default function LaunchScreen() {
     }
   }, [])
 
-  if (!visible) return null
+  if (!visible || isWeb) return null
 
   return (
     <div 

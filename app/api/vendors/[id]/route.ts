@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { notifyVendorLive } from '@/lib/alerts'
+import { sanitizeAccessibility } from '@/lib/accessibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,10 +65,16 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
+    if ('accessibility' in body) body.accessibility = sanitizeAccessibility(body.accessibility)
+    const before = await prisma.vendor.findUnique({ where: { id: params.id }, select: { live: true } })
     const vendor = await prisma.vendor.update({
       where: { id: params.id },
       data: body
     })
+    // Going live is the moment saved-vendor alerts exist for (B4).
+    if (before && !before.live && vendor.live) {
+      await notifyVendorLive(vendor.id).catch(err => console.error('Live alert failed:', err))
+    }
     return NextResponse.json(vendor)
   } catch (error) {
     console.error('Error updating vendor:', error)

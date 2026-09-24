@@ -3,7 +3,13 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
 
+// Absolute base for og:image and canonical URLs. Railway injects
+// RAILWAY_PUBLIC_DOMAIN; NEXT_PUBLIC_SITE_URL overrides it for a custom domain.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000')
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'ETA — Experience Travel Adventure',
   description: 'Premium membership app for Negril and Montego Bay, Jamaica'
 }
@@ -30,7 +36,7 @@ export default function RootLayout({
             every navigation, reload, or direct link. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}`
+            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
           }}
         />
         <meta name="theme-color" content="#F2F2F7" />

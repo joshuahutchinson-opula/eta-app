@@ -7,8 +7,12 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 import BrandedRefresh from '@/components/BrandedRefresh'
+import AddToTripSheet from '@/components/AddToTripSheet'
+import { syncAlerts } from '@/lib/alerts-client'
+import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
+import { useLang } from '@/lib/i18n-client'
 import { hapticSaved } from '@/lib/haptics'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
@@ -34,6 +38,7 @@ interface Vendor {
   reviewCount?: number
   lat?: number
   lng?: number
+  accessibility?: string[]
 }
 
 interface Accommodation {
@@ -87,6 +92,8 @@ function formatCategory(category: string): string {
 }
 
 export default function MarketplacePage() {
+  const patois = usePatois()
+  const { t } = useLang()
   const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
@@ -101,8 +108,10 @@ export default function MarketplacePage() {
   const [accommodationType, setAccommodationType] = useState('All-Inclusive')
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [showSavedOnly, setShowSavedOnly] = useState(false)
+  const [selectedAccess, setSelectedAccess] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 18.2723, lng: -78.3521 })
+  const [addToTripVendor, setAddToTripVendor] = useState<{ id: string; name: string } | null>(null)
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string; videoUrl?: string }>>([])
 
   useEffect(() => {
@@ -174,6 +183,7 @@ export default function MarketplacePage() {
       : [...savedVendors, vendorId]
     setSavedVendors(newSaved)
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
+    syncAlerts()
   }
 
   const handleCityChange = (c: 'NEGRIL' | 'MONTEGO_BAY') => {
@@ -213,6 +223,7 @@ export default function MarketplacePage() {
     .filter(v => !city || v.city === city)
     .filter(v => !selectedMood || v.category === selectedMood.toUpperCase() || v.neighborhood === selectedMood)
     .filter(v => !showSavedOnly || savedVendors.includes(v.id))
+    .filter(v => selectedAccess.every(k => v.accessibility?.includes(k)))
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
@@ -220,7 +231,7 @@ export default function MarketplacePage() {
       return 0
     })
 
-  const activeFilterCount = [selectedMood, showSavedOnly || null].filter(Boolean).length
+  const activeFilterCount = [selectedMood, showSavedOnly || null].filter(Boolean).length + selectedAccess.length
 
   const filteredAccommodations = accommodations.filter(a =>
     !accommodationType || a.type === accommodationType
@@ -267,7 +278,7 @@ export default function MarketplacePage() {
             <Icon name="search" size={16} style={{ color: 'var(--label-secondary)', flexShrink: 0 }} />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder={t('m.market.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
@@ -428,7 +439,7 @@ export default function MarketplacePage() {
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-eyebrow">Limited Time</span>
-                <span className="section-title">Flash Deals</span>
+                <span className="section-title">{t('m.market.flashDeals')}</span>
               </div>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
@@ -543,7 +554,7 @@ export default function MarketplacePage() {
         <div>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-title">All Vendors</span>
+              <span className="section-title">{t('m.market.allVendors')}</span>
             </div>
             <Link href="/vendors" className="section-link">See All</Link>
           </div>
@@ -563,13 +574,24 @@ export default function MarketplacePage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                        <button
-                          className="heart-btn"
-                          onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                          style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
-                        >
-                          <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                          <button
+                            className="heart-btn"
+                            aria-label={`Add ${v.name} to a trip`}
+                            onClick={(e) => { e.preventDefault(); setAddToTripVendor({ id: v.id, name: v.name }) }}
+                            style={{ color: 'var(--label-secondary)' }}
+                          >
+                            <Icon name="plus" size={18} />
+                          </button>
+                          <button
+                            className="heart-btn"
+                            aria-label={savedVendors.includes(v.id) ? `Unsave ${v.name}` : `Save ${v.name}`}
+                            onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
+                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
+                          >
+                            <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
+                          </button>
+                        </div>
                       </div>
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
                         {formatCategory(v.category)} · {v.neighborhood}
@@ -612,7 +634,7 @@ export default function MarketplacePage() {
       <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.market.filterTitle')}</h3>
 
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Mood / Category</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
@@ -637,6 +659,21 @@ export default function MarketplacePage() {
               <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
               Saved only
             </button>
+          </div>
+
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>{t('m.market.accessibility')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>Only vendors who&apos;ve confirmed a feature show up.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+            {ACCESSIBILITY_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setSelectedAccess(prev => prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key])}
+                className={`chip ${selectedAccess.includes(opt.key) ? 'active' : ''}`}
+                aria-pressed={selectedAccess.includes(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Location</p>
@@ -674,17 +711,20 @@ export default function MarketplacePage() {
                 onClick={() => {
                   handleMoodChange(null)
                   setShowSavedOnly(false)
+                  setSelectedAccess([])
                 }}
               >
-                Clear all
+                {t('m.common.clearAll')}
               </button>
             )}
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowFilterSheet(false)}>
-              Done
+              {t('m.common.done')}
             </button>
           </div>
         </div>
       </div>
+
+      <AddToTripSheet vendor={addToTripVendor} onClose={() => setAddToTripVendor(null)} />
 
       <Dock />
     </main>

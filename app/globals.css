@@ -1212,7 +1212,11 @@ textarea::placeholder {
 
 /* ============ SCREEN PUSH TRANSITION ============ */
 .screen-push-in {
-  animation: screenPushIn 0.3s var(--spring-standard) both;
+  /* `backwards`, not `both`: holding the last keyframe leaves an identity
+     transform on the page, which makes it the containing block for
+     position:fixed children and pulled fixed action bars (vendor detail,
+     experience detail) off the bottom of the screen. */
+  animation: screenPushIn 0.3s var(--spring-standard) backwards;
 }
 
 @keyframes screenPushIn {

@@ -6,7 +6,10 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
+import AddToTripSheet from '@/components/AddToTripSheet'
+import { alertsEnabled, enableAlerts, syncAlerts } from '@/lib/alerts-client'
+import { accessibilityLabel } from '@/lib/accessibility'
 
 interface ReviewItem {
   id: string
@@ -65,6 +68,7 @@ interface VendorDetail {
   whoThere: number
   tipsJar: boolean
   payItForward: boolean
+  accessibility?: string[]
   menu: any
   rating?: number
   reviewCount?: number
@@ -182,6 +186,7 @@ function MenuSection({ menu }: { menu: any }) {
 }
 
 export default function VendorDetailPage() {
+  const patois = usePatois()
   const params = useParams()
   const router = useRouter()
   const vendorId = params.id as string
@@ -190,9 +195,13 @@ export default function VendorDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showAddToTrip, setShowAddToTrip] = useState(false)
+  const [alertsOn, setAlertsOn] = useState(true)
+  const [alertMsg, setAlertMsg] = useState<string | null>(null)
 
   useEffect(() => {
     fetchVendor()
+    alertsEnabled().then(setAlertsOn).catch(() => setAlertsOn(false))
     try {
       const savedIds = JSON.parse(localStorage.getItem('savedVendors') || '[]')
       if (Array.isArray(savedIds)) setSaved(savedIds.includes(vendorId))
@@ -239,6 +248,19 @@ export default function VendorDetailPage() {
       : [...savedIds, vendor.id]
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
     setSaved(newSaved.includes(vendor.id))
+    syncAlerts()
+  }
+
+  // Saving a vendor is the natural moment to offer its live alert (B4).
+  const turnOnLiveAlerts = async () => {
+    setAlertMsg(null)
+    try {
+      await enableAlerts({ liveAlerts: true, dealAlerts: true })
+      setAlertsOn(true)
+      setAlertMsg('Alerts on — we’ll ping you when it goes live.')
+    } catch (e) {
+      setAlertMsg(e instanceof Error ? e.message : 'Sumth nah wuk')
+    }
   }
 
   const handleDirections = () => {
@@ -411,10 +433,30 @@ export default function VendorDetailPage() {
           </div>
         )}
 
+        {saved && (!alertsOn || alertMsg) && (
+          <div className="card" style={{ padding: '12px 14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default' }}>
+            <Icon name="bell" size={18} style={{ color: 'var(--rum-text)', flexShrink: 0 }} />
+            <p style={{ flex: 1, fontSize: '14px', color: 'var(--label-primary)' }}>
+              {alertMsg ?? `Get a heads-up when ${vendor.name} goes live or drops a flash deal.`}
+            </p>
+            {!alertsOn && (
+              <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>Turn on</button>
+            )}
+          </div>
+        )}
+
         {/* Description */}
         <p style={{ fontSize: '15px', lineHeight: 1.5, color: 'var(--label-primary)', marginBottom: '20px' }}>
           {vendor.description}
         </p>
+
+        {vendor.accessibility && vendor.accessibility.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }} aria-label="Accessibility">
+            {vendor.accessibility.map(k => (
+              <span key={k} className="chip" style={{ cursor: 'default', minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>♿ {accessibilityLabel(k)}</span>
+            ))}
+          </div>
+        )}
 
         {/* Menu (defensive) */}
         <MenuSection menu={vendor.menu} />
@@ -563,17 +605,23 @@ export default function VendorDetailPage() {
         >
           <Icon name="heart" size={20} className={saved ? 'filled' : ''} />
         </button>
-        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleDirections}>
+        <button className="btn btn-secondary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => setShowAddToTrip(true)}>
+          <Icon name="plus" size={16} />
+          Add to trip
+        </button>
+        <button className="btn btn-secondary" style={{ flex: showPayButton ? undefined : 1, padding: showPayButton ? '0 14px' : undefined }} onClick={handleDirections} aria-label="Get directions">
           <Icon name="mapPin" size={16} />
-          Get Directions
+          {showPayButton ? null : 'Directions'}
         </button>
         {showPayButton && (
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => router.push('/pay')}>
+          <button className="btn btn-primary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => router.push('/pay')}>
             <Icon name="card" size={16} />
             Pay Here
           </button>
         )}
       </div>
+
+      <AddToTripSheet vendor={showAddToTrip ? { id: vendor.id, name: vendor.name } : null} onClose={() => setShowAddToTrip(false)} />
     </main>
   )
 }

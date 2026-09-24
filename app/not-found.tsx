@@ -3,9 +3,10 @@
 
 import Link from 'next/link'
 import Icon from '@/lib/icons'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 
 export default function NotFound() {
+  const patois = usePatois()
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div className="empty-state">

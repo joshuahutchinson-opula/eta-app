@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Icon from '@/lib/icons'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 import { getCurrentUser, type CurrentUser } from '@/lib/auth-client'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import Dock from '@/components/Dock'
@@ -13,6 +13,7 @@ import { hapticBookingConfirmed } from '@/lib/haptics'
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
 
 export default function PayPage() {
+  const patois = usePatois()
   const [view, setView] = useState<'scan' | 'qr'>('scan')
   const [amount, setAmount] = useState('')
   const [checkoutOpen, setCheckoutOpen] = useState(false)

@@ -4,18 +4,20 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
+import { useLang } from '@/lib/i18n-client'
 
 export default function Dock() {
   const pathname = usePathname()
   const router = useRouter()
   const [pulseDone, setPulseDone] = useState(false)
+  const { t } = useLang()
 
   const tabs = [
-    { name: 'Home', href: '/', icon: 'home', type: 'icon' },
-    { name: 'Experiences', href: '/experiences', icon: 'compass', type: 'icon' },
+    { name: t('m.tab.home'), href: '/', icon: 'home', type: 'icon' },
+    { name: t('m.tab.experiences'), href: '/experiences', icon: 'compass', type: 'icon' },
     { name: '', href: '/pay', icon: '', type: 'logo' },
-    { name: 'Market', href: '/marketplace', icon: 'marketplace', type: 'icon' },
-    { name: 'Profile', href: '/profile', icon: 'user', type: 'icon' }
+    { name: t('m.tab.market'), href: '/marketplace', icon: 'marketplace', type: 'icon' },
+    { name: t('m.tab.profile'), href: '/profile', icon: 'user', type: 'icon' }
   ]
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import { getCurrentUser, setCurrentUser, CurrentUser } from '@/lib/auth-client'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 import { hapticRewardRedeemed } from '@/lib/haptics'
 import { REWARD_TIERS, getTierForPoints } from '@/lib/rewardTiers'
 
@@ -100,6 +100,7 @@ function formatDate(iso: string) {
 }
 
 export default function RewardsPage() {
+  const patois = usePatois()
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [redemptions, setRedemptions] = useState<Redemption[]>([])

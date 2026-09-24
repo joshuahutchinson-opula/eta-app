@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { findReferrer } from '@/lib/referrals'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json()
+    const { email, password, name, referralCode } = await request.json()
 
     const existing = await prisma.user.findUnique({
       where: { email }
@@ -22,11 +23,17 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    // A valid referral code links the new account to whoever invited them;
+    // both get points once this user completes their first booking.
+    const referrer = await findReferrer(referralCode)
+
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        name
+        name,
+        referredById: referrer?.id,
+        referralJoin: referrer ? { create: { referrerId: referrer.id } } : undefined
       }
     })
 

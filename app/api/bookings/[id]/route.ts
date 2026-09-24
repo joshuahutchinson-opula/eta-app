@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { onBookingCompleted } from '@/lib/booking-events'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,10 +42,14 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
+    const before = await prisma.booking.findUnique({ where: { id: params.id }, select: { status: true } })
     const booking = await prisma.booking.update({
       where: { id: params.id },
       data: body
     })
+    if (before && before.status !== 'COMPLETED' && booking.status === 'COMPLETED') {
+      await onBookingCompleted(booking.id)
+    }
     return NextResponse.json(booking)
   } catch (error) {
     console.error('Error updating booking:', error)

@@ -1,17 +1,27 @@
 // app/register/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLang } from '@/lib/i18n-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
-import { patois } from '@/lib/patois'
+import { usePatois } from '@/lib/i18n-client'
 
 export default function RegisterPage() {
+  const patois = usePatois()
   const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [referralCode, setReferralCode] = useState('')
+  const { t } = useLang()
+
+  // Invite links look like /register?ref=CODE.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+    if (ref) setReferralCode(ref.toUpperCase())
+  }, [])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -27,7 +37,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, referralCode: referralCode.trim() || undefined })
       })
 
       const data = await response.json()
@@ -93,6 +103,19 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{ flex: 1, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '16px', outline: 'none', fontFamily: 'inherit' }}
+          />
+        </div>
+
+        <div className="card" style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: '8px', marginBottom: '20px', marginTop: '-8px', cursor: 'default' }}>
+          <Icon name="gift" size={18} />
+          <input
+            type="text"
+            placeholder={t('m.register.referral')}
+            aria-label={t('m.register.referral')}
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            autoCapitalize="characters"
+            style={{ flex: 1, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '16px', outline: 'none', fontFamily: 'inherit', letterSpacing: '0.04em' }}
           />
         </div>
 
