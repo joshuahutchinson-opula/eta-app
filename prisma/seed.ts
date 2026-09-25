@@ -4,9 +4,13 @@ import { PHOTO_SPOT_MEDIA } from './photo-spot-media'
 
 const prisma = new PrismaClient()
 
-/** Swap in the Cloudinary cover, gallery and videos for spots that have them. */
+/** Attach each spot's Cloudinary cover, gallery and videos; every seeded spot must have media. */
 function withMedia<T extends { name: string }>(spots: T[]) {
-  return spots.map(s => ({ ...s, ...PHOTO_SPOT_MEDIA[s.name] }))
+  return spots.map(s => {
+    const media = PHOTO_SPOT_MEDIA[s.name]
+    if (!media) throw new Error(`No PHOTO_SPOT_MEDIA entry for photo spot "${s.name}"`)
+    return { ...s, ...media }
+  })
 }
 
 async function main() {
@@ -2006,195 +2010,90 @@ async function main() {
     data: { moods: { connect: [createdMoods[1].id, createdMoods[3].id].map(id => ({ id })) } },
   })
 
-  // Create photo spots
+  // Photo spots: nine real Negril / Westmoreland / MoBay attractions (coordinates from OpenStreetMap).
+  // Covers, galleries and videos come from Cloudinary via PHOTO_SPOT_MEDIA — no two spots share a cover.
   await prisma.photoSpot.createMany({
     data: withMedia([
       {
-        name: 'Fisherman\'s Cove',
-        description: 'Boats at dawn. Nets, colors, action.',
-        lat: 18.2634,
-        lng: -78.3621,
-        bestTime: 'Dawn',
-        officialPhoto: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Hidden Swing',
-        description: 'Tree swing over the water. Secret spot.',
-        lat: 18.2934,
-        lng: -78.3456,
-        bestTime: 'Golden Hour',
-        officialPhoto: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Mural Wall',
-        description: 'Jamaican art. Bright colors.',
-        lat: 18.2812,
-        lng: -78.3321,
-        bestTime: 'Afternoon',
-        officialPhoto: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Coconut Man Spot',
-        description: 'Best coconut on Seven Mile.',
-        lat: 18.2723,
-        lng: -78.3521,
-        bestTime: 'Anytime',
-        officialPhoto: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Rasta Cliff Jump',
-        description: 'The famous jump. Not for the weak.',
-        lat: 18.3012,
-        lng: -78.3234,
-        bestTime: 'Midday',
-        officialPhoto: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Hip Strip Sign',
-        description: 'Classic MoBay photo op.',
-        lat: 18.4712,
-        lng: -77.9186,
-        bestTime: 'Anytime',
-        officialPhoto: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800',
-        city: City.MONTEGO_BAY,
-      },
-      {
-        name: 'Freeport Marina',
-        description: 'Boats, yachts, sunset.',
-        lat: 18.4567,
-        lng: -77.9456,
-        bestTime: 'Golden Hour',
-        officialPhoto: 'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=800',
-        city: City.MONTEGO_BAY,
-      },
-      {
-        name: 'Doctor\'s Cave Sand',
-        description: 'The whitest sand in Jamaica.',
-        lat: 18.4852,
-        lng: -77.9358,
-        bestTime: 'Morning',
-        officialPhoto: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800',
-        city: City.MONTEGO_BAY,
-      },
-    ]),
-  })
-
-
-  // Create real Negril photo spots (sourced from vendor guide spreadsheet)
-  await prisma.photoSpot.createMany({
-    data: withMedia([
-      {
-        name: 'Rick\'s Café sunset',
+        name: "Rick's Café sunset",
         description: 'The most famous sunset-watching spot in Negril — gets crowded, arrive early.',
-        lat: 18.2668,
-        lng: -78.3502,
+        lat: 18.2542,
+        lng: -78.3633,
         bestTime: 'Sunset',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
       {
         name: 'West End cliffs',
         description: 'Rugged limestone cliffs with dramatic views, less touristy than the beach.',
-        lat: 18.258,
-        lng: -78.3505,
+        lat: 18.2600,
+        lng: -78.3555,
         bestTime: 'Golden Hour',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
       {
         name: 'Seven Mile Beach panorama',
         description: 'Classic white sand and turquoise water panorama.',
-        lat: 18.287,
-        lng: -78.361,
+        lat: 18.3074,
+        lng: -78.3386,
         bestTime: 'Morning',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
       {
         name: 'Negril Lighthouse grounds',
         description: 'Quiet, uncrowded sunset views away from the crowds.',
-        lat: 18.2519,
-        lng: -78.3486,
+        lat: 18.2485,
+        lng: -78.3606,
         bestTime: 'Sunset',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: '3 Dives Cliff Bar viewpoint',
-        description: 'Small, local, less touristy sunset spot.',
-        lat: 18.2578,
-        lng: -78.3505,
-        bestTime: 'Sunset',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Canoe / Can Jam cliffside',
-        description: 'Intimate little coves with great sunset views.',
-        lat: 18.2578,
-        lng: -78.3507,
-        bestTime: 'Sunset',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
-        city: City.NEGRIL,
-      },
-      {
-        name: 'Blue Hole Mineral Spring',
-        description: 'Turquoise pool in a limestone grotto. Small, local, off the beaten path — cliff jump or ladder in.',
-        lat: 18.2301,
-        lng: -78.2967,
-        bestTime: 'Midday',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
       {
         name: 'Booby Cay Island',
         description: 'Small island with beach views back toward Negril.',
-        lat: 18.3067,
-        lng: -78.3801,
+        lat: 18.3382,
+        lng: -78.3476,
         bestTime: 'Midday',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
+        city: City.NEGRIL,
+      },
+      {
+        name: 'Blue Hole Mineral Spring',
+        description: 'Turquoise pool in a limestone grotto. Small, local, off the beaten path — cliff jump or ladder in.',
+        lat: 18.2290,
+        lng: -78.2832,
+        bestTime: 'Midday',
         city: City.NEGRIL,
       },
       {
         name: 'Royal Palm Reserve boardwalk',
         description: 'Peaceful wetland and mangrove views, good birdwatching.',
-        lat: 18.2523,
-        lng: -78.3312,
+        lat: 18.2925,
+        lng: -78.3176,
         bestTime: 'Morning',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
       {
-        name: 'Bubbling Spring Mineral Bath',
-        description: '100-year-old local mineral bath, very off the tourist trail.',
-        lat: 18.2412,
-        lng: -78.3189,
-        bestTime: 'Afternoon',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
-        city: City.NEGRIL,
+        name: "Doctor's Cave Sand",
+        description: 'The whitest sand in Jamaica.',
+        lat: 18.4882,
+        lng: -77.9292,
+        bestTime: 'Morning',
+        city: City.MONTEGO_BAY,
       },
       {
         name: 'Mayfield Falls',
-        description: 'Twenty-one little cascades and swimming holes you wade up with a river guide, in the Westmoreland hills.',
-        lat: 18.3617,
-        lng: -78.1017,
+        description: 'Twenty-one cascades and natural pools on the Mayfield River in the Westmoreland hills, about an hour from Negril. Wade upriver with a guide, swim the pools and float the lower stretch on a tube.',
+        lat: 18.3510,
+        lng: -78.0810,
         bestTime: 'Morning',
-        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
     ]),
   })
 
   // Get photo spots for references
-  const fishermansCove = await prisma.photoSpot.findFirst({ where: { name: 'Fisherman\'s Cove' } })
-  const hiddenSwing = await prisma.photoSpot.findFirst({ where: { name: 'Hidden Swing' } })
-  const muralWall = await prisma.photoSpot.findFirst({ where: { name: 'Mural Wall' } })
-  const rastaJump = await prisma.photoSpot.findFirst({ where: { name: 'Rasta Cliff Jump' } })
+  const ricksSunset = await prisma.photoSpot.findFirst({ where: { name: "Rick's Café sunset" } })
+  const westEndCliffs = await prisma.photoSpot.findFirst({ where: { name: 'West End cliffs' } })
+  const sevenMileBeach = await prisma.photoSpot.findFirst({ where: { name: 'Seven Mile Beach panorama' } })
+  const boobyCay = await prisma.photoSpot.findFirst({ where: { name: 'Booby Cay Island' } })
 
   // Create stories
   const now = Date.now()
@@ -2317,10 +2216,10 @@ async function main() {
       { userId: sarah.id, vendorId: blueMahoe.id, type: 'VENDOR', points: 50 },
       { userId: tasha.id, vendorId: islandWellness.id, type: 'VENDOR', points: 50 },
       { userId: devon.id, vendorId: mobayJerkHouse.id, type: 'VENDOR', points: 50 },
-      { userId: jordan.id, photoSpotId: fishermansCove?.id, type: 'PHOTOSPOT', points: 30 },
-      { userId: marcus.id, photoSpotId: hiddenSwing?.id, type: 'PHOTOSPOT', points: 30 },
-      { userId: sarah.id, photoSpotId: muralWall?.id, type: 'PHOTOSPOT', points: 30 },
-      { userId: tasha.id, photoSpotId: rastaJump?.id, type: 'PHOTOSPOT', points: 30 },
+      { userId: jordan.id, photoSpotId: sevenMileBeach?.id, type: 'PHOTOSPOT', points: 30 },
+      { userId: marcus.id, photoSpotId: boobyCay?.id, type: 'PHOTOSPOT', points: 30 },
+      { userId: sarah.id, photoSpotId: westEndCliffs?.id, type: 'PHOTOSPOT', points: 30 },
+      { userId: tasha.id, photoSpotId: ricksSunset?.id, type: 'PHOTOSPOT', points: 30 },
     ],
   })
 
@@ -2456,36 +2355,36 @@ async function main() {
     data: [
       {
         userId: jordan.id,
-        photoSpotId: fishermansCove?.id,
+        photoSpotId: sevenMileBeach?.id,
         url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-        caption: 'Dawn at the cove',
+        caption: 'Morning on the sand',
         likes: 24,
       },
       {
         userId: marcus.id,
-        photoSpotId: hiddenSwing?.id,
-        url: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800',
-        caption: 'Found the swing',
+        photoSpotId: boobyCay?.id,
+        url: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800',
+        caption: 'Made it to the island',
         likes: 45,
       },
       {
         userId: sarah.id,
-        photoSpotId: muralWall?.id,
-        url: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800',
-        caption: 'Colors everywhere',
+        photoSpotId: westEndCliffs?.id,
+        url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
+        caption: 'That water though',
         likes: 32,
       },
       {
         userId: tasha.id,
-        photoSpotId: rastaJump?.id,
+        photoSpotId: ricksSunset?.id,
         url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
         caption: 'Didn\'t jump... just watched',
         likes: 18,
       },
       {
         userId: jordan.id,
-        photoSpotId: muralWall?.id,
-        url: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800',
+        photoSpotId: westEndCliffs?.id,
+        url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         caption: 'Back again',
         likes: 15,
       },
