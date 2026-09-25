@@ -33,6 +33,8 @@ export interface PhotoSpotData {
   description: string
   bestTime: string
   officialPhoto: string
+  gallery: string[]
+  videos: string[]
   city: string
   lat: number
   lng: number
@@ -105,18 +107,29 @@ export async function getPhotoSpots(opts: { city?: 'NEGRIL' | 'MONTEGO_BAY'; bes
     orderBy: { createdAt: 'asc' },
     include: { userPhotos: { select: { likes: true } } }
   })
-  return rows.map(s => ({
+  return rows.map(toPhotoSpotData)
+}
+
+function toPhotoSpotData(s: Omit<PhotoSpotData, 'momentCount' | 'topLikes'> & { userPhotos: { likes: number }[] }): PhotoSpotData {
+  return {
     id: s.id,
     name: s.name,
     description: s.description,
     bestTime: s.bestTime,
     officialPhoto: s.officialPhoto,
+    gallery: s.gallery,
+    videos: s.videos,
     city: s.city,
     lat: s.lat,
     lng: s.lng,
     momentCount: s.userPhotos.length,
     topLikes: s.userPhotos.reduce((m, p) => Math.max(m, p.likes), 0)
-  }))
+  }
+}
+
+export async function getPhotoSpot(id: string): Promise<PhotoSpotData | null> {
+  const s = await prisma.photoSpot.findUnique({ where: { id }, include: { userPhotos: { select: { likes: true } } } })
+  return s ? toPhotoSpotData(s) : null
 }
 
 /** "Best" = most traveler moments and likes; ties fall back to seeded order. */

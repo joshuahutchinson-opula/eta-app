@@ -1,7 +1,13 @@
 import { PrismaClient, City, VendorCategory, AccommodationType, Role, Level, BookingStatus, TransactionType, TransactionStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { PHOTO_SPOT_MEDIA } from './photo-spot-media'
 
 const prisma = new PrismaClient()
+
+/** Swap in the Cloudinary cover, gallery and videos for spots that have them. */
+function withMedia<T extends { name: string }>(spots: T[]) {
+  return spots.map(s => ({ ...s, ...PHOTO_SPOT_MEDIA[s.name] }))
+}
 
 async function main() {
   // Clear all data in dependency order
@@ -2002,7 +2008,7 @@ async function main() {
 
   // Create photo spots
   await prisma.photoSpot.createMany({
-    data: [
+    data: withMedia([
       {
         name: 'Fisherman\'s Cove',
         description: 'Boats at dawn. Nets, colors, action.',
@@ -2075,13 +2081,13 @@ async function main() {
         officialPhoto: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800',
         city: City.MONTEGO_BAY,
       },
-    ],
+    ]),
   })
 
 
   // Create real Negril photo spots (sourced from vendor guide spreadsheet)
   await prisma.photoSpot.createMany({
-    data: [
+    data: withMedia([
       {
         name: 'Rick\'s Café sunset',
         description: 'The most famous sunset-watching spot in Negril — gets crowded, arrive early.',
@@ -2172,7 +2178,16 @@ async function main() {
         officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
         city: City.NEGRIL,
       },
-    ],
+      {
+        name: 'Mayfield Falls',
+        description: 'Twenty-one little cascades and swimming holes you wade up with a river guide, in the Westmoreland hills.',
+        lat: 18.3617,
+        lng: -78.1017,
+        bestTime: 'Morning',
+        officialPhoto: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
+        city: City.NEGRIL,
+      },
+    ]),
   })
 
   // Get photo spots for references

@@ -14,6 +14,8 @@ interface PhotoSpot {
   lng: number
   bestTime: string
   officialPhoto: string
+  gallery: string[]
+  videos: string[]
   userPhotos: Array<{ id: string; url: string; caption: string | null; likes: number; uploadedBy: string }>
 }
 
@@ -26,6 +28,7 @@ export default function PhotoSpotDetailPage() {
   const [photoUrl, setPhotoUrl] = useState('')
   const [caption, setCaption] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [slide, setSlide] = useState(0)
 
   useEffect(() => {
     fetchSpot()
@@ -114,6 +117,8 @@ export default function PhotoSpotDetailPage() {
     )
   }
 
+  const images = spot.gallery?.length ? spot.gallery : [spot.officialPhoto]
+
   return (
     <main className="screen-push-in" style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
       {/* Back button */}
@@ -139,17 +144,55 @@ export default function PhotoSpotDetailPage() {
         <Icon name="back" size={14} />
       </button>
 
-      <div style={{ position: 'relative', height: '300px' }}>
-        <img src={spot.officialPhoto} alt={spot.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95))' }} />
-        <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 800 }}>{spot.name}</h1>
-          <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{spot.description}</p>
+      <div style={{ position: 'relative', height: '340px' }}>
+        {/* Swipeable gallery; the cover photo leads */}
+        <div
+          onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+          style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
+        >
+          {images.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt={`${spot.name} — photo ${i + 1}`}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              style={{ flex: '0 0 100%', width: '100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'start' }}
+            />
+          ))}
+        </div>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(15,14,12,0.95))', pointerEvents: 'none' }} />
+        {images.length > 1 && (
+          <span style={{ position: 'absolute', top: '18px', right: '16px', padding: '4px 10px', borderRadius: '999px', background: 'rgba(15,14,12,0.5)', color: 'white', fontSize: '12px', fontWeight: 700, pointerEvents: 'none' }}>
+            {slide + 1} / {images.length}
+          </span>
+        )}
+        <div style={{ position: 'absolute', bottom: '14px', left: '14px', right: '14px', pointerEvents: 'none' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>{spot.name}</h1>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>{spot.description}</p>
           <p style={{ fontSize: '12px', color: 'var(--gold)', marginTop: '4px' }}>Best time: {spot.bestTime}</p>
         </div>
       </div>
 
       <div style={{ padding: '16px' }}>
+        {spot.videos.length > 0 && (
+          <>
+            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Videos</h2>
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', margin: '0 -16px 24px', padding: '0 16px', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
+              {spot.videos.map(src => (
+                <video
+                  key={src}
+                  src={src}
+                  poster={src.replace(/\.mp4$/i, '.jpg')}
+                  controls
+                  playsInline
+                  preload="none"
+                  style={{ flex: '0 0 auto', width: '160px', height: '284px', objectFit: 'cover', borderRadius: 'var(--radius-lg)', background: '#000', scrollSnapAlign: 'start' }}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>User Photos</h2>
         {spot.userPhotos.length === 0 ? (
           <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>Nuh nuh photos yet</p>

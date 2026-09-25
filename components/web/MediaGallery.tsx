@@ -7,14 +7,20 @@ interface Props {
   name: string
   videos: string[]
   images: string[]
+  /** Photo spots lead with their cover photo; experiences lead with video. */
+  leadWith?: 'videos' | 'images'
 }
 
-/** Videos first, then images, with a thumbnail strip underneath. */
-export default function MediaGallery({ name, videos, images }: Props) {
-  const media = [
-    ...videos.map(src => ({ type: 'video' as const, src })),
-    ...images.map(src => ({ type: 'image' as const, src }))
-  ]
+/** Cloudinary serves a still of any video at the same URL with an image extension. */
+function posterFor(src: string, fallback?: string) {
+  return src.includes('res.cloudinary.com') ? src.replace(/\.(mp4|mov|webm)$/i, '.jpg') : fallback
+}
+
+/** Videos then images (or the reverse), with a thumbnail strip underneath. */
+export default function MediaGallery({ name, videos, images, leadWith = 'videos' }: Props) {
+  const videoItems = videos.map(src => ({ type: 'video' as const, src }))
+  const imageItems = images.map(src => ({ type: 'image' as const, src }))
+  const media = leadWith === 'images' ? [...imageItems, ...videoItems] : [...videoItems, ...imageItems]
   const [index, setIndex] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
   const current = media[index]
@@ -36,7 +42,7 @@ export default function MediaGallery({ name, videos, images }: Props) {
             key={current.src}
             ref={videoRef}
             src={current.src}
-            poster={images[0]}
+            poster={posterFor(current.src, images[0])}
             muted
             loop
             playsInline
@@ -45,7 +51,7 @@ export default function MediaGallery({ name, videos, images }: Props) {
             preload="metadata"
           />
         ) : (
-          <img key={current.src} src={current.src} alt={`${name} — photo ${index - videos.length + 1}`} />
+          <img key={current.src} src={current.src} alt={`${name} — photo ${images.indexOf(current.src) + 1}`} />
         )}
       </div>
       {media.length > 1 ? (
@@ -57,12 +63,12 @@ export default function MediaGallery({ name, videos, images }: Props) {
               role="listitem"
               className="w-thumb"
               aria-current={i === index}
-              aria-label={m.type === 'video' ? `Video ${i + 1}` : `Photo ${i - videos.length + 1}`}
+              aria-label={m.type === 'video' ? `Video ${videos.indexOf(m.src) + 1}` : `Photo ${images.indexOf(m.src) + 1}`}
               onClick={() => setIndex(i)}
             >
               {m.type === 'video' ? (
                 <>
-                  {images[0] ? <img src={images[0]} alt="" /> : <video src={m.src} muted preload="metadata" />}
+                  {posterFor(m.src, images[0]) ? <img src={posterFor(m.src, images[0])} alt="" loading="lazy" /> : <video src={m.src} muted preload="metadata" />}
                   <span className="w-thumb-play" aria-hidden>▶</span>
                 </>
               ) : (

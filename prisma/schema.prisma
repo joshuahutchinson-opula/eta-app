@@ -221,6 +221,8 @@ model PhotoSpot {
   lng           Float
   bestTime      String
   officialPhoto String
+  gallery       String[] @default([])
+  videos        String[] @default([])
   city          City
   createdAt     DateTime @default(now())
 
