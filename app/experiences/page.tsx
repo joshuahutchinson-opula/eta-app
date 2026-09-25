@@ -13,6 +13,7 @@ import SuccessAnimation from '@/components/SuccessAnimation'
 import TripPlanner from '@/components/TripPlanner'
 import { createTrip, fetchMyTrips, tripApi, type TripView } from '@/lib/trip-client'
 import { useLang } from '@/lib/i18n-client'
+import type { GeneratedBundle } from '@/lib/experience-generator'
 import { cacheTripForOffline, clearTripCache, getActiveCachedTrip, getCachedTrip, updateCachedTrip, useOnline } from '@/lib/trip-offline'
 
 type Pin = { type: 'vendor'; data: MapVendor } | { type: 'photospot'; data: MapPhotoSpot }
@@ -61,6 +62,8 @@ interface Experience {
   travelMode: string
   vendor?: { name: string; isPremium?: boolean } | null
   moods?: Array<{ id: string; name: string; icon: string }>
+  /** Set when this option came from the route generator rather than a curated experience. */
+  generated?: GeneratedBundle
 }
 
 interface Mood {
@@ -134,10 +137,41 @@ function formatCity(city: string): string {
   return city.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
 }
 
-// The Experience model has no stops/itinerary sub-model, so we synthesize a
-// lightweight two-leg itinerary (a travel leg + the experience itself) from
-// the real fields that do exist (startLocation/travelMode/travelTime).
+const MODE_LABEL: Record<string, string> = { WALKING: 'Walk', TAXI: 'Taxi', BOAT: 'Boat' }
+
+// A generated route shown through the same cards and detail screen as a curated experience.
+function bundleToExperience(b: GeneratedBundle): Experience {
+  return {
+    id: b.id,
+    name: b.title,
+    tagline: b.meta,
+    price: b.price,
+    imageUrl: b.hero,
+    city: b.city,
+    startLocation: b.stops[0]?.name ?? '',
+    travelTime: b.stops[0]?.transportDurationToNext ?? 0,
+    travelMode: MODE_LABEL[b.stops[0]?.transportModeToNext ?? ''] ?? '',
+    generated: b
+  }
+}
+
+// Generated routes list every stop with the leg between; a curated experience
+// without route data falls back to a travel leg + the experience itself.
 function experienceStops(exp: Experience): BundleStop[] {
+  if (exp.generated) {
+    return exp.generated.stops.flatMap((st, i, all) => {
+      const stop: BundleStop = {
+        type: st.category === 'FOOD' || st.category === 'DRINKS' ? 'food' : 'activity',
+        name: st.name,
+        time: `${st.arrival} · ${st.plannedDuration} min${st.type === 'photospot' ? ' · photo spot' : ''}`,
+        img: st.image ?? ''
+      }
+      const leg: BundleStop[] = i < all.length - 1 && st.transportModeToNext
+        ? [{ type: 'transport', name: '', time: '', img: '', label: `${MODE_LABEL[st.transportModeToNext]} · ${st.transportDurationToNext} min` }]
+        : []
+      return [stop, ...leg]
+    })
+  }
   return [
     { type: 'transport', name: '', time: '', img: '', label: `${exp.travelMode || 'Travel'} · ${exp.travelTime} min from ${exp.startLocation}` },
     { type: 'activity', name: exp.name, time: exp.tagline, img: exp.imageUrl }
@@ -169,6 +203,9 @@ export default function ExperiencesPage() {
   const [dataLoading, setDataLoading] = useState(true)
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null)
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null)
+  // Route options from /api/experiences/generate for the current survey answers.
+  const [bundles, setBundles] = useState<Experience[]>([])
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [activeStops, setActiveStops] = useState<BundleStop[]>([])
   const [currentStopIndex, setCurrentStopIndex] = useState(0)
   const [points, setPoints] = useState(640)
@@ -360,14 +397,37 @@ export default function ExperiencesPage() {
     if (surveyStep >= surveySteps.length - 1) {
       setScreen('loading')
       setPlanningPoints(25)
-      setTimeout(() => {
+      generateRoutes().then(() => {
         setScreen('results')
         setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 1500)
-      }, 1500)
+      })
       return
     }
     setSurveyStep(prev => prev + 1)
+  }
+
+  // Builds fresh route options from real vendors and photo spots. Keeps the
+  // loading screen up at least ~1.5s so it doesn't flash.
+  const generateRoutes = async () => {
+    setGenerateError(null)
+    let city = 'NEGRIL'
+    try { city = localStorage.getItem('marketplaceCity') || 'NEGRIL' } catch {}
+    const [res] = await Promise.allSettled([
+      fetch('/api/experiences/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moods: survey.mood, time: survey.time, crewSize: 1 + survey.crew.length, transport: survey.transport, city })
+      }).then(r => r.json()),
+      new Promise(r => setTimeout(r, 1500))
+    ])
+    if (res.status === 'fulfilled' && Array.isArray(res.value?.bundles) && res.value.bundles.length) {
+      setBundles(res.value.bundles.map(bundleToExperience))
+    } else {
+      // Fall back to the curated experiences for these moods.
+      setBundles([])
+      setGenerateError('Couldn’t build fresh routes just now — here are our curated picks.')
+    }
   }
 
   const prevStep = () => {
@@ -451,6 +511,16 @@ export default function ExperiencesPage() {
     setTabMode('plan')
   }
 
+  // Curated experiences are linked by id; generated routes become the trip's stops.
+  const tripInputFor = (exp: Experience) => exp.generated
+    ? {
+        name: exp.name,
+        crew: survey.crew,
+        city: exp.city,
+        stops: exp.generated.stops.map(st => (st.type === 'vendor' ? { vendorId: st.id, time: st.arrival } : { photoSpotId: st.id, time: st.arrival }))
+      }
+    : { name: exp.name, experienceId: exp.id, crew: survey.crew, city: exp.city }
+
   // "Plan with crew first": turn the chosen experience + the crew from the
   // survey into a shared trip the crew can vote on before anything is booked.
   const startCrewTrip = async () => {
@@ -458,7 +528,7 @@ export default function ExperiencesPage() {
     setStartingTrip(true)
     setTripError(null)
     try {
-      const trip = await createTrip({ name: selectedExperience.name, experienceId: selectedExperience.id, crew: survey.crew, city: selectedExperience.city })
+      const trip = await createTrip(tripInputFor(selectedExperience))
       setActiveTrip(trip)
       setTripsInProgress(prev => [trip, ...prev.filter(t => t.slug !== trip.slug)])
       triggerHaptic('medium')
@@ -472,7 +542,7 @@ export default function ExperiencesPage() {
 
   // Books a trip server-side (creates the CONFIRMED Booking) and moves to
   // the active screen with the trip's real stops and crew.
-  const bookTrip = async (trip: TripView) => {
+  const bookTrip = async (trip: TripView, estimatedPrice?: number) => {
     const currentUser = getCurrentUser()
     if (!currentUser) {
       setTripError('Log in to book — your trip is saved on this device.')
@@ -481,7 +551,7 @@ export default function ExperiencesPage() {
     setBooking(true)
     setTripError(null)
     try {
-      const booked = await tripApi(trip.slug, '/book', { method: 'POST', body: { userId: currentUser.id } })
+      const booked = await tripApi(trip.slug, '/book', { method: 'POST', body: { userId: currentUser.id, estimatedPrice } })
       setPoints(currentUser.points ?? 0)
       enterActiveFromTrip({ ...booked, canEdit: true })
       // Save everything the active screen needs in case the signal drops (B2).
@@ -504,8 +574,8 @@ export default function ExperiencesPage() {
       // link, offline copy and post-trip recap.
       setBooking(true)
       try {
-        const trip = await createTrip({ name: selectedExperience.name, experienceId: selectedExperience.id, crew: survey.crew, city: selectedExperience.city })
-        await bookTrip(trip)
+        const trip = await createTrip(tripInputFor(selectedExperience))
+        await bookTrip(trip, selectedExperience.generated?.price)
       } catch (error) {
         console.error('Booking error:', error)
         setTripError(error instanceof Error ? error.message : 'Sumth nah wuk')
@@ -990,8 +1060,9 @@ export default function ExperiencesPage() {
 
   // RESULTS with long-press quick actions
   if (screen === 'results') {
-    const bestMatch = filteredExperiences[0]
-    const others = filteredExperiences.slice(1)
+    const options = bundles.length ? bundles : filteredExperiences
+    const bestMatch = options[0]
+    const others = options.slice(1)
 
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
@@ -1022,7 +1093,11 @@ export default function ExperiencesPage() {
             </p>
           </div>
 
-          {filteredExperiences.length === 0 ? (
+          {generateError && (
+            <p role="status" style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{generateError}</p>
+          )}
+
+          {options.length === 0 ? (
             <div className="empty-state">
               <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
               <p style={{ fontSize: '17px', fontWeight: 600 }}>Nuttin match dat vibe yet</p>
@@ -1079,10 +1154,12 @@ export default function ExperiencesPage() {
                     <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{bestMatch.name}</h3>
                     <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>{bestMatch.tagline}</p>
                     <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}>
-                      {bestMatch.vendor?.name ? `Hosted by ${bestMatch.vendor.name}` : formatCity(bestMatch.city)} · {bestMatch.travelTime} min away
+                      {bestMatch.generated
+                        ? bestMatch.generated.stops.map(st => st.name).join(' → ')
+                        : `${bestMatch.vendor?.name ? `Hosted by ${bestMatch.vendor.name}` : formatCity(bestMatch.city)} · ${bestMatch.travelTime} min away`}
                     </p>
                     <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
-                      {socialProofCount(bestMatch.id)} people booked this today
+                      {bestMatch.generated ? `+${bestMatch.generated.pts} pts · price is an estimate per person` : `${socialProofCount(bestMatch.id)} people booked this today`}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '18px', fontWeight: 700 }}>${bestMatch.price}</span>
@@ -1140,10 +1217,12 @@ export default function ExperiencesPage() {
                   <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
                     <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '2px' }}>{exp.name}</h3>
                     <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>
-                      {exp.vendor?.name ? `Hosted by ${exp.vendor.name}` : formatCity(exp.city)} · {exp.travelTime} min away
+                      {exp.generated
+                        ? exp.generated.stops.map(st => st.name).join(' → ')
+                        : `${exp.vendor?.name ? `Hosted by ${exp.vendor.name}` : formatCity(exp.city)} · ${exp.travelTime} min away`}
                     </p>
                     <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginBottom: '6px' }}>
-                      {socialProofCount(exp.id)} people booked this today
+                      {exp.generated ? exp.tagline : `${socialProofCount(exp.id)} people booked this today`}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '15px', fontWeight: 700 }}>${exp.price}</span>

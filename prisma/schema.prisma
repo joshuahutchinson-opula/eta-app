@@ -132,15 +132,15 @@ model Vendor {
   ownerId              String?
   owner                User?          @relation(fields: [ownerId], references: [id])
 
-  stories      Story[]
-  reviews      Review[]
-  checkIns     CheckIn[]
-  transactions Transaction[]
-  experiences  Experience[]
-  bookings     Booking[]
-  discoveries  Discovery[]
-  flashDeals   FlashDeal[]
-  tripStops    TripStop[]
+  stories         Story[]
+  reviews         Review[]
+  checkIns        CheckIn[]
+  transactions    Transaction[]
+  experienceStops ExperienceStop[]
+  bookings        Booking[]
+  discoveries     Discovery[]
+  flashDeals      FlashDeal[]
+  tripStops       TripStop[]
 }
 
 model Accommodation {
@@ -180,13 +180,44 @@ model Experience {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  vendorId  String?
-  vendor    Vendor?    @relation(fields: [vendorId], references: [id])
+  // An experience is an ordered route of vendor and photo-spot stops.
+  stops     ExperienceStop[]
   bookings  Booking[]
   bundles   Bundle[]
   moods     Mood[]
   trips     Trip[]
   tripStops TripStop[]
+}
+
+enum StopType {
+  VENDOR
+  PHOTO_SPOT
+}
+
+enum TransportMode {
+  WALKING
+  TAXI
+  BOAT
+}
+
+model ExperienceStop {
+  id                      String         @id @default(cuid())
+  order                   Int
+  stopType                StopType
+  // Minutes planned at this stop.
+  plannedDuration         Int
+  // How you get to the next stop; null on the last stop.
+  transportModeToNext     TransportMode?
+  transportDurationToNext Int?
+
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  vendorId     String?
+  vendor       Vendor?    @relation(fields: [vendorId], references: [id])
+  photoSpotId  String?
+  photoSpot    PhotoSpot? @relation(fields: [photoSpotId], references: [id])
+
+  @@unique([experienceId, order])
 }
 
 model Mood {
@@ -226,9 +257,10 @@ model PhotoSpot {
   city          City
   createdAt     DateTime @default(now())
 
-  userPhotos  UserMoment[]
-  discoveries Discovery[]
-  tripStops   TripStop[]
+  userPhotos      UserMoment[]
+  discoveries     Discovery[]
+  tripStops       TripStop[]
+  experienceStops ExperienceStop[]
 }
 
 model Story {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EXPERIENCE_STOPS_INCLUDE, hostVendor, stopViews } from '@/lib/experience-stops'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,16 +12,7 @@ export async function GET(
     const mood = await prisma.mood.findUnique({
       where: { id: params.id },
       include: {
-        experiences: {
-          include: {
-            vendor: {
-              select: {
-                name: true,
-                isPremium: true
-              }
-            }
-          }
-        },
+        experiences: { include: EXPERIENCE_STOPS_INCLUDE },
         media: true
       }
     })
@@ -32,7 +24,13 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(mood)
+    return NextResponse.json({
+      ...mood,
+      experiences: mood.experiences.map(({ stops, ...e }) => {
+        const host = hostVendor(stops)
+        return { ...e, vendor: host ? { name: host.name, isPremium: host.isPremium } : null, stops: stopViews(stops) }
+      })
+    })
   } catch (error) {
     console.error('Error fetching mood:', error)
     return NextResponse.json(

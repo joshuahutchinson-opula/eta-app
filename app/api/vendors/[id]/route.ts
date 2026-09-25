@@ -28,7 +28,7 @@ export async function GET(
             }
           }
         },
-        experiences: true,
+        experienceStops: { include: { experience: true } },
         flashDeals: {
           where: {
             expires: { gt: new Date() }
@@ -49,7 +49,10 @@ export async function GET(
       ? Math.round((vendor.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviewCount) * 10) / 10
       : undefined
 
-    return NextResponse.json({ ...vendor, rating, reviewCount: reviewCount > 0 ? reviewCount : undefined })
+    // Experiences whose route stops here (each listed once).
+    const { experienceStops, ...rest } = vendor
+    const experiences = Array.from(new Map(experienceStops.map(s => [s.experience.id, s.experience])).values())
+    return NextResponse.json({ ...rest, experiences, rating, reviewCount: reviewCount > 0 ? reviewCount : undefined })
   } catch (error) {
     console.error('Error fetching vendor:', error)
     return NextResponse.json(

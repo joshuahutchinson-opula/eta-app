@@ -14,7 +14,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export const TRIP_INCLUDE = {
-  experience: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true, travelTime: true, travelMode: true, startLocation: true, vendorId: true } },
+  experience: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true, travelTime: true, travelMode: true, startLocation: true } },
   booking: { select: { id: true, status: true, pointsEarned: true, totalPrice: true, date: true, userId: true } },
   stops: {
     orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],

@@ -4,6 +4,7 @@
 // against the same Prisma models the mobile API routes read.
 
 import { prisma } from '@/lib/prisma'
+import { EXPERIENCE_STOPS_INCLUDE, hostVendor, routeMinutes, routeRatings, stopViews } from '@/lib/experience-stops'
 import { areaForNeighborhood } from '@/lib/areas'
 import { queryVendors } from '@/lib/vendor-query'
 
@@ -20,6 +21,7 @@ export interface ExperienceCardData {
   travelMode: string
   vendorId: string | null
   vendorName: string | null
+  stopCount: number
   moods: Array<{ id: string; name: string; icon: string }>
   accessibility: string[]
   /** Average of the hosting vendor's real reviews — experiences have no reviews of their own. */
@@ -56,11 +58,12 @@ export async function getExperiences(opts: { city?: 'NEGRIL' | 'MONTEGO_BAY'; id
     orderBy: { createdAt: 'desc' },
     include: {
       moods: { select: { id: true, name: true, icon: true } },
-      vendor: { select: { id: true, name: true, reviews: { select: { rating: true } } } }
+      ...EXPERIENCE_STOPS_INCLUDE
     }
   })
   return rows.map(e => {
-    const ratings = e.vendor?.reviews.map(r => r.rating) ?? []
+    const ratings = routeRatings(e.stops)
+    const host = hostVendor(e.stops)
     return {
       id: e.id,
       name: e.name,
@@ -72,8 +75,9 @@ export async function getExperiences(opts: { city?: 'NEGRIL' | 'MONTEGO_BAY'; id
       startLocation: e.startLocation,
       travelTime: e.travelTime,
       travelMode: e.travelMode,
-      vendorId: e.vendor?.id ?? null,
-      vendorName: e.vendor?.name ?? null,
+      vendorId: host?.id ?? null,
+      vendorName: host?.name ?? null,
+      stopCount: e.stops.length,
       moods: e.moods,
       accessibility: e.accessibility,
       rating: avg(ratings),
@@ -83,19 +87,23 @@ export async function getExperiences(opts: { city?: 'NEGRIL' | 'MONTEGO_BAY'; id
 }
 
 export async function getExperience(id: string) {
-  return prisma.experience.findUnique({
+  const e = await prisma.experience.findUnique({
     where: { id },
     include: {
       moods: { select: { id: true, name: true, icon: true, description: true } },
-      vendor: {
-        select: {
-          id: true, name: true, neighborhood: true, city: true, lat: true, lng: true,
-          images: true, instagram: true, website: true,
-          reviews: { select: { rating: true } }
-        }
-      }
+      ...EXPERIENCE_STOPS_INCLUDE
     }
   })
+  if (!e) return null
+  const { stops, ...rest } = e
+  return {
+    ...rest,
+    /** First vendor on the route, shown as the host. */
+    vendor: hostVendor(stops),
+    ratings: routeRatings(stops),
+    stops: stopViews(stops),
+    totalMinutes: routeMinutes(stops)
+  }
 }
 
 export async function getPhotoSpots(opts: { city?: 'NEGRIL' | 'MONTEGO_BAY'; bestTimes?: string[] } = {}): Promise<PhotoSpotData[]> {
@@ -145,14 +153,17 @@ export async function getVendorDetail(id: string) {
         orderBy: { createdAt: 'desc' },
         include: { user: { select: { name: true, avatarUrl: true } } }
       },
-      experiences: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true } },
+      experienceStops: { select: { experience: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true } } } },
       flashDeals: { where: { expires: { gt: new Date() } }, orderBy: { expires: 'asc' } }
     }
   })
   if (!vendor || !vendor.visibleInMarketplace) return null
   const ratings = vendor.reviews.map(r => r.rating)
+  const { experienceStops, ...rest } = vendor
   return {
-    ...vendor,
+    ...rest,
+    // Experiences whose route stops here, each once.
+    experiences: Array.from(new Map(experienceStops.map(s => [s.experience.id, s.experience])).values()),
     area: areaForNeighborhood(vendor.neighborhood, vendor.city),
     rating: avg(ratings),
     reviewCount: ratings.length

@@ -1,29 +1,22 @@
-// scripts/sync-photo-spot-media.ts — push PHOTO_SPOT_MEDIA onto the live photo spots without reseeding.
-// Updates existing spots by name and creates Mayfield Falls if it's missing. Run: npx tsx scripts/sync-photo-spot-media.ts
-import { PrismaClient, City } from '@prisma/client'
+// scripts/sync-photo-spot-media.ts — bring the live photo spots in line with
+// prisma/photo-spots.ts (location, description, best time) and
+// prisma/photo-spot-media.ts (cover, gallery, videos) without reseeding.
+// Updates spots by name and creates any that are missing; never deletes.
+// Run: npx tsx scripts/sync-photo-spot-media.ts
+import { PrismaClient } from '@prisma/client'
+import { PHOTO_SPOTS } from '../prisma/photo-spots'
 import { PHOTO_SPOT_MEDIA } from '../prisma/photo-spot-media'
 
 const prisma = new PrismaClient()
 
-const NEW_SPOTS = [
-  {
-    name: 'Mayfield Falls',
-    description: 'Twenty-one little cascades and swimming holes you wade up with a river guide, in the Westmoreland hills.',
-    lat: 18.3617,
-    lng: -78.1017,
-    bestTime: 'Morning',
-    city: City.NEGRIL
-  }
-]
-
 async function main() {
-  for (const [name, media] of Object.entries(PHOTO_SPOT_MEDIA)) {
-    const { count } = await prisma.photoSpot.updateMany({ where: { name }, data: media })
-    if (count > 0) { console.log(`updated ${name}`); continue }
-    const spot = NEW_SPOTS.find(s => s.name === name)
-    if (!spot) { console.log(`no spot named ${name}, skipped`); continue }
+  for (const spot of PHOTO_SPOTS) {
+    const media = PHOTO_SPOT_MEDIA[spot.name]
+    if (!media) { console.log(`no media for ${spot.name}, skipped`); continue }
+    const { count } = await prisma.photoSpot.updateMany({ where: { name: spot.name }, data: { ...spot, ...media } })
+    if (count > 0) { console.log(`updated ${spot.name}`); continue }
     await prisma.photoSpot.create({ data: { ...spot, ...media } })
-    console.log(`created ${name}`)
+    console.log(`created ${spot.name}`)
   }
 }
 

@@ -27,7 +27,9 @@ export async function POST(request: Request, { params }: { params: { slug: strin
     // Scheduled soon unless a date was set, so it lands in the Active Trip
     // banner's "happening now" window right after booking (same as before).
     const date = trip.date && trip.date.getTime() > Date.now() ? trip.date : new Date(Date.now() + 2 * 3600000)
-    const price = trip.experience?.price ?? 0
+    // Curated experiences have a set price; a generated route sends its per-person estimate.
+    const estimate = Number(body.estimatedPrice)
+    const price = trip.experience?.price ?? (Number.isFinite(estimate) ? Math.min(5000, Math.max(0, Math.round(estimate))) : 0)
     const firstVendor = trip.stops.find(s => s.vendorId)?.vendorId ?? null
 
     await prisma.$transaction(async tx => {

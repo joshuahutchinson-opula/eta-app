@@ -618,3 +618,12 @@ html.w-web .fv-apply input { color-scheme: light; }
 
 /* <select> option list on platforms that honour option colours (Windows). */
 html.w-web .web-root select option { background: #211E18; color: #FBF8F4; }
+
+/* Experience route — numbered stops with the travel leg between them */
+.w-route { list-style: none; padding: 0; margin: 0; counter-reset: stop; max-width: 640px; }
+.w-route li { counter-increment: stop; }
+.w-route-stop { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
+.w-route-stop img, .w-route-img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: var(--w-bg-2); }
+.w-route-name { font-weight: 700; font-size: 16px; }
+.w-route-name::before { content: counter(stop) ". "; color: var(--w-ink-3); }
+.w-route-leg { margin: 0 0 0 31px; padding: 6px 0 6px 22px; border-left: 2px dashed var(--w-line); font-size: 13px; color: var(--w-ink-3); }

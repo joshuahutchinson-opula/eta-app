@@ -15,7 +15,6 @@ async function buildContext(body: { city?: string; hour?: number; currentVendorC
   const [vendors, weather] = await Promise.all([
     prisma.vendor.findMany({
       where: { city, open: true, visibleInMarketplace: true, isTransport: false },
-      include: { experiences: true },
       orderBy: [{ live: 'desc' }, { isPremium: 'desc' }],
       take: 40
     }),

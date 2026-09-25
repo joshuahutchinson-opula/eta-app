@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EXPERIENCE_STOPS_INCLUDE, hostVendor, routeMinutes, stopViews } from '@/lib/experience-stops'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export async function GET(
     const experience = await prisma.experience.findUnique({
       where: { id: params.id },
       include: {
-        vendor: true,
+        ...EXPERIENCE_STOPS_INCLUDE,
         moods: true,
         bookings: true
       }
@@ -24,7 +25,8 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(experience)
+    const { stops, ...rest } = experience
+    return NextResponse.json({ ...rest, vendor: hostVendor(stops), stops: stopViews(stops), totalMinutes: routeMinutes(stops) })
   } catch (error) {
     console.error('Error fetching experience:', error)
     return NextResponse.json(

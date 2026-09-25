@@ -23,7 +23,8 @@ export default async function ExperienceDetailPage({ params }: { params: { id: s
   const [experience, all] = await Promise.all([getExperience(params.id), getExperiences()])
   if (!experience) notFound()
 
-  const ratings = experience.vendor?.reviews.map(r => r.rating) ?? []
+  // Reviews from every vendor on the route.
+  const ratings = experience.ratings
   const rating = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : null
   const moodIds = experience.moods.map(m => m.id)
   const more = all
@@ -59,6 +60,30 @@ export default async function ExperienceDetailPage({ params }: { params: { id: s
               {experience.vendor ? `, hosted by ${experience.vendor.name}` : ''}.
             </p>
           </div>
+
+          {experience.stops.length > 0 ? (
+            <>
+              <h2 className="w-h2">{t(lang, 'exp.route')}</h2>
+              <ol className="w-route">
+                {experience.stops.map(st => (
+                  <li key={st.order}>
+                    <div className="w-route-stop">
+                      {st.image ? <img src={st.image} alt="" loading="lazy" /> : <span className="w-route-img" />}
+                      <div>
+                        {st.type === 'vendor'
+                          ? <Link href={`/web/vendor/${st.id}`} className="w-route-name">{st.name}</Link>
+                          : <Link href={`/web/photo-spots/${st.id}`} className="w-route-name">{st.name}</Link>}
+                        <p className="w-faint">{st.type === 'photospot' ? t(lang, 'exp.photoStop') : null}{st.plannedDuration} min</p>
+                      </div>
+                    </div>
+                    {st.transportModeToNext ? (
+                      <p className="w-route-leg">{t(lang, `exp.mode.${st.transportModeToNext}` as 'exp.mode.WALKING')} · {st.transportDurationToNext} min</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : null}
 
           {experience.moods.length > 0 ? (
             <>
