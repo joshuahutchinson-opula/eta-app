@@ -10,6 +10,7 @@ import Icon from '@/lib/icons'
 import { usePatois } from '@/lib/i18n-client'
 import BrandedRefresh from '@/components/BrandedRefresh'
 import AddToTripSheet from '@/components/AddToTripSheet'
+import VendorCard from '@/components/VendorCard'
 import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { useLang } from '@/lib/i18n-client'
@@ -476,29 +477,9 @@ export default function MarketplacePage() {
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {premiumVendors.map(v => (
-                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '180px' }}>
-                  <div className="card">
-                    <div className="card-image" style={{ height: '120px' }}>
-                      <img src={v.images[0]} alt={v.name} />
-                      {v.live && (
-                        <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span className="live-dot" />
-                          <span className="num-font">{v.whoThere}</span> here now
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-content">
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {v.open ? <span className="open-dot" /> : <span className="closed-dot" />}
-                        <span style={{ fontSize: '13px', color: v.open ? 'var(--success)' : 'var(--label-tertiary)' }}>
-                          {v.open ? 'Open' : 'Closed'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                <div key={v.id} style={{ flexShrink: 0, width: '180px' }}>
+                  <VendorCard vendor={v} variant="tile" />
+                </div>
               ))}
             </div>
           </div>
@@ -566,63 +547,13 @@ export default function MarketplacePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredVendors.slice(0, 5).map(v => (
-                <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                  <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px' }}>
-                    <div style={{ width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{v.name}</p>
-                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                          <button
-                            className="heart-btn"
-                            aria-label={`Add ${v.name} to a trip`}
-                            onClick={(e) => { e.preventDefault(); setAddToTripVendor({ id: v.id, name: v.name }) }}
-                            style={{ color: 'var(--label-secondary)' }}
-                          >
-                            <Icon name="plus" size={18} />
-                          </button>
-                          <button
-                            className="heart-btn"
-                            aria-label={savedVendors.includes(v.id) ? `Unsave ${v.name}` : `Save ${v.name}`}
-                            onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                            style={{ color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)' }}
-                          >
-                            <Icon name="heart" size={18} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                          </button>
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                        {formatCategory(v.category)} · {v.neighborhood}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                        {v.open ? (
-                          <>
-                            <span className="open-dot" />
-                            <span style={{ fontSize: '13px', color: 'var(--success)' }}>Open</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="closed-dot" />
-                            <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>Closed</span>
-                          </>
-                        )}
-                        {v.live && (
-                          <span style={{ fontSize: '13px', color: 'var(--live)', marginLeft: '4px' }}>
-                            · {v.whoThere} here now
-                          </span>
-                        )}
-                      </div>
-                      {v.rating && (
-                        <div className="rating-text">
-                          ★ <span className="num-font">{v.rating}</span>
-                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                <VendorCard
+                  key={v.id}
+                  vendor={v}
+                  saved={savedVendors.includes(v.id)}
+                  onToggleSave={() => toggleSaveVendor(v.id)}
+                  onAddToTrip={() => setAddToTripVendor({ id: v.id, name: v.name })}
+                />
               ))}
             </div>
           )}

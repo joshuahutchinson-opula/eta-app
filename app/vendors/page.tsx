@@ -8,6 +8,7 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import LongPressCard from '@/components/LongPressCard'
 import AddToTripSheet from '@/components/AddToTripSheet'
+import VendorCard from '@/components/VendorCard'
 import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { hapticSaved } from '@/lib/haptics'
@@ -263,77 +264,13 @@ function VendorsContent() {
                   </div>
                 }
               >
-                <Link href={`/vendor/${v.id}`} style={{ textDecoration: 'none' }}>
-                  <div className="card">
-                    <div className="card-image" style={{ height: '120px' }}>
-                      <img src={v.images[0]} alt={v.name} />
-                      {v.isPremium && (
-                        <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Icon name="crown" size={11} />
-                          Premium
-                        </div>
-                      )}
-                      <button
-                        className="heart-btn"
-                        onClick={(e) => { e.preventDefault(); toggleSaveVendor(v.id) }}
-                        style={{
-                          position: 'absolute',
-                          top: '6px',
-                          right: '6px',
-                          width: '32px',
-                          height: '32px',
-                          color: savedVendors.includes(v.id) ? 'var(--rum)' : 'var(--label-secondary)'
-                        }}
-                      >
-                        <Icon name="heart" size={15} className={savedVendors.includes(v.id) ? 'filled' : ''} />
-                      </button>
-                      <button
-                        className="heart-btn"
-                        aria-label={`Add ${v.name} to a trip`}
-                        onClick={(e) => { e.preventDefault(); setAddToTripVendor({ id: v.id, name: v.name }) }}
-                        style={{
-                          position: 'absolute',
-                          top: '42px',
-                          right: '6px',
-                          width: '32px',
-                          height: '32px',
-                          color: 'var(--label-secondary)'
-                        }}
-                      >
-                        <Icon name="plus" size={15} />
-                      </button>
-                      {v.live && (
-                        <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px' }}>
-                          <span className="live-dot" />
-                          <span className="num-font">{v.whoThere}</span> here
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-content">
-                      <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px', lineHeight: 1.2 }}>{v.name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--label-secondary)', marginBottom: '4px' }}>
-                        {formatCategory(v.category)} · {v.neighborhood}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        {v.open ? (
-                          <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="open-dot" /> Open
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span className="closed-dot" /> Closed
-                          </span>
-                        )}
-                      </div>
-                      {v.rating && (
-                        <div className="rating-text" style={{ marginTop: '2px' }}>
-                          ★ <span className="num-font">{v.rating}</span>
-                          {v.reviewCount && <span> · <span className="num-font">{v.reviewCount}</span></span>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                <VendorCard
+                  vendor={v}
+                  variant="tile"
+                  saved={savedVendors.includes(v.id)}
+                  onToggleSave={() => toggleSaveVendor(v.id)}
+                  onAddToTrip={() => setAddToTripVendor({ id: v.id, name: v.name })}
+                />
               </LongPressCard>
             ))}
           </div>

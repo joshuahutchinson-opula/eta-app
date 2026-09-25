@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { categoryStyle, priceTier } from '@/lib/vendor-style'
 import dynamic from 'next/dynamic'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
@@ -43,6 +44,9 @@ export interface MapVendor {
   isTransport: boolean
   visibleOnMap: boolean
   images?: string[]
+  priceRange?: string
+  rating?: number | null
+  reviewCount?: number | null
 }
 
 export interface MapPhotoSpot {
@@ -102,8 +106,8 @@ export default function ExploreMap({
             center={[v.lat, v.lng]}
             radius={v.isPremium ? 10 : 7}
             pathOptions={{
-              color: v.isPremium ? '#B82010' : '#FFFFFF',
-              fillColor: v.isPremium ? '#B82010' : '#FFFFFF',
+              color: v.isPremium ? '#FFB800' : '#FFFFFF',
+              fillColor: categoryStyle(v.category).color,
               fillOpacity: 0.8,
               weight: 2
             }}
@@ -113,7 +117,14 @@ export default function ExploreMap({
               <Popup>
                 <div style={{ background: '#1C1C1E', padding: '8px', borderRadius: '8px', color: '#FFFFFF' }}>
                   <p style={{ fontWeight: 600, fontSize: '15px' }}>{v.name}</p>
-                  <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{v.category} • {v.neighborhood}</p>
+                  <p style={{ fontSize: '13px', color: categoryStyle(v.category).color, fontWeight: 600 }}>
+                    {categoryStyle(v.category).label}{v.priceRange ? ` · ${'$'.repeat(priceTier(v.priceRange))}` : ''}
+                    <span style={{ color: '#A1A1A1', fontWeight: 400 }}> · {v.neighborhood}</span>
+                  </p>
+                  <p style={{ fontSize: '13px', color: '#FFFFFF', marginTop: '2px' }}>
+                    {v.rating ? <>★ {v.rating.toFixed(1)} <span style={{ color: '#A1A1A1' }}>({v.reviewCount ?? 0})</span></> : <span style={{ color: '#A1A1A1' }}>New on ETA</span>}
+                  </p>
+                  <a href={`/vendor/${v.id}`} style={{ display: 'inline-block', marginTop: '6px', fontSize: '13px', fontWeight: 700, color: '#F24230' }}>View →</a>
                 </div>
               </Popup>
             )}
