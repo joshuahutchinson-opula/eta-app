@@ -1,6 +1,7 @@
 // app/web/explore/page.tsx — A3 Explore / vendor directory
 import type { Metadata } from 'next'
 import ExploreClient from '@/components/web/ExploreClient'
+import ExploreTabs from '@/components/web/ExploreTabs'
 import { filterFromParams, queryVendors, vendorFacets, USER_SORTS } from '@/lib/vendor-query'
 import { getServerLang } from '@/lib/i18n-server'
 import { t } from '@/lib/i18n'
@@ -23,6 +24,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Reco
   return (
     <div className="w-container">
       <header className="w-page-head">
+        <ExploreTabs active="directory" lang={lang} />
         <p className="w-eyebrow">Negril · Montego Bay</p>
         <h1 className="w-page-title">{t(lang, 'explore.title')}</h1>
       </header>

@@ -98,6 +98,8 @@ model User {
   referralJoin       Referral?           @relation("ReferralReferee")
   trips              Trip[]
   alertSubscriptions AlertSubscription[]
+  hiddenGems         HiddenGem[]         @relation("GemSubmitter")
+  gemConfirmations   GemConfirmation[]
 }
 
 model Vendor {
@@ -309,6 +311,8 @@ model Discovery {
   vendor      Vendor?    @relation(fields: [vendorId], references: [id])
   photoSpotId String?
   photoSpot   PhotoSpot? @relation(fields: [photoSpotId], references: [id])
+  hiddenGemId String?
+  hiddenGem   HiddenGem? @relation(fields: [hiddenGemId], references: [id])
 }
 
 model Review {
@@ -545,4 +549,60 @@ model WaitlistEntry {
   createdAt DateTime @default(now())
 
   @@unique([email, type])
+}
+
+enum GemCategory {
+  WATERFALL
+  HOT_SPRING
+  CULTURAL_ARTIFACT
+  VIEWPOINT
+  OTHER
+}
+
+enum GemStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// A traveler-submitted hidden spot. It stays fogged on the Discover map until
+// someone is physically close; enough in-person confirmations verify it.
+model HiddenGem {
+  id                String      @id @default(cuid())
+  name              String
+  category          GemCategory
+  description       String
+  lat               Float
+  lng               Float
+  photos            String[]
+  status            GemStatus   @default(PENDING)
+  confirmationCount Int         @default(0)
+  // The submitter's one-time bonus, paid when the gem is verified.
+  submitterRewarded Boolean     @default(false)
+  verifiedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  submittedByUserId String
+  submittedBy       User              @relation("GemSubmitter", fields: [submittedByUserId], references: [id])
+  confirmations     GemConfirmation[]
+  discoveries       Discovery[]
+
+  @@index([status])
+}
+
+// One user confirming, in person, that a gem is real. One per user per gem.
+model GemConfirmation {
+  id          String   @id @default(cuid())
+  confirmedAt DateTime @default(now())
+  // Where the user was when they confirmed.
+  lat         Float
+  lng         Float
+
+  userId String
+  user   User      @relation(fields: [userId], references: [id])
+  gemId  String
+  gem    HiddenGem @relation(fields: [gemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gemId])
 }
