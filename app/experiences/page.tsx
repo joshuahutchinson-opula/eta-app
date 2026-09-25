@@ -707,7 +707,7 @@ export default function ExperiencesPage() {
             <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={() => planTripFromVendor(selectedPin.data)}>
               Plan a trip here
             </button>
-            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => router.push(`/vendor/${selectedPin.data.id}`)}>
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => router.push(`/vendor/${selectedPin.data.id}?from=experiences`)}>
               View Vendor
             </button>
           </div>

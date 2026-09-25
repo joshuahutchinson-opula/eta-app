@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import LongPressCard from '@/components/LongPressCard'
-import AddToTripSheet from '@/components/AddToTripSheet'
 import VendorCard from '@/components/VendorCard'
 import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
@@ -87,7 +86,6 @@ function VendorsContent() {
   const [savedVendors, setSavedVendors] = useState<string[]>([])
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION)
-  const [addToTripVendor, setAddToTripVendor] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     fetchVendors()
@@ -269,7 +267,6 @@ function VendorsContent() {
                   variant="tile"
                   saved={savedVendors.includes(v.id)}
                   onToggleSave={() => toggleSaveVendor(v.id)}
-                  onAddToTrip={() => setAddToTripVendor({ id: v.id, name: v.name })}
                 />
               </LongPressCard>
             ))}
@@ -387,7 +384,6 @@ function VendorsContent() {
         </div>
       </div>
 
-      <AddToTripSheet vendor={addToTripVendor} onClose={() => setAddToTripVendor(null)} />
 
       <Dock />
     </main>

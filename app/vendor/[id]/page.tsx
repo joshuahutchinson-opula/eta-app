@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
 import { usePatois } from '@/lib/i18n-client'
@@ -176,6 +176,8 @@ export default function VendorDetailPage() {
   const params = useParams()
   const router = useRouter()
   const vendorId = params.id as string
+  // Adding to a trip belongs to the Experiences flow; from Market/Home the vendor is just browsed.
+  const fromExperiences = useSearchParams().get('from') === 'experiences'
 
   const [vendor, setVendor] = useState<VendorDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -676,7 +678,7 @@ export default function VendorDetailPage() {
               </div>
             </div>
             <div className="grid-2">
-              {related.map(r => <VendorCard key={r.id} vendor={r} variant="tile" />)}
+              {related.map(r => <VendorCard key={r.id} vendor={r} variant="tile" href={fromExperiences ? `/vendor/${r.id}?from=experiences` : undefined} />)}
             </div>
           </div>
         )}
@@ -705,13 +707,15 @@ export default function VendorDetailPage() {
         >
           <Icon name="heart" size={20} className={saved ? 'filled' : ''} />
         </button>
-        <button className="btn btn-secondary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => setShowAddToTrip(true)}>
-          <Icon name="plus" size={16} />
-          Add to trip
-        </button>
-        <button className="btn btn-secondary" style={{ flex: showPayButton ? undefined : 1, padding: showPayButton ? '0 14px' : undefined }} onClick={handleDirections} aria-label="Get directions">
+        {fromExperiences && (
+          <button className="btn btn-secondary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => setShowAddToTrip(true)}>
+            <Icon name="plus" size={16} />
+            Add to trip
+          </button>
+        )}
+        <button className="btn btn-secondary" style={{ flex: showPayButton && fromExperiences ? undefined : 1, padding: showPayButton && fromExperiences ? '0 14px' : undefined }} onClick={handleDirections} aria-label="Get directions">
           <Icon name="mapPin" size={16} />
-          {showPayButton ? null : 'Directions'}
+          {showPayButton && fromExperiences ? null : 'Directions'}
         </button>
         {showPayButton && (
           <button className="btn btn-primary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => router.push('/pay')}>
@@ -721,7 +725,9 @@ export default function VendorDetailPage() {
         )}
       </div>
 
-      <AddToTripSheet vendor={showAddToTrip ? { id: vendor.id, name: vendor.name } : null} onClose={() => setShowAddToTrip(false)} />
+      {fromExperiences && (
+        <AddToTripSheet vendor={showAddToTrip ? { id: vendor.id, name: vendor.name } : null} onClose={() => setShowAddToTrip(false)} />
+      )}
     </main>
   )
 }

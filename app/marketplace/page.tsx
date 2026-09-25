@@ -9,7 +9,6 @@ import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { usePatois } from '@/lib/i18n-client'
 import BrandedRefresh from '@/components/BrandedRefresh'
-import AddToTripSheet from '@/components/AddToTripSheet'
 import VendorCard from '@/components/VendorCard'
 import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
@@ -112,7 +111,6 @@ export default function MarketplacePage() {
   const [selectedAccess, setSelectedAccess] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 18.2723, lng: -78.3521 })
-  const [addToTripVendor, setAddToTripVendor] = useState<{ id: string; name: string } | null>(null)
   const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string; videoUrl?: string }>>([])
 
   useEffect(() => {
@@ -552,7 +550,6 @@ export default function MarketplacePage() {
                   vendor={v}
                   saved={savedVendors.includes(v.id)}
                   onToggleSave={() => toggleSaveVendor(v.id)}
-                  onAddToTrip={() => setAddToTripVendor({ id: v.id, name: v.name })}
                 />
               ))}
             </div>
@@ -655,7 +652,6 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      <AddToTripSheet vendor={addToTripVendor} onClose={() => setAddToTripVendor(null)} />
 
       <Dock />
     </main>
