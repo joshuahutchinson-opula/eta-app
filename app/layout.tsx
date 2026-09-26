@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
+import DemoAutoLogin from '@/components/DemoAutoLogin'
 
 // Absolute base for og:image and canonical URLs. Railway injects
 // RAILWAY_PUBLIC_DOMAIN; NEXT_PUBLIC_SITE_URL overrides it for a custom domain.
@@ -51,6 +52,7 @@ export default function RootLayout({
       </head>
       <body>
         <LaunchScreen />
+        <DemoAutoLogin />
         <main style={{ 
           paddingBottom: '80px',
           minHeight: '100dvh',

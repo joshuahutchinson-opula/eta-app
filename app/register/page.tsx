@@ -49,6 +49,7 @@ export default function RegisterPage() {
 
       localStorage.setItem('eta_token', data.token)
       localStorage.setItem('eta_user', JSON.stringify(data.user))
+      localStorage.removeItem('eta_logged_out')
       router.push('/onboarding')
     } catch (err) {
       setError(patois.errorNetwork)

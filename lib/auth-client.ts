@@ -34,7 +34,11 @@ export function setCurrentUser(user: CurrentUser) {
   localStorage.setItem('eta_user', JSON.stringify(user))
 }
 
+/** Set on log-out so the demo auto-login (components/DemoAutoLogin) leaves you logged out. */
+export const LOGGED_OUT_KEY = 'eta_logged_out'
+
 export function logout() {
   localStorage.removeItem('eta_user')
   localStorage.removeItem('eta_token')
+  localStorage.setItem(LOGGED_OUT_KEY, '1')
 }

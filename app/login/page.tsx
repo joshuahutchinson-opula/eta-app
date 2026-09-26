@@ -39,6 +39,7 @@ export default function LoginPage() {
 
       localStorage.setItem('eta_token', data.token)
       localStorage.setItem('eta_user', JSON.stringify(data.user))
+      localStorage.removeItem('eta_logged_out')
       router.push('/')
     } catch (err) {
       setError(patois.errorNetwork)
