@@ -5,6 +5,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
+import { uploadPhoto } from '@/lib/api-client'
+import PhotoPicker from '@/components/PhotoPicker'
+import ErrorState from '@/components/ErrorState'
+import { useLang } from '@/lib/i18n-client'
 
 interface Mood {
   id: string
@@ -21,7 +25,10 @@ export default function MoodDetailPage() {
   const [mood, setMood] = useState<Mood | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddSheet, setShowAddSheet] = useState(false)
-  const [mediaUrl, setMediaUrl] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [postError, setPostError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const { t } = useLang()
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -29,12 +36,17 @@ export default function MoodDetailPage() {
   }, [])
 
   const fetchMood = async () => {
+    setLoading(true)
+    setLoadFailed(false)
     try {
       const response = await fetch(`/api/moods/${params.id}`)
+      if (response.status === 404) { setMood(null); return }
+      if (!response.ok) throw new Error()
       const data = await response.json()
       setMood(data)
     } catch (error) {
       console.error(error)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -57,13 +69,15 @@ export default function MoodDetailPage() {
       router.push('/login')
       return
     }
-    if (!mediaUrl.trim()) return
+    if (!photo) return
 
     setSubmitting(true)
+    setPostError(null)
     try {
+      const url = await uploadPhoto(photo, 'mood-media')
       const body = {
         moodId: params.id,
-        url: mediaUrl.trim(),
+        url,
         type: 'image',
         uploadedBy: user.name
       }
@@ -73,6 +87,7 @@ export default function MoodDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
+      if (!response.ok) throw new Error(t('m.photo.postFailed'))
       const newMedia = await response.json()
 
       setMood(prev => prev
@@ -80,9 +95,10 @@ export default function MoodDetailPage() {
         : prev)
 
       setShowAddSheet(false)
-      setMediaUrl('')
+      setPhoto(null)
     } catch (error) {
       console.error(error)
+      setPostError(error instanceof Error ? error.message : t('m.photo.postFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -99,7 +115,7 @@ export default function MoodDetailPage() {
   if (!mood) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>
+        {loadFailed ? <ErrorState onRetry={fetchMood} /> : <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>}
       </main>
     )
   }
@@ -109,6 +125,7 @@ export default function MoodDetailPage() {
       {/* Back button */}
       <button
         onClick={() => router.back()}
+        aria-label="Back"
         style={{
           position: 'absolute',
           top: '16px',
@@ -168,33 +185,17 @@ export default function MoodDetailPage() {
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Your Moment</h3>
 
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Photo URL</p>
-          <input
-            type="text"
-            placeholder="https://..."
-            value={mediaUrl}
-            onChange={(e) => setMediaUrl(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--separator)',
-              background: 'var(--system-bg)',
-              color: 'var(--label-primary)',
-              fontSize: '15px',
-              marginBottom: '20px',
-              fontFamily: 'inherit'
-            }}
-          />
+          <PhotoPicker file={photo} onChange={setPhoto} />
 
           <button
             className="btn btn-primary"
             style={{ width: '100%' }}
             onClick={submitMoment}
-            disabled={submitting || !mediaUrl.trim()}
+            disabled={submitting || !photo}
           >
             {submitting ? 'Posting...' : 'Post'}
           </button>
+          {postError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginTop: '8px' }}>{postError}</p>}
         </div>
       </div>
     </main>

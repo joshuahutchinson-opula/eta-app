@@ -6,12 +6,22 @@ import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
-import { usePatois } from '@/lib/i18n-client'
+import { useLang, usePatois } from '@/lib/i18n-client'
 import AddToTripSheet from '@/components/AddToTripSheet'
 import { alertsEnabled, enableAlerts, syncAlerts } from '@/lib/alerts-client'
 import { accessibilityLabel } from '@/lib/accessibility'
 import { categoryStyle, priceTier } from '@/lib/vendor-style'
 import VendorCard, { type VendorCardVendor } from '@/components/VendorCard'
+import Price from '@/components/Price'
+import CheckInButton from '@/components/CheckInButton'
+import ReviewSheet from '@/components/ReviewSheet'
+import QRCode from '@/components/QRCode'
+import ErrorState from '@/components/ErrorState'
+import { DAYS, formatTime, openState, parseHours } from '@/lib/hours'
+import { shareOrCopy } from '@/lib/share'
+import { authHeaders } from '@/lib/api-client'
+import { getCurrentUser } from '@/lib/auth-client'
+import { jamaicaToday } from '@/lib/pricing'
 
 interface ReviewItem {
   id: string
@@ -71,6 +81,10 @@ interface VendorDetail {
   tipsJar: boolean
   payItForward: boolean
   accessibility?: string[]
+  hours?: unknown
+  phone?: string | null
+  whatsapp?: string | null
+  acceptsReservations?: boolean
   menu: any
   rating?: number
   reviewCount?: number
@@ -80,9 +94,7 @@ interface VendorDetail {
   flashDeals: FlashDealItem[]
 }
 
-function formatCity(city: string): string {
-  return city === 'NEGRIL' ? 'Negril' : city === 'MONTEGO_BAY' ? 'Montego Bay' : city
-}
+import { formatCity } from '@/lib/format'
 
 function formatCountdown(expires: string): string {
   const diffMs = new Date(expires).getTime() - Date.now()
@@ -173,6 +185,7 @@ function MenuSection({ menu }: { menu: any }) {
 
 export default function VendorDetailPage() {
   const patois = usePatois()
+  const { t } = useLang()
   const params = useParams()
   const router = useRouter()
   const vendorId = params.id as string
@@ -188,6 +201,15 @@ export default function VendorDetailPage() {
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [slide, setSlide] = useState(0)
   const [related, setRelated] = useState<VendorCardVendor[]>([])
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [shareMsg, setShareMsg] = useState<string | null>(null)
+  const [voucher, setVoucher] = useState<{ code: string; deal: string; expires: string } | null>(null)
+  const [claiming, setClaiming] = useState<string | null>(null)
+  const [claimError, setClaimError] = useState<string | null>(null)
+  const [resvOpen, setResvOpen] = useState(false)
+  const [resv, setResv] = useState({ date: jamaicaToday(), time: '19:00', partySize: 2, note: '' })
+  const [resvState, setResvState] = useState<{ busy: boolean; error: string | null; sent: boolean }>({ busy: false, error: null, sent: false })
 
   useEffect(() => {
     fetchVendor()
@@ -203,24 +225,60 @@ export default function VendorDetailPage() {
   const fetchVendor = async () => {
     setLoading(true)
     setNotFound(false)
+    setLoadFailed(false)
     try {
       const res = await fetch(`/api/vendors/${vendorId}`)
       if (res.status === 404) {
         setNotFound(true)
         return
       }
-      if (!res.ok) {
-        setNotFound(true)
-        return
-      }
+      if (!res.ok) throw new Error('vendor')
       const data = await res.json()
       setVendor(data)
       fetchRelated(data)
     } catch (error) {
       console.error(error)
-      setNotFound(true)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const share = async () => {
+    if (!vendor) return
+    const result = await shareOrCopy({ title: vendor.name, text: `${vendor.name} on ETA`, url: window.location.origin + `/vendor/${vendor.id}` })
+    if (result === 'copied') { setShareMsg(t('m.events.linkCopied')); setTimeout(() => setShareMsg(null), 1800) }
+  }
+
+  const claimDeal = async (dealId: string) => {
+    if (!getCurrentUser()) { router.push('/login'); return }
+    setClaiming(dealId)
+    setClaimError(null)
+    try {
+      const res = await fetch(`/api/flashdeals/${dealId}/claim`, { method: 'POST', headers: authHeaders() })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+      hapticSaved()
+      setVoucher({ code: data.code, deal: data.deal, expires: data.expires })
+    } catch (e) {
+      setClaimError(e instanceof Error ? e.message : 'Sumth nah wuk')
+    } finally {
+      setClaiming(null)
+    }
+  }
+
+  const requestReservation = async () => {
+    if (!vendor) return
+    if (!getCurrentUser()) { router.push('/login'); return }
+    setResvState({ busy: true, error: null, sent: false })
+    try {
+      const res = await fetch('/api/reservations', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ vendorId: vendor.id, ...resv }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+      hapticSaved()
+      setResvState({ busy: false, error: null, sent: true })
+    } catch (e) {
+      setResvState({ busy: false, error: e instanceof Error ? e.message : 'Sumth nah wuk', sent: false })
     }
   }
 
@@ -325,6 +383,15 @@ export default function VendorDetailPage() {
     )
   }
 
+  if (loadFailed) {
+    return (
+      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        {BackButton}
+        <ErrorState onRetry={fetchVendor} />
+      </main>
+    )
+  }
+
   if (notFound || !vendor) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -341,6 +408,16 @@ export default function VendorDetailPage() {
     )
   }
 
+  const hours = parseHours(vendor.hours)
+  const hoursState = hours ? openState(hours) : null
+  const isOpen = hoursState ? hoursState.open : vendor.open
+  const todayIdx = new Date(Date.now() - 5 * 3600000).getUTCDay()
+  const hoursDetail = hoursState?.detail
+    ? hoursState.detail.kind === 'closes'
+      ? t('m.vendor.closes', { time: formatTime(hoursState.detail.time) })
+      : t(hoursState.detail.dayOffset === 0 ? 'm.vendor.opensToday' : hoursState.detail.dayOffset === 1 ? 'm.vendor.opensTomorrow' : 'm.vendor.opensLater', { time: formatTime(hoursState.detail.time), day: t(`m.day.${DAYS[(todayIdx + hoursState.detail.dayOffset) % 7]}` as 'm.day.mon') })
+    : null
+  const waLink = vendor.whatsapp ? `https://wa.me/${vendor.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${vendor.name}, I found you on ETA.`)}` : null
   const showPayButton = vendor.tipsJar || vendor.payItForward
   const cat = categoryStyle(vendor.category)
   const tier = priceTier(vendor.priceRange)
@@ -354,7 +431,7 @@ export default function VendorDetailPage() {
   const goodToKnow = [
     vendor.tipsJar && { icon: 'gift', text: 'Tips jar — tip the crew straight from the app' },
     vendor.payItForward && { icon: 'heart', text: 'Pay it forward — buy the next person a round' },
-    vendor.isPremium && { icon: 'crown', text: 'Premium member — verified and featured on ETA' },
+    vendor.isPremium && { icon: 'crown', text: t('m.bon.member') },
     vendor.live && { icon: 'users', text: `${vendor.whoThere} ETA travelers here right now` }
   ].filter(Boolean) as Array<{ icon: string; text: string }>
 
@@ -395,7 +472,7 @@ export default function VendorDetailPage() {
         {vendor.isPremium && (
           <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px', left: 'auto', right: '12px', top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
             <Icon name="crown" size={11} />
-            Premium
+            B.O.N
           </div>
         )}
         {media.length > 1 && (
@@ -441,12 +518,43 @@ export default function VendorDetailPage() {
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{cat.priceNoun || 'price'}</p>
           </div>
           <div style={{ textAlign: 'center', padding: '0 6px' }}>
-            <p style={{ fontSize: '17px', fontWeight: 700, color: vendor.open ? 'var(--success)' : 'var(--label-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '28px' }}>
-              <span className={vendor.open ? 'open-dot' : 'closed-dot'} /> {vendor.open ? 'Open' : 'Closed'}
+            <p style={{ fontSize: '17px', fontWeight: 700, color: isOpen ? 'var(--success)' : 'var(--label-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '28px' }}>
+              <span className={isOpen ? 'open-dot' : 'closed-dot'} /> {isOpen ? t('common.open') : t('common.closed')}
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{vendor.live ? `${vendor.whoThere} here now` : 'right now'}</p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{hoursDetail ?? (vendor.live ? `${vendor.whoThere} here now` : 'right now')}</p>
           </div>
         </div>
+
+        {/* Contact & actions — each shows only when the vendor has listed it */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {vendor.phone && (
+            <a href={`tel:${vendor.phone.replace(/[^+\d]/g, '')}`} className="chip" style={{ textDecoration: 'none', flex: 1, justifyContent: 'center' }}><Icon name="audio" size={14} /> {t('m.vendor.call')}</a>
+          )}
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="chip" style={{ textDecoration: 'none', flex: 1, justifyContent: 'center' }}><Icon name="journal" size={14} /> WhatsApp</a>
+          )}
+          {vendor.acceptsReservations && (
+            <button className="chip" onClick={() => { setResvState({ busy: false, error: null, sent: false }); setResvOpen(true) }} style={{ flex: 1, justifyContent: 'center' }}><Icon name="clock" size={14} /> {t('m.vendor.reserve')}</button>
+          )}
+          <button className="chip" onClick={share} style={{ flex: 1, justifyContent: 'center' }}><Icon name="share" size={14} /> {shareMsg ?? t('m.events.share')}</button>
+        </div>
+
+        {hours && (
+          <div className="card" style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'default' }} aria-label={t('m.vendor.hours')}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--label-secondary)', padding: '6px 0' }}>{t('m.vendor.hours')}</p>
+            {[1, 2, 3, 4, 5, 6, 0].map(d => {
+              const ranges = hours[DAYS[d]] ?? []
+              return (
+                <div key={d} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', fontWeight: d === todayIdx ? 700 : 400, color: d === todayIdx ? 'var(--label-primary)' : 'var(--label-secondary)' }}>
+                  <span>{t(`m.day.${DAYS[d]}` as 'm.day.mon')}</span>
+                  <span className="num-font">{ranges.length ? ranges.map(([a, b]) => `${formatTime(a)} – ${formatTime(b)}`).join(', ') : t('common.closed')}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {vendor.lat && vendor.lng ? <CheckInButton target={{ kind: 'vendor', id: vendor.id, lat: vendor.lat, lng: vendor.lng }} /> : null}
 
         {saved && (!alertsOn || alertMsg) && (
           <div className="card" style={{ padding: '12px 14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default' }}>
@@ -521,7 +629,7 @@ export default function VendorDetailPage() {
             </div>
             <div className="horizontal-scroll">
               {vendor.flashDeals.map(fd => (
-                <div key={fd.id} className="card" style={{ width: '200px' }}>
+                <div key={fd.id} className="card" style={{ width: '200px', cursor: 'default' }}>
                   <div className="card-image" style={{ height: '110px' }}>
                     {vendor.images[0] && <img src={vendor.images[0]} alt={vendor.name} />}
                     <div className="card-overlay" />
@@ -532,6 +640,9 @@ export default function VendorDetailPage() {
                       <Icon name="clock" size={12} />
                       {formatCountdown(fd.expires)}
                     </p>
+                    <button className="btn btn-primary" onClick={() => claimDeal(fd.id)} disabled={claiming === fd.id} style={{ width: '100%', minHeight: '36px', fontSize: '14px', marginTop: '8px' }}>
+                      {claiming === fd.id ? '…' : t('m.vendor.claim')}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -547,11 +658,11 @@ export default function VendorDetailPage() {
                 <span className="section-eyebrow">From This Vendor</span>
                 <span className="section-title">Experiences</span>
               </div>
-              <Link href="/experiences" className="section-link">See All</Link>
+              <Link href="/experiences/browse" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div className="horizontal-scroll">
               {vendor.experiences.map(exp => (
-                <Link key={exp.id} href="/experiences" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <Link key={exp.id} href={`/experiences/${exp.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div className="card" style={{ width: '180px' }}>
                     <div className="card-image" style={{ height: '110px' }}>
                       {exp.imageUrl && <img src={exp.imageUrl} alt={exp.name} />}
@@ -559,7 +670,7 @@ export default function VendorDetailPage() {
                     </div>
                     <div className="card-content">
                       <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{exp.name}</p>
-                      <span className="card-price">${exp.price}</span>
+                      <Price usd={exp.price} className="card-price" />
                     </div>
                   </div>
                 </Link>
@@ -578,11 +689,11 @@ export default function VendorDetailPage() {
             </div>
             <div className="horizontal-scroll">
               {vendor.stories.map(story => (
-                <div key={story.id} style={{ textAlign: 'center', flexShrink: 0 }}>
+                <Link key={story.id} href={`/stories?start=${vendor.id}`} aria-label={t('m.stories.open', { name: vendor.name })} style={{ textAlign: 'center', flexShrink: 0 }}>
                   <div className={`story-ring ${vendor.isPremium ? 'premium' : 'standard'}`}>
-                    {story.imageUrl && <img src={story.imageUrl} alt="Story" />}
+                    {story.imageUrl && <img src={story.imageUrl} alt="" />}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -610,8 +721,11 @@ export default function VendorDetailPage() {
         <div style={{ marginBottom: '32px' }}>
           <div className="section-header">
             <div className="section-heading">
-              <span className="section-title">Reviews</span>
+              <span className="section-title">{t('vendor.reviews')}</span>
             </div>
+            <button className="section-link" onClick={() => (getCurrentUser() ? setReviewOpen(true) : router.push('/login'))} style={{ background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>
+              <Icon name="star" size={14} /> {t('m.review.write')}
+            </button>
           </div>
           {vendor.reviews.length === 0 ? (
             <div className="empty-state">
@@ -724,6 +838,85 @@ export default function VendorDetailPage() {
           </button>
         )}
       </div>
+
+      <ReviewSheet
+        open={reviewOpen}
+        vendorId={vendor.id}
+        vendorName={vendor.name}
+        onClose={() => setReviewOpen(false)}
+        onPosted={r => setVendor(v => {
+          if (!v) return v
+          const reviews = [r, ...v.reviews]
+          return { ...v, reviews, reviewCount: reviews.length, rating: Math.round((reviews.reduce((a, x) => a + x.rating, 0) / reviews.length) * 10) / 10 }
+        })}
+      />
+
+      {/* Reservation request */}
+      <div className={`bottom-sheet-overlay ${resvOpen ? 'open' : ''}`} onClick={() => setResvOpen(false)} />
+      <div className={`bottom-sheet ${resvOpen ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.vendor.reserve')}>
+        <div className="sheet-grabber" />
+        {resvOpen && (
+          <div style={{ padding: '0 20px 24px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '4px' }}>{t('m.vendor.reserveTitle', { name: vendor.name })}</h3>
+            <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '14px' }}>{t('m.vendor.reserveNote')}</p>
+            {resvState.sent ? (
+              <div style={{ textAlign: 'center' }}>
+                <div className="check-pop-in" style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}><Icon name="check" size={22} /></div>
+                <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.vendor.reserveSent')}</p>
+                <button className="btn btn-primary" onClick={() => setResvOpen(false)} style={{ width: '100%' }}>{t('m.profile.done')}</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>
+                    {t('m.book.date')}
+                    <input type="date" min={jamaicaToday()} value={resv.date} onChange={e => setResv({ ...resv, date: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit' }} />
+                  </label>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>
+                    {t('m.book.time')}
+                    <input type="time" value={resv.time} onChange={e => setResv({ ...resv, time: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit' }} />
+                  </label>
+                </div>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.book.party')}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+                  <button className="heart-btn" aria-label={t('m.book.fewer')} disabled={resv.partySize <= 1} onClick={() => setResv({ ...resv, partySize: resv.partySize - 1 })} style={{ fontSize: '22px', color: 'var(--label-primary)' }}>−</button>
+                  <span className="num-font" aria-live="polite" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }}>{resv.partySize}</span>
+                  <button className="heart-btn" aria-label={t('m.book.more')} disabled={resv.partySize >= 30} onClick={() => setResv({ ...resv, partySize: resv.partySize + 1 })} style={{ fontSize: '22px', color: 'var(--label-primary)' }}>+</button>
+                </div>
+                <textarea value={resv.note} onChange={e => setResv({ ...resv, note: e.target.value })} placeholder={t('m.vendor.reserveNotePlaceholder')} aria-label={t('m.vendor.reserveNotePlaceholder')} rows={2} maxLength={280} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '12px' }} />
+                {resvState.error && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{resvState.error}</p>}
+                <button className="btn btn-primary" onClick={requestReservation} disabled={resvState.busy || !resv.date || !resv.time} style={{ width: '100%' }}>
+                  {resvState.busy ? '…' : t('m.vendor.reserveSend')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Flash deal voucher */}
+      <div className={`bottom-sheet-overlay ${voucher ? 'open' : ''}`} onClick={() => setVoucher(null)} />
+      <div className={`bottom-sheet ${voucher ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.vendor.voucher')}>
+        <div className="sheet-grabber" />
+        {voucher && (
+          <div style={{ padding: '0 20px 24px', textAlign: 'center' }}>
+            <p className="section-eyebrow">{t('m.vendor.voucher')}</p>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', margin: '2px 0 4px' }}>{voucher.deal}</h3>
+            <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{vendor.name} · {formatCountdown(voucher.expires)}</p>
+            <QRCode value={voucher.code} size={200} />
+            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--label-primary)', marginTop: '12px' }}>{voucher.code}</p>
+            <p style={{ fontSize: '13px', color: 'var(--label-secondary)', margin: '4px 0 16px' }}>{t('m.vendor.voucherShow')}</p>
+            <button className="btn btn-tertiary" onClick={() => setVoucher(null)} style={{ width: '100%' }}>{t('m.profile.done')}</button>
+          </div>
+        )}
+      </div>
+
+      {claimError && (
+        <div role="alert" style={{ position: 'fixed', left: '16px', right: '16px', bottom: '84px', zIndex: 30, padding: '12px 14px', borderRadius: '14px', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-elevated)', fontSize: '14px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ flex: 1 }}>{claimError}</span>
+          <button onClick={() => setClaimError(null)} aria-label={t('m.profile.done')} style={{ background: 'none', border: 'none', color: 'var(--label-secondary)', cursor: 'pointer', minWidth: '32px', minHeight: '32px' }}><Icon name="close" size={14} /></button>
+        </div>
+      )}
 
       {fromExperiences && (
         <AddToTripSheet vendor={showAddToTrip ? { id: vendor.id, name: vendor.name } : null} onClose={() => setShowAddToTrip(false)} />

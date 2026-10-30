@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Icon from '@/lib/icons'
 import { categoryStyle, priceTier, vendorPitch } from '@/lib/vendor-style'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
+import { formatDistance } from '@/lib/geo'
 
 export interface VendorCardVendor {
   id: string
@@ -34,6 +35,8 @@ interface Props {
   /** Only passed where adding to a trip makes sense (the Experiences flow). */
   onAddToTrip?: () => void
   href?: string
+  /** Straight-line km from the user; shown when known. */
+  distanceKm?: number | null
 }
 
 function PriceTier({ priceRange, color }: { priceRange: string; color: string }) {
@@ -61,7 +64,8 @@ function Rating({ rating, reviewCount, compact }: { rating?: number | null; revi
   )
 }
 
-export default function VendorCard({ vendor: v, variant = 'row', saved, onToggleSave, onAddToTrip, href }: Props) {
+export default function VendorCard({ vendor: v, variant = 'row', saved, onToggleSave, onAddToTrip, href, distanceKm }: Props) {
+  const distance = formatDistance(distanceKm ?? null)
   const style = categoryStyle(v.category)
   const pitch = vendorPitch(v.description)
   const access = (v.accessibility ?? []).map(k => ACCESSIBILITY_OPTIONS.find(o => o.key === k)?.short).filter(Boolean)
@@ -114,7 +118,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
             <img src={v.images[0]} alt={v.name} />
             {v.isPremium && (
               <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Icon name="crown" size={11} /> Premium
+                <Icon name="crown" size={11} /> B.O.N
               </div>
             )}
             {actions && <div style={{ position: 'absolute', top: '6px', right: '6px' }}>{actions}</div>}
@@ -134,7 +138,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
               <PriceTier priceRange={v.priceRange} color={style.color} />
             </div>
             <p style={{ fontSize: '11px', color: 'var(--label-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <Icon name="mapPin" size={10} /> {v.neighborhood}
+              <Icon name="mapPin" size={10} /> {distance ? `${distance} · ` : ''}{v.neighborhood}
             </p>
             <div style={{ fontSize: '12px' }}><Rating rating={v.rating} reviewCount={v.reviewCount} compact /></div>
           </div>
@@ -149,7 +153,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
         <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
           <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           {v.isPremium && (
-            <span style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', color: 'var(--gold)' }} aria-label="Premium">
+            <span style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', color: 'var(--gold)' }} aria-label="B.O.N member">
               <Icon name="crown" size={12} />
             </span>
           )}
@@ -166,7 +170,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
             {chip}
             <PriceTier priceRange={v.priceRange} color={style.color} />
             <span style={{ color: 'var(--label-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px', minWidth: 0 }}>
-              <Icon name="mapPin" size={11} /> {v.neighborhood}
+              <Icon name="mapPin" size={11} /> {distance ? <span className="num-font" style={{ fontWeight: 600, color: 'var(--label-primary)' }}>{distance}</span> : null}{distance ? ' · ' : ''}{v.neighborhood}
             </span>
           </div>
           {pitch && (

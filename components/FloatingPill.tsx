@@ -2,12 +2,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
 
 export default function FloatingPill() {
-  const router = useRouter()
   const [points, setPoints] = useState(0)
 
   useEffect(() => {
@@ -18,31 +17,21 @@ export default function FloatingPill() {
   return (
     <div className="floating-pill">
       {/* Avatar - tap for profile */}
-      <div 
-        className="floating-pill-avatar"
-        onClick={() => router.push('/profile')}
-        role="button"
-        aria-label="Profile"
-      >
+      <Link href="/profile" className="floating-pill-avatar" aria-label="Profile" style={{ color: 'inherit' }}>
         <Icon name="user" size={14} />
-      </div>
+      </Link>
 
       {/* Points - tap for wallet/rewards */}
-      <div 
-        className="floating-pill-points"
-        onClick={() => router.push('/wallet')}
-        role="button"
-        aria-label="Points"
-      >
+      <Link href="/wallet" className="floating-pill-points" aria-label={`${points.toLocaleString()} points — open wallet`} style={{ textDecoration: 'none' }}>
         <Icon name="sparkle" size={12} style={{ color: 'var(--rum)' }} />
-        <span className="num-font" style={{ 
-          fontSize: '13px', 
-          fontWeight: 700, 
+        <span className="num-font" style={{
+          fontSize: '13px',
+          fontWeight: 700,
           color: 'var(--label-primary)'
         }}>
           {points.toLocaleString()}
         </span>
-      </div>
+      </Link>
     </div>
   )
 }

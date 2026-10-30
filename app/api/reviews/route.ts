@@ -36,7 +36,14 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const review = await prisma.review.create({
-      data: body
+      data: {
+        userId: body.userId,
+        vendorId: body.vendorId,
+        experienceId: typeof body.experienceId === 'string' ? body.experienceId : null,
+        // Whole stars, 1–5.
+        rating: Math.max(1, Math.min(5, Math.round(Number(body.rating) || 0))),
+        comment: typeof body.comment === 'string' ? body.comment.slice(0, 1000) : null
+      }
     })
     return NextResponse.json(review)
   } catch (error) {

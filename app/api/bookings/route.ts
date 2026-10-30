@@ -1,26 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { onBookingCompleted } from '@/lib/booking-events'
+import { userIdFromRequest } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// GET — the signed-in caller's bookings only (Authorization: Bearer …),
+// with what My Bookings needs: the trip behind it and its receipts.
+export async function GET(request: Request) {
+  const userId = userIdFromRequest(request)
+  if (!userId) return NextResponse.json([])
   try {
     const bookings = await prisma.booking.findMany({
-      orderBy: { createdAt: 'desc' },
+      where: { userId },
+      orderBy: { date: 'asc' },
       include: {
-        user: {
-          select: {
-            name: true,
-            avatarUrl: true
-          }
-        },
-        experience: true,
-        vendor: true,
-        accommodation: true
+        experience: { select: { id: true, name: true, imageUrl: true, meetingPoint: true, city: true } },
+        vendor: { select: { id: true, name: true, images: true, neighborhood: true } },
+        accommodation: { select: { id: true, name: true, media: true, city: true } },
+        trip: { select: { slug: true, status: true, name: true } },
+        transactions: { select: { id: true, amount: true, status: true, createdAt: true }, orderBy: { createdAt: 'asc' } }
       }
     })
-
     return NextResponse.json(bookings)
   } catch (error) {
     console.error('Error fetching bookings:', error)

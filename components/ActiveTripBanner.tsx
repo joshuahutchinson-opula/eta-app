@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
+import { pressable } from '@/lib/pressable'
 
 interface ActiveTripBannerProps {
   tripName: string
@@ -43,7 +44,7 @@ export default function ActiveTripBanner({
   }
 
   return (
-    <div className="active-trip-banner" onClick={handleTap}>
+    <div className="active-trip-banner" onClick={handleTap} {...pressable(handleTap)} aria-label={`${tripName} — next: ${nextStopName}`}>
       <div className="active-trip-banner-content">
         <span className="active-trip-banner-eta num-font">
           {etaMinutes}m

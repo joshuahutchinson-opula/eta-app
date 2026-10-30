@@ -14,6 +14,8 @@ export interface TripRecap {
   stopPhotos: string[]
   distanceKm: number | null
   completedAt: string
+  /** Every vendor the trip visited (experience routes expanded), for "rate your stops". */
+  reviewTargets: Array<{ vendorId: string; name: string; image: string | null; experienceId: string | null }>
 }
 
 function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -49,8 +51,19 @@ export async function getTripRecap(slug: string): Promise<TripRecap | null> {
     distanceKm = Math.round(distanceKm * 10) / 10
   }
 
+  // Vendor stops on the trip, plus the vendors along any experience's route.
+  const reviewTargets: TripRecap['reviewTargets'] = []
+  for (const s of trip.stops) {
+    if (s.kind === 'vendor') reviewTargets.push({ vendorId: s.refId, name: s.name, image: s.image, experienceId: null })
+    if (s.kind === 'experience') {
+      const route = await prisma.experienceStop.findMany({ where: { experienceId: s.refId, vendorId: { not: null } }, orderBy: { order: 'asc' }, include: { vendor: { select: { id: true, name: true, images: true } } } })
+      for (const r of route) if (r.vendor) reviewTargets.push({ vendorId: r.vendor.id, name: r.vendor.name, image: r.vendor.images[0] ?? null, experienceId: s.refId })
+    }
+  }
+
   return {
     trip,
+    reviewTargets: reviewTargets.filter((r, i, all) => all.findIndex(x => x.vendorId === r.vendorId) === i),
     pointsEarned: raw.booking?.pointsEarned ?? 0,
     moments: moments.map(m => ({ id: m.id, url: m.url, caption: m.caption, spot: m.photoSpot?.name ?? null })),
     stopPhotos: trip.stops.map(s => s.image).filter((u): u is string => Boolean(u)),

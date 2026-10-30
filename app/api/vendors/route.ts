@@ -3,12 +3,15 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// GET — marketplace vendors. ?transport=1 returns the vetted transport
+// providers instead (Safety → Vetted transport).
+export async function GET(request: Request) {
+  const transport = new URL(request.url).searchParams.get('transport') === '1'
   try {
     const vendors = await prisma.vendor.findMany({
       where: {
         visibleInMarketplace: true,
-        isTransport: false
+        isTransport: transport
       },
       orderBy: [
         { isPremium: 'desc' },

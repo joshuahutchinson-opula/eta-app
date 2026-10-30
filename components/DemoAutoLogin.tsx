@@ -12,7 +12,7 @@ export default function DemoAutoLogin() {
   const pathname = usePathname()
 
   useEffect(() => {
-    if (pathname.startsWith('/web') || pathname.startsWith('/login') || pathname.startsWith('/register')) return
+    if (['/web', '/login', '/register', '/forgot-password', '/reset-password'].some(p => pathname.startsWith(p))) return
     try {
       if (localStorage.getItem('eta_user') || localStorage.getItem(LOGGED_OUT_KEY)) return
     } catch {

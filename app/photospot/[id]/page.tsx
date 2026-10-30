@@ -5,6 +5,11 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
+import { uploadPhoto } from '@/lib/api-client'
+import PhotoPicker from '@/components/PhotoPicker'
+import CheckInButton from '@/components/CheckInButton'
+import ErrorState from '@/components/ErrorState'
+import { useLang } from '@/lib/i18n-client'
 
 interface PhotoSpot {
   id: string
@@ -25,7 +30,10 @@ export default function PhotoSpotDetailPage() {
   const [spot, setSpot] = useState<PhotoSpot | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddSheet, setShowAddSheet] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [postError, setPostError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const { t } = useLang()
   const [caption, setCaption] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [slide, setSlide] = useState(0)
@@ -35,12 +43,17 @@ export default function PhotoSpotDetailPage() {
   }, [])
 
   const fetchSpot = async () => {
+    setLoading(true)
+    setLoadFailed(false)
     try {
       const response = await fetch(`/api/photospots/${params.id}`)
+      if (response.status === 404) { setSpot(null); return }
+      if (!response.ok) throw new Error()
       const data = await response.json()
       setSpot(data)
     } catch (error) {
       console.error(error)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -63,14 +76,16 @@ export default function PhotoSpotDetailPage() {
       router.push('/login')
       return
     }
-    if (!photoUrl.trim()) return
+    if (!photo) return
 
     setSubmitting(true)
+    setPostError(null)
     try {
+      const url = await uploadPhoto(photo, 'moments')
       const body: Record<string, unknown> = {
         userId: user.id,
         photoSpotId: params.id,
-        url: photoUrl.trim()
+        url
       }
       if (caption.trim()) body.caption = caption.trim()
 
@@ -79,6 +94,7 @@ export default function PhotoSpotDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
+      if (!response.ok) throw new Error(t('m.photo.postFailed'))
       const newMoment = await response.json()
 
       setSpot(prev => prev
@@ -92,10 +108,11 @@ export default function PhotoSpotDetailPage() {
         : prev)
 
       setShowAddSheet(false)
-      setPhotoUrl('')
+      setPhoto(null)
       setCaption('')
     } catch (error) {
       console.error(error)
+      setPostError(error instanceof Error ? error.message : t('m.photo.postFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -112,7 +129,7 @@ export default function PhotoSpotDetailPage() {
   if (!spot) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>
+        {loadFailed ? <ErrorState onRetry={fetchSpot} /> : <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>}
       </main>
     )
   }
@@ -124,13 +141,14 @@ export default function PhotoSpotDetailPage() {
       {/* Back button */}
       <button
         onClick={() => router.back()}
+        aria-label="Back"
         style={{
           position: 'absolute',
           top: '16px',
           left: '16px',
           zIndex: 10,
-          width: '32px',
-          height: '32px',
+          width: '44px',
+          height: '44px',
           borderRadius: '50%',
           background: 'rgba(15,14,12,0.5)',
           border: 'none',
@@ -174,6 +192,8 @@ export default function PhotoSpotDetailPage() {
       </div>
 
       <div style={{ padding: '16px' }}>
+        <CheckInButton target={{ kind: 'photospot', id: spot.id, lat: spot.lat, lng: spot.lng }} />
+
         {spot.videos.length > 0 && (
           <>
             <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Videos</h2>
@@ -227,24 +247,7 @@ export default function PhotoSpotDetailPage() {
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Your Shot</h3>
 
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Photo URL</p>
-          <input
-            type="text"
-            placeholder="https://..."
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--separator)',
-              background: 'var(--system-bg)',
-              color: 'var(--label-primary)',
-              fontSize: '15px',
-              marginBottom: '16px',
-              fontFamily: 'inherit'
-            }}
-          />
+          <PhotoPicker file={photo} onChange={setPhoto} />
 
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Caption (optional)</p>
           <input
@@ -269,10 +272,11 @@ export default function PhotoSpotDetailPage() {
             className="btn btn-primary"
             style={{ width: '100%' }}
             onClick={submitShot}
-            disabled={submitting || !photoUrl.trim()}
+            disabled={submitting || !photo}
           >
             {submitting ? 'Posting...' : 'Post'}
           </button>
+          {postError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginTop: '8px' }}>{postError}</p>}
         </div>
       </div>
     </main>

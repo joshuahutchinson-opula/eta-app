@@ -1,14 +1,18 @@
 // app/onboarding/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePatois } from '@/lib/i18n-client'
 import type { PatoisKey } from '@/lib/patois'
+import { useRegion } from '@/components/RegionProvider'
+import { VIBES } from '@/lib/vibes'
+import { useLang } from '@/lib/i18n-client'
 
 const steps = [
   {
-    title: 'Welcome to Negril.',
+    // Replaced with the selected (or nearest) town at render time.
+    title: '',
     text: 'The real one. Not the brochure.',
     button: 'ctaPrimary' as PatoisKey,
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800'
@@ -33,6 +37,15 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [vibe, setVibe] = useState('')
+  const { town, locateMe } = useRegion()
+  const { t } = useLang()
+
+  // No region picked yet? Use the nearest town, if the traveler allows location.
+  useEffect(() => {
+    let saved: string | null = null
+    try { saved = localStorage.getItem('eta_region') } catch {}
+    if (!saved) locateMe().catch(() => {})
+  }, [locateMe])
 
   const handleNext = () => {
     if (step < 2) {
@@ -43,7 +56,7 @@ export default function OnboardingPage() {
     }
   }
 
-  const current = steps[step]
+  const current = step === 0 ? { ...steps[0], title: t('m.onboarding.welcome', { town: town.name }) } : steps[step]
 
   return (
     <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
@@ -56,10 +69,11 @@ export default function OnboardingPage() {
 
         {current.vibeSelector && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '24px' }}>
-            {['Party', 'Chill', 'Adventure', 'Romance'].map(v => (
+            {VIBES.map(v => (
               <button
                 key={v}
                 onClick={() => setVibe(v)}
+                aria-pressed={vibe === v}
                 style={{
                   padding: '18px',
                   background: vibe === v ? 'var(--rum)' : 'rgba(26,24,21,0.8)',

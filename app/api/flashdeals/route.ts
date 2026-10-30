@@ -16,7 +16,8 @@ export async function GET() {
             id: true,
             name: true,
             isPremium: true,
-            images: true
+            images: true,
+            city: true
           }
         }
       },

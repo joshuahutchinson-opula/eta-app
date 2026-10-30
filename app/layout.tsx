@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
 import DemoAutoLogin from '@/components/DemoAutoLogin'
+import { RegionProvider } from '@/components/RegionProvider'
+import HapticFallback from '@/components/HapticFallback'
 
 // Absolute base for og:image and canonical URLs. Railway injects
 // RAILWAY_PUBLIC_DOMAIN; NEXT_PUBLIC_SITE_URL overrides it for a custom domain.
@@ -18,9 +20,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: '#F2F2F7',
   width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false
+  initialScale: 1
 }
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
             applies only when the user has chosen it. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#000000'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es)/); if (l) document.documentElement.setAttribute('lang', 'es'); } catch (e) {}`
+            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#000000'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es|de|fr)/); if (l) document.documentElement.setAttribute('lang', l[1]); } catch (e) {}`
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -53,6 +53,7 @@ export default function RootLayout({
       <body>
         <LaunchScreen />
         <DemoAutoLogin />
+        <HapticFallback />
         <main style={{ 
           paddingBottom: '80px',
           minHeight: '100dvh',
@@ -61,7 +62,7 @@ export default function RootLayout({
           paddingTop: 0,
           margin: 0
         }}>
-          {children}
+          <RegionProvider>{children}</RegionProvider>
         </main>
       </body>
     </html>

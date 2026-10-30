@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getWeather } from '@/lib/weather'
+import { parseCity } from '@/lib/regions'
 import { getBounceSuggestion } from '@/lib/context-engine'
 
 export const dynamic = 'force-dynamic'
 
 async function buildContext(body: { city?: string; hour?: number; currentVendorCategory?: string | null; justBoughtFood?: boolean; atVendorForHours?: number }) {
-  const city = body.city === 'MONTEGO_BAY' ? 'MONTEGO_BAY' : 'NEGRIL'
+  const city = parseCity(body.city)
   // Suggestions follow Jamaica time, not the server's clock.
   const hour = typeof body.hour === 'number'
     ? body.hour

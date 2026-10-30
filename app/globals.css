@@ -5,7 +5,8 @@
   --system-bg-secondary: #FFFFFF;
   
   --label-primary: #000000;
-  --label-secondary: rgba(60, 60, 67, 0.6);
+  /* 0.75 (not iOS's 0.6) so secondary text clears WCAG AA 4.5:1 on the grey background. */
+  --label-secondary: rgba(60, 60, 67, 0.75);
   --label-tertiary: rgba(60, 60, 67, 0.3);
   --label-quaternary: rgba(60, 60, 67, 0.18);
   
@@ -1312,4 +1313,37 @@ textarea::placeholder {
 .caption-font {
   font-family: 'Georgia', serif;
   font-style: italic;
+}
+/* ============ FOCUS ============ */
+/* Visible keyboard focus everywhere; mouse/touch taps don't show it. */
+:focus-visible {
+  outline: 2px solid var(--rum-text);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.card:focus-visible,
+.chip:focus-visible,
+.btn:focus-visible,
+.mood-pill:focus-visible,
+.heart-btn:focus-visible {
+  outline: 3px solid var(--rum-text);
+  outline-offset: 2px;
+}
+
+/* ============ HAPTIC FALLBACK ============ */
+/* Where the device can't vibrate (iPhone browsers), triggerHaptic() gives the
+   pressed control a brief squeeze instead (see lib/haptics.ts). */
+.haptic-press {
+  animation: hapticPress 180ms var(--spring-overshoot);
+}
+
+@keyframes hapticPress {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .haptic-press { animation: none; opacity: 0.8; }
 }

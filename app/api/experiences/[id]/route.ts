@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { EXPERIENCE_STOPS_INCLUDE, hostVendor, routeMinutes, stopViews } from '@/lib/experience-stops'
+import { EXPERIENCE_STOPS_INCLUDE, hostVendor, routeMinutes, routeRatings, stopViews } from '@/lib/experience-stops'
+import { startOfJamaicaDay } from '@/lib/booking-counts'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,10 @@ export async function GET(
       include: {
         ...EXPERIENCE_STOPS_INCLUDE,
         moods: true,
-        bookings: true
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          include: { user: { select: { name: true, avatarUrl: true } } }
+        }
       }
     })
 
@@ -25,8 +29,25 @@ export async function GET(
       )
     }
 
-    const { stops, ...rest } = experience
-    return NextResponse.json({ ...rest, vendor: hostVendor(stops), stops: stopViews(stops), totalMinutes: routeMinutes(stops) })
+    const bookedToday = await prisma.booking.count({
+      where: { experienceId: experience.id, status: { not: 'CANCELLED' }, createdAt: { gte: startOfJamaicaDay() } }
+    })
+
+    const { stops, reviews, ...rest } = experience
+    const host = hostVendor(stops)
+    const hostRatings = host?.reviews.map(r => r.rating) ?? []
+    const ownRatings = reviews.map(r => r.rating)
+    const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null)
+    return NextResponse.json({
+      ...rest,
+      vendor: host ? { id: host.id, name: host.name, image: host.images[0] ?? null, neighborhood: host.neighborhood, isPremium: host.isPremium, rating: avg(hostRatings), reviewCount: hostRatings.length } : null,
+      stops: stopViews(stops),
+      totalMinutes: routeMinutes(stops),
+      reviews: reviews.map(r => ({ id: r.id, rating: r.rating, comment: r.comment, createdAt: r.createdAt, user: r.user })),
+      // The experience's own reviews when it has them; otherwise its route vendors' ratings.
+      rating: avg(ownRatings.length ? ownRatings : routeRatings(stops)),
+      bookedToday
+    })
   } catch (error) {
     console.error('Error fetching experience:', error)
     return NextResponse.json(

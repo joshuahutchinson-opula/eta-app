@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { userIdFromRequest } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// GET — the signed-in caller's transactions only.
+export async function GET(request: Request) {
+  const userId = userIdFromRequest(request)
+  if (!userId) return NextResponse.json([])
   try {
     const transactions = await prisma.transaction.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        user: {
-          select: {
-            name: true
-          }
-        },
         vendor: {
           select: {
             name: true

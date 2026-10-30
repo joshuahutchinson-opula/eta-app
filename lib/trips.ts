@@ -65,6 +65,7 @@ export interface TripDTO {
   city: string
   date: string | null
   notes: string | null
+  currentStopIndex: number
   createdAt: string
   ownerId: string | null
   experience: TripWithRelations['experience']
@@ -87,6 +88,7 @@ export function toTripDTO(trip: TripWithRelations): TripDTO {
     city: trip.city,
     date: trip.date?.toISOString() ?? null,
     notes: trip.notes,
+    currentStopIndex: trip.currentStopIndex,
     createdAt: trip.createdAt.toISOString(),
     ownerId: trip.ownerId,
     experience: trip.experience,

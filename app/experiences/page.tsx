@@ -9,10 +9,22 @@ import ActiveTripBanner from '@/components/ActiveTripBanner'
 import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
 import { hapticSurveyStepComplete, hapticSaved, hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
-import SuccessAnimation from '@/components/SuccessAnimation'
+import { authHeaders } from '@/lib/api-client'
+import BookingSheet, { type BookingDetails, type BookingResult } from '@/components/BookingSheet'
+import TripMap from '@/components/TripMap'
+import Price from '@/components/Price'
+import { useWatchedLocation } from '@/lib/geo'
+import { estimateMinutes, haversineKm } from '@/lib/routing'
+import { shareOrCopy } from '@/lib/share'
+import { AddGemSheet, GemDetailSheet, useHiddenGems, type GemDetail } from '@/components/HiddenGems'
 import TripPlanner from '@/components/TripPlanner'
-import { createTrip, fetchMyTrips, tripApi, type TripView } from '@/lib/trip-client'
+import { bookTripPaid, createTrip, fetchMyTrips, tripApi, tripShareUrl, type TripView } from '@/lib/trip-client'
 import { useLang } from '@/lib/i18n-client'
+import { useRegion } from '@/components/RegionProvider'
+import { vibeMoodNames } from '@/lib/vibes'
+import { pressable } from '@/lib/pressable'
+import ErrorState from '@/components/ErrorState'
+import { formatCity } from '@/lib/format'
 import type { GeneratedBundle } from '@/lib/experience-generator'
 import { cacheTripForOffline, clearTripCache, getActiveCachedTrip, getCachedTrip, updateCachedTrip, useOnline } from '@/lib/trip-offline'
 
@@ -47,6 +59,14 @@ interface BundleStop {
   time: string
   img: string
   label?: string
+  lat?: number | null
+  lng?: number | null
+  /** What the stop is, so "Change plan" can find a real alternative. */
+  kind?: 'vendor' | 'photospot' | 'experience'
+  refId?: string
+  category?: string | null
+  /** Set when the stop is a TripStop row (swaps persist to the trip). */
+  tripStopId?: string
 }
 
 interface Experience {
@@ -62,6 +82,8 @@ interface Experience {
   travelMode: string
   vendor?: { name: string; isPremium?: boolean } | null
   moods?: Array<{ id: string; name: string; icon: string }>
+  /** Real bookings made today (0 = show nothing). */
+  bookedToday?: number
   /** Set when this option came from the route generator rather than a curated experience. */
   generated?: GeneratedBundle
 }
@@ -125,17 +147,7 @@ function avatarColor(name: string): string {
   return AV_COLORS[Math.abs(h) % AV_COLORS.length]
 }
 
-// Deterministic per-experience "social proof" count so it doesn't jitter
-// between re-renders.
-function socialProofCount(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h)
-  return 2 + (Math.abs(h) % 8)
-}
 
-function formatCity(city: string): string {
-  return city.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
-}
 
 const MODE_LABEL: Record<string, string> = { WALKING: 'Walk', TAXI: 'Taxi', BOAT: 'Boat' }
 
@@ -164,7 +176,12 @@ function experienceStops(exp: Experience): BundleStop[] {
         type: st.category === 'FOOD' || st.category === 'DRINKS' ? 'food' : 'activity',
         name: st.name,
         time: `${st.arrival} · ${st.plannedDuration} min${st.type === 'photospot' ? ' · photo spot' : ''}`,
-        img: st.image ?? ''
+        img: st.image ?? '',
+        lat: st.lat,
+        lng: st.lng,
+        kind: st.type,
+        refId: st.id,
+        category: st.category
       }
       const leg: BundleStop[] = i < all.length - 1 && st.transportModeToNext
         ? [{ type: 'transport', name: '', time: '', img: '', label: `${MODE_LABEL[st.transportModeToNext]} · ${st.transportDurationToNext} min` }]
@@ -180,15 +197,51 @@ function experienceStops(exp: Experience): BundleStop[] {
 
 const FOOD_CATEGORIES = ['FOOD', 'DRINKS']
 
-// Converts a trip's real stops into the active-screen itinerary shape.
-function tripStops(trip: TripView): BundleStop[] {
+interface RouteStopView {
+  type: 'vendor' | 'photospot'
+  id: string
+  name: string
+  image: string | null
+  category: string | null
+  lat: number
+  lng: number
+  plannedDuration: number
+  transportModeToNext: string | null
+  transportDurationToNext: number | null
+}
+
+// Converts a trip's real stops into the active-screen itinerary shape. An
+// experience stop is expanded into its route (vendors and photo spots with
+// coordinates) so the map and ETA have real places to work with.
+async function tripStops(trip: TripView): Promise<BundleStop[]> {
   const legs: BundleStop[] = []
-  if (trip.experience) {
-    legs.push({ type: 'transport', name: '', time: '', img: '', label: `${trip.experience.travelMode || 'Travel'} · ${trip.experience.travelTime} min from ${trip.experience.startLocation}` })
-  }
   for (const stop of trip.stops) {
-    const food = stop.kind === 'vendor' && FOOD_CATEGORIES.some(c => stop.subtitle.toUpperCase().startsWith(c))
-    legs.push({ type: food ? 'food' : 'activity', name: stop.name, time: stop.time || stop.subtitle, img: stop.image || '' })
+    if (stop.kind === 'experience') {
+      const route: RouteStopView[] = await fetch(`/api/experiences/${stop.refId}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => (Array.isArray(d?.stops) ? d.stops : []))
+        .catch(() => [])
+      if (route.length === 0) {
+        legs.push({ type: 'activity', name: stop.name, time: stop.time || stop.subtitle, img: stop.image || '', kind: 'experience', refId: stop.refId })
+        continue
+      }
+      route.forEach((st, i) => {
+        legs.push({
+          type: st.category === 'FOOD' || st.category === 'DRINKS' ? 'food' : 'activity',
+          name: st.name,
+          time: `${st.plannedDuration} min${st.type === 'photospot' ? ' · photo spot' : ''}`,
+          img: st.image ?? '',
+          lat: st.lat, lng: st.lng, kind: st.type, refId: st.id, category: st.category
+        })
+        if (i < route.length - 1 && st.transportModeToNext) {
+          legs.push({ type: 'transport', name: '', time: '', img: '', label: `${MODE_LABEL[st.transportModeToNext] ?? st.transportModeToNext} · ${st.transportDurationToNext} min` })
+        }
+      })
+      continue
+    }
+    const category = stop.kind === 'vendor' ? FOOD_CATEGORIES.concat(['ACTIVITY', 'WELLNESS', 'BEACH', 'OTHER']).find(c => stop.subtitle.toUpperCase().startsWith(c)) ?? null : null
+    const food = category !== null && FOOD_CATEGORIES.includes(category)
+    legs.push({ type: food ? 'food' : 'activity', name: stop.name, time: stop.time || stop.subtitle, img: stop.image || '', lat: stop.lat, lng: stop.lng, kind: stop.kind, refId: stop.refId, category, tripStopId: stop.id })
   }
   return legs
 }
@@ -201,6 +254,7 @@ export default function ExperiencesPage() {
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [dataFailed, setDataFailed] = useState(false)
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null)
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null)
   // Route options from /api/experiences/generate for the current survey answers.
@@ -208,8 +262,10 @@ export default function ExperiencesPage() {
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [activeStops, setActiveStops] = useState<BundleStop[]>([])
   const [currentStopIndex, setCurrentStopIndex] = useState(0)
-  const [points, setPoints] = useState(640)
-  const [etaSeconds, setEtaSeconds] = useState(12 * 60)
+  const [points, setPoints] = useState(0)
+  // What the booking sheet is booking: the selected experience/route, or a planned crew trip.
+  const [bookingFor, setBookingFor] = useState<'selected' | TripView | null>(null)
+  const [shareMsg, setShareMsg] = useState<string | null>(null)
   const [groupMembers, setGroupMembers] = useState<Array<{ id?: string; name: string; status: string }>>([])
   const [payments, setPayments] = useState<Array<{ id?: string; name: string; amount: number; paid: boolean }>>([])
   // The trip behind the current plan/booking (B1 group planning, B3 add-to-trip).
@@ -221,6 +277,7 @@ export default function ExperiencesPage() {
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null)
   const online = useOnline()
   const { t } = useLang()
+  const { city: regionCity, town: regionTown } = useRegion()
   const [crewInput, setCrewInput] = useState('')
   const [showChangePlan, setShowChangePlan] = useState(false)
   const [showRouteSheet, setShowRouteSheet] = useState(false)
@@ -290,11 +347,11 @@ export default function ExperiencesPage() {
 
   const enterActiveFromTrip = (trip: TripView) => {
     setActiveTrip(trip)
-    setActiveStops(tripStops(trip))
-    setCurrentStopIndex(0)
+    setActiveStops([])
+    tripStops(trip).then(setActiveStops)
+    setCurrentStopIndex(trip.currentStopIndex ?? 0)
     setGroupMembers(trip.members.map(m => ({ id: m.id, name: m.name, status: m.status })))
     setPayments(trip.members.map(m => ({ id: m.id, name: m.name, amount: m.share, paid: m.paid })))
-    if (trip.experience?.travelTime) setEtaSeconds(trip.experience.travelTime * 60)
     if (trip.booking) {
       setActiveBooking({
         id: trip.booking.id,
@@ -306,14 +363,12 @@ export default function ExperiencesPage() {
     }
   }
 
-  useEffect(() => {
-    if (screen === 'active') {
-      const etaTimer = setInterval(() => {
-        setEtaSeconds(prev => prev > 60 ? prev - 15 : prev)
-      }, 2500)
-      return () => clearInterval(etaTimer)
-    }
-  }, [screen])
+  // Live position for the active trip's map and ETA.
+  const userPos = useWatchedLocation(screen === 'active' || tabMode === 'discover')
+  // Hidden Gems on the Discover map (revealed near you; the rest stay fogged).
+  const hiddenGems = useHiddenGems(userPos, tabMode === 'discover')
+  const [selectedGem, setSelectedGem] = useState<GemDetail | null>(null)
+  const [addingGem, setAddingGem] = useState(false)
 
   useEffect(() => {
     if (screen !== 'loading') { setLoadingMsgIndex(0); return }
@@ -322,22 +377,30 @@ export default function ExperiencesPage() {
   }, [screen])
 
   const fetchAll = async () => {
+    setDataFailed(false)
+    setDataLoading(true)
     try {
       const [expRes, moodRes, bookingsRes, vendorsRes, spotsRes] = await Promise.allSettled([
         fetch('/api/experiences'),
         fetch('/api/moods'),
-        fetch('/api/bookings'),
+        fetch('/api/bookings', { headers: authHeaders() }),
         fetch('/api/vendors'),
         fetch('/api/photospots')
       ])
 
+      setDataFailed(!(moodRes.status === 'fulfilled' && moodRes.value.ok))
       if (expRes.status === 'fulfilled' && expRes.value.ok) {
         const data = await expRes.value.json()
         setExperiences(Array.isArray(data) ? data : [])
       }
       if (moodRes.status === 'fulfilled' && moodRes.value.ok) {
         const data = await moodRes.value.json()
-        setMoods(Array.isArray(data) ? data : [])
+        const list: Mood[] = Array.isArray(data) ? data : []
+        setMoods(list)
+        // Start the survey from the onboarding vibe's moods.
+        const vibeNames = vibeMoodNames()
+        const preset = list.filter(m => vibeNames.includes(m.name)).slice(0, 3).map(m => m.id)
+        if (preset.length) setSurvey(prev => (prev.mood.length ? prev : { ...prev, mood: preset }))
       }
       if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
         const data = await vendorsRes.value.json()
@@ -364,6 +427,7 @@ export default function ExperiencesPage() {
       }
     } catch (error) {
       console.error('Fetch error:', error)
+      setDataFailed(true)
     } finally {
       setDataLoading(false)
     }
@@ -381,9 +445,10 @@ export default function ExperiencesPage() {
   // (using the experience's real travelTime field) when that leaves any
   // options at all; driving or having transport handled removes that cap.
   const filteredExperiences = (() => {
+    const inRegion = experiences.filter(e => e.city === regionCity)
     const byMood = survey.mood.length > 0
-      ? experiences.filter(e => e.moods?.some(m => survey.mood.includes(m.id) || survey.mood.includes(m.name)))
-      : experiences
+      ? inRegion.filter(e => e.moods?.some(m => survey.mood.includes(m.id) || survey.mood.includes(m.name)))
+      : inRegion
     if (survey.transport === 'walk') {
       const walkable = byMood.filter(e => e.travelTime <= WALK_TRAVEL_TIME_MAX)
       return walkable.length > 0 ? walkable : byMood
@@ -411,8 +476,7 @@ export default function ExperiencesPage() {
   // loading screen up at least ~1.5s so it doesn't flash.
   const generateRoutes = async () => {
     setGenerateError(null)
-    let city = 'NEGRIL'
-    try { city = localStorage.getItem('marketplaceCity') || 'NEGRIL' } catch {}
+    const city = regionCity
     const [res] = await Promise.allSettled([
       fetch('/api/experiences/generate', {
         method: 'POST',
@@ -485,8 +549,15 @@ export default function ExperiencesPage() {
     })
   }
 
+  // Curated experiences have their own deep-linkable page; generated routes
+  // only exist in this session, so they open the in-page detail screen.
   const openExperience = (exp: Experience) => {
     triggerHaptic('light')
+    if (!exp.generated) {
+      const crew = survey.crew.length ? `?crew=${encodeURIComponent(survey.crew.join(','))}` : ''
+      router.push(`/experiences/${exp.id}${crew}`)
+      return
+    }
     setSelectedExperience(exp)
     setScreen('detail')
   }
@@ -540,65 +611,36 @@ export default function ExperiencesPage() {
     }
   }
 
-  // Books a trip server-side (creates the CONFIRMED Booking) and moves to
-  // the active screen with the trip's real stops and crew.
-  const bookTrip = async (trip: TripView, estimatedPrice?: number) => {
-    const currentUser = getCurrentUser()
-    if (!currentUser) {
-      setTripError('Log in to book — your trip is saved on this device.')
-      return
-    }
-    setBooking(true)
-    setTripError(null)
-    try {
-      const booked = await tripApi(trip.slug, '/book', { method: 'POST', body: { userId: currentUser.id, estimatedPrice } })
-      setPoints(currentUser.points ?? 0)
-      enterActiveFromTrip({ ...booked, canEdit: true })
-      // Save everything the active screen needs in case the signal drops (B2).
-      cacheTripForOffline({ ...booked, canEdit: true })
-      setTripsInProgress(prev => prev.filter(t => t.slug !== trip.slug))
-      hapticBookingConfirmed()
-      setShowBookingSuccess(true)
-    } catch (e) {
-      setTripError(e instanceof Error ? e.message : 'Sumth nah wuk')
-    } finally {
-      setBooking(false)
-    }
+  // The booking sheet's confirm step: books the trip server-side with the
+  // traveler's date/time/party (paid from the ETA Wallet). Every booking goes
+  // through a Trip so it gets the shared link, offline copy and recap.
+  const confirmBooking = async (details: BookingDetails): Promise<BookingResult> => {
+    const target = bookingFor
+    if (!target) throw new Error('Sumth nah wuk')
+    const trip = target === 'selected'
+      ? await createTrip(tripInputFor(selectedExperience!))
+      : target
+    const estimate = trip.experience ? undefined : selectedExperience?.generated?.price
+    const booked = await bookTripPaid(trip.slug, details, estimate)
+    setPoints(getCurrentUser()?.points ?? 0)
+    // Save everything the active screen needs in case the signal drops (B2).
+    cacheTripForOffline(booked)
+    setTripsInProgress(prev => prev.filter(t => t.slug !== trip.slug))
+    setActiveTrip(booked)
+    return booked
   }
 
-  const confirmExperience = async () => {
-    if (!selectedExperience) return
-    const currentUser = getCurrentUser()
-    if (currentUser) {
-      // Every signed-in booking goes through a Trip so it gets the shared
-      // link, offline copy and post-trip recap.
-      setBooking(true)
-      try {
-        const trip = await createTrip(tripInputFor(selectedExperience))
-        await bookTrip(trip, selectedExperience.generated?.price)
-      } catch (error) {
-        console.error('Booking error:', error)
-        setTripError(error instanceof Error ? error.message : 'Sumth nah wuk')
-      } finally {
-        setBooking(false)
-      }
-      return
-    }
-
-    // Not signed in: nothing can be saved, so run the trip locally.
-    console.warn('No signed-in user — booking was not saved.')
-    setActiveTrip(null)
-    setActiveStops(experienceStops(selectedExperience))
-    setCurrentStopIndex(0)
-    setPoints(0)
-    setEtaSeconds(selectedExperience.travelTime ? selectedExperience.travelTime * 60 : 12 * 60)
-    const crew = ['You', ...survey.crew]
-    const per = Math.round(selectedExperience.price)
-    setGroupMembers(crew.map((n, i) => ({ name: n, status: i === 0 ? 'arrived' : 'pending' })))
-    setPayments(crew.map((n, i) => ({ name: n, amount: per, paid: i === 0 })))
-    hapticBookingConfirmed()
-    setShowBookingSuccess(true)
+  const finishBookingFlow = () => {
+    setBookingFor(null)
+    if (activeTrip) enterActiveFromTrip(activeTrip)
+    setScreen('active')
   }
+
+  // Price per person the booking sheet charges: the curated price, the
+  // generated route's estimate, or the trip's experience price.
+  const bookingUnitPrice = bookingFor === 'selected'
+    ? selectedExperience?.price ?? 0
+    : bookingFor?.experience?.price ?? selectedExperience?.generated?.price ?? 0
 
   // Finishing a booked trip completes the booking (points credited) and
   // opens the shareable recap (B5). The offline copy is no longer needed.
@@ -644,33 +686,77 @@ export default function ExperiencesPage() {
     }
   }
 
-  // Data-driven swap choices for the "Change plan" sheet: other real
-  // experiences, preferring ones in the same city or sharing a mood.
+  // "Change plan": real alternatives for the stop you're heading to — the
+  // nearest vendors in the same category (or other photo spots), not already
+  // on the route.
   const swapOptions = (() => {
-    if (!selectedExperience) return []
-    const others = experiences.filter(e => e.id !== selectedExperience.id)
-    const relevant = others.filter(e =>
-      e.city === selectedExperience.city ||
-      e.moods?.some(m => selectedExperience.moods?.some(sm => sm.id === m.id))
-    )
-    return (relevant.length > 0 ? relevant : others).slice(0, 3)
+    const route = realStops()
+    const current = route[currentStopIndex]
+    if (!current) return []
+    const used = new Set(route.map(s => s.refId))
+    const anchor = current.lat != null && current.lng != null ? { lat: current.lat, lng: current.lng } : userPos
+    const tripCity = activeTrip?.city ?? regionCity
+    const candidates = current.kind === 'photospot'
+      ? mapPhotoSpots.filter(s => !used.has(s.id) && (!s.city || s.city === tripCity)).map(s => ({ kind: 'photospot' as const, id: s.id, name: s.name, img: s.officialPhoto ?? '', lat: s.lat, lng: s.lng, category: null as string | null, sub: t('m.exp.photoSpot') }))
+      : mapVendors.filter(v => !used.has(v.id) && (!current.category || v.category === current.category) && (!v.city || v.city === tripCity)).map(v => ({ kind: 'vendor' as const, id: v.id, name: v.name, img: v.images?.[0] ?? '', lat: v.lat, lng: v.lng, category: v.category as string | null, sub: `${formatCategory(v.category)} · ${v.neighborhood}` }))
+    return candidates
+      .map(c => ({ ...c, km: anchor ? haversineKm(anchor, c) : null }))
+      .sort((a, b) => (a.km ?? 0) - (b.km ?? 0))
+      .slice(0, 3)
   })()
 
-  const applySwap = () => {
+  const applySwap = async () => {
     setShowChangePlan(false)
-    if (!swapSelection) return
+    const choice = swapOptions.find(o => o.id === swapSelection)
+    setSwapSelection(null)
+    if (!choice) return
     setAdapting(true)
-    setTimeout(() => {
-      setActiveStops(prev => {
-        const next = [...prev]
-        const real = next.filter(s => s.type !== 'transport')
-        if (real[currentStopIndex]) real[currentStopIndex].name = swapSelection
-        return next
-      })
-      setEtaSeconds(Math.floor(Math.random() * 10 + 6) * 60)
+    let realIdx = -1
+    const target = activeStops.findIndex(s => s.type !== 'transport' && ++realIdx === currentStopIndex)
+    const old = activeStops[target]
+    setActiveStops(prev => prev.map((s, i) => i !== target ? s : {
+      ...s,
+      type: choice.category === 'FOOD' || choice.category === 'DRINKS' ? 'food' : 'activity',
+      name: choice.name, img: choice.img, time: choice.sub, lat: choice.lat, lng: choice.lng,
+      kind: choice.kind, refId: choice.id, category: choice.category
+    }))
+    try {
+      if (activeTrip?.canEdit && old?.tripStopId) {
+        const updated = await tripApi(activeTrip.slug, '', {
+          method: 'PATCH',
+          body: { swapStop: { stopId: old.tripStopId, ...(choice.kind === 'vendor' ? { vendorId: choice.id } : { photoSpotId: choice.id }) } }
+        })
+        setActiveTrip({ ...updated, canEdit: true })
+        updateCachedTrip({ ...updated, canEdit: true })
+      }
+      triggerHaptic('medium')
+    } catch (e) {
+      setTripError(e instanceof Error ? e.message : 'Sumth nah wuk')
+    } finally {
       setAdapting(false)
-      setSwapSelection(null)
-    }, 1300)
+    }
+  }
+
+  // "Arrived → next stop": advance the route and tell the trip, so the
+  // shared trip link shows where the crew is.
+  const arriveAtStop = () => {
+    const next = Math.min(realStops().length, currentStopIndex + 1)
+    setCurrentStopIndex(next)
+    triggerHaptic('medium')
+    if (activeTrip?.canEdit) {
+      tripApi(activeTrip.slug, '', { method: 'PATCH', body: { currentStopIndex: next } })
+        .then(tr => { setActiveTrip({ ...tr, canEdit: true }); updateCachedTrip({ ...tr, canEdit: true }) })
+        .catch(() => {})
+    }
+  }
+
+  const shareLiveTrip = async () => {
+    if (!activeTrip) return
+    const result = await shareOrCopy({ title: activeTrip.name, text: t('m.trip.shareText', { name: activeTrip.name }), url: tripShareUrl(activeTrip.slug) })
+    if (result === 'copied') {
+      setShareMsg(t('m.events.linkCopied'))
+      setTimeout(() => setShareMsg(null), 1800)
+    }
   }
 
   const statusLabel = (s: string) => s === 'arrived' ? 'Arrived' : s === 'enroute' ? 'En route' : 'Not started'
@@ -722,11 +808,11 @@ export default function ExperiencesPage() {
   const renderModeSwitch = () => (
     <div className="mode-switch-sticky">
       <div className="segmented-control">
-        <button className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('plan') }}>
+        <button aria-pressed={tabMode === 'plan'} className={`segmented-control-option ${tabMode === 'plan' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('plan') }}>
           <Icon name="compass" size={16} />
           Plan
         </button>
-        <button className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('discover') }}>
+        <button aria-pressed={tabMode === 'discover'} className={`segmented-control-option ${tabMode === 'discover' ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setTabMode('discover') }}>
           <Icon name="mapPin" size={16} />
           Discover
         </button>
@@ -734,9 +820,11 @@ export default function ExperiencesPage() {
     </div>
   )
 
+  const regionMapVendors = mapVendors.filter(v => v.city === regionCity)
   const filteredMapVendors = discoverCategory
-    ? mapVendors.filter(v => v.category === discoverCategory)
-    : mapVendors
+    ? regionMapVendors.filter(v => v.category === discoverCategory)
+    : regionMapVendors
+  const regionPhotoSpots = mapPhotoSpots.filter(s => s.city === regionCity)
 
   const renderDiscover = () => (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
@@ -755,12 +843,30 @@ export default function ExperiencesPage() {
       </div>
       <div style={{ flex: 1, position: 'relative', minHeight: '360px' }}>
         <ExploreMap
+          key={regionCity}
           vendors={filteredMapVendors}
-          photoSpots={mapPhotoSpots}
+          photoSpots={regionPhotoSpots}
+          center={[regionTown.lat, regionTown.lng]}
           onVendorTap={(v) => { triggerHaptic('light'); setSelectedPin({ type: 'vendor', data: v }) }}
           onPhotoSpotTap={(s) => { triggerHaptic('light'); setSelectedPin({ type: 'photospot', data: s }) }}
+          gems={hiddenGems.gems}
+          fog={hiddenGems.fog}
+          user={userPos}
+          onGemTap={(g) => { triggerHaptic('light'); setSelectedGem(hiddenGems.gems.find(x => x.id === g.id) ?? null) }}
         />
+        <div style={{ position: 'absolute', left: '12px', right: '12px', bottom: '12px', zIndex: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="chip" style={{ cursor: 'default', fontSize: '13px', minHeight: '36px', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#AF52DE' }} />
+            {hiddenGems.failed ? t('m.gems.loadFailed') : t('m.gems.legend', { n: hiddenGems.gems.length, fogged: hiddenGems.fog.reduce((a, c) => a + c.count, 0) })}
+          </span>
+          <button className="btn btn-primary" onClick={() => { triggerHaptic('light'); setAddingGem(true) }} style={{ marginLeft: 'auto', minHeight: '40px', padding: '0 14px', fontSize: '14px', boxShadow: 'var(--shadow-elevated)' }}>
+            <Icon name="plus" size={14} /> {t('m.gems.addShort')}
+          </button>
+        </div>
       </div>
+
+      <GemDetailSheet gem={selectedGem} pos={userPos} onClose={() => setSelectedGem(null)} onChanged={hiddenGems.reload} />
+      <AddGemSheet open={addingGem} pos={userPos} onClose={() => setAddingGem(false)} onAdded={hiddenGems.reload} />
 
       <div className={`bottom-sheet-overlay ${selectedPin ? 'open' : ''}`} onClick={() => setSelectedPin(null)} />
       <div className={`bottom-sheet ${selectedPin ? 'open' : ''}`}>
@@ -894,6 +1000,8 @@ export default function ExperiencesPage() {
                     </div>
                   ))}
                 </div>
+              ) : dataFailed ? (
+                <ErrorState onRetry={fetchAll} />
               ) : moods.length === 0 ? (
                 <div className="empty-state">
                   <Icon name="sparkle" size={32} style={{ color: 'var(--label-tertiary)' }} />
@@ -905,6 +1013,9 @@ export default function ExperiencesPage() {
                     <div
                       key={m.id}
                       onClick={() => toggleMood(m.id)}
+                      {...pressable(() => toggleMood(m.id))}
+                      aria-pressed={survey.mood.includes(m.id)}
+                      aria-label={m.name}
                       className={`mood-video-tile mood-video-tile-compact ${survey.mood.includes(m.id) ? 'selected' : ''} ${selectAnim === m.id ? 'select-bounce' : ''}`}
                     >
                       {m.videoUrl ? (
@@ -946,6 +1057,8 @@ export default function ExperiencesPage() {
                 <div
                   key={id}
                   onClick={() => { setSurvey(prev => ({ ...prev, time: id })); triggerSelectAnim(id); setTimeout(nextStep, 250) }}
+                  {...pressable(() => { setSurvey(prev => ({ ...prev, time: id })); triggerSelectAnim(id); setTimeout(nextStep, 250) })}
+                  aria-pressed={survey.time === id}
                   className={selectAnim === id ? 'select-bounce' : ''}
                   style={{
                     padding: '16px',
@@ -982,9 +1095,10 @@ export default function ExperiencesPage() {
                   value={crewInput}
                   onChange={(e) => setCrewInput(e.target.value)}
                   placeholder={t('m.survey.crewAdd')}
+                  aria-label={t('m.survey.crewAdd')}
                   style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '1px solid var(--separator)', background: 'var(--system-bg-elevated)', fontSize: '17px', fontFamily: 'inherit', color: 'var(--label-primary)', outline: 'none', minHeight: '44px' }}
                 />
-                <button onClick={() => { if (crewInput.trim()) { setSurvey(prev => ({ ...prev, crew: [...prev.crew, crewInput.trim()] })); setCrewInput(''); triggerSelectAnim('crew') } }} style={{ width: '44px', borderRadius: '14px', background: 'var(--rum)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px' }}>
+                <button aria-label={t('m.survey.crewAdd')} onClick={() => { if (crewInput.trim()) { setSurvey(prev => ({ ...prev, crew: [...prev.crew, crewInput.trim()] })); setCrewInput(''); triggerSelectAnim('crew') } }} style={{ width: '44px', borderRadius: '14px', background: 'var(--rum)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px' }}>
                   <Icon name="plus" size={16} />
                 </button>
               </div>
@@ -1011,6 +1125,8 @@ export default function ExperiencesPage() {
                 <div
                   key={id}
                   onClick={() => { setSurvey(prev => ({ ...prev, transport: id })); triggerSelectAnim(id); setTimeout(nextStep, 300) }}
+                  {...pressable(() => { setSurvey(prev => ({ ...prev, transport: id })); triggerSelectAnim(id); setTimeout(nextStep, 300) })}
+                  aria-pressed={survey.transport === id}
                   className={selectAnim === id ? 'select-bounce' : ''}
                   style={{
                     padding: '16px',
@@ -1113,6 +1229,8 @@ export default function ExperiencesPage() {
                   onMouseDown={() => startBundleLongPress(bestMatch.id)}
                   onMouseUp={cancelBundleLongPress}
                   onMouseLeave={cancelBundleLongPress}
+                  {...pressable(() => openExperience(bestMatch))}
+                  aria-label={bestMatch.name}
                   onClick={() => {
                     if (quickActionsBundle === bestMatch.id) {
                       dismissQuickActions()
@@ -1159,7 +1277,7 @@ export default function ExperiencesPage() {
                         : `${bestMatch.vendor?.name ? `Hosted by ${bestMatch.vendor.name}` : formatCity(bestMatch.city)} · ${bestMatch.travelTime} min away`}
                     </p>
                     <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
-                      {bestMatch.generated ? `+${bestMatch.generated.pts} pts · price is an estimate per person` : `${socialProofCount(bestMatch.id)} people booked this today`}
+                      {bestMatch.generated ? `+${bestMatch.generated.pts} pts · price is an estimate per person` : bestMatch.bookedToday ? t('m.exp.bookedToday', { n: bestMatch.bookedToday }) : null}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '18px', fontWeight: 700 }}>${bestMatch.price}</span>
@@ -1180,6 +1298,8 @@ export default function ExperiencesPage() {
                   onMouseDown={() => startBundleLongPress(exp.id)}
                   onMouseUp={cancelBundleLongPress}
                   onMouseLeave={cancelBundleLongPress}
+                  {...pressable(() => openExperience(exp))}
+                  aria-label={exp.name}
                   onClick={() => {
                     if (quickActionsBundle === exp.id) {
                       dismissQuickActions()
@@ -1222,7 +1342,7 @@ export default function ExperiencesPage() {
                         : `${exp.vendor?.name ? `Hosted by ${exp.vendor.name}` : formatCity(exp.city)} · ${exp.travelTime} min away`}
                     </p>
                     <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginBottom: '6px' }}>
-                      {exp.generated ? exp.tagline : `${socialProofCount(exp.id)} people booked this today`}
+                      {exp.generated ? exp.tagline : exp.bookedToday ? t('m.exp.bookedToday', { n: exp.bookedToday }) : null}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span className="num-font" style={{ fontSize: '15px', fontWeight: 700 }}>${exp.price}</span>
@@ -1327,12 +1447,21 @@ export default function ExperiencesPage() {
               <Icon name="users" size={16} />
               {startingTrip ? '…' : t('m.detail.planWithCrew')}
             </button>
-            <button className="btn btn-primary" onClick={confirmExperience} disabled={booking || startingTrip} style={{ flex: 1 }}>
+            <button className="btn btn-primary" onClick={() => { triggerHaptic('light'); setBookingFor('selected') }} disabled={booking || startingTrip} style={{ flex: 1 }}>
               {booking ? '…' : t('m.detail.book')}
             </button>
           </div>
         </div>
-        <SuccessAnimation show={showBookingSuccess} onComplete={() => { setShowBookingSuccess(false); setScreen('active') }} />
+        <BookingSheet
+          open={bookingFor !== null}
+          onClose={() => setBookingFor(null)}
+          title={bookingFor === 'selected' ? selectedExperience?.name ?? '' : bookingFor?.name ?? ''}
+          unitPrice={bookingUnitPrice}
+          priceIsEstimate={bookingFor === 'selected' ? Boolean(selectedExperience?.generated) : !bookingFor?.experience}
+          defaultPartySize={bookingFor && bookingFor !== 'selected' ? bookingFor.members.length : 1 + survey.crew.length}
+          onConfirm={confirmBooking}
+          onDone={finishBookingFlow}
+        />
         <Dock />
       </main>
     )
@@ -1354,12 +1483,21 @@ export default function ExperiencesPage() {
             trip={activeTrip}
             mode="owner"
             onTripChange={t => { setActiveTrip(t); setTripsInProgress(prev => prev.map(x => (x.slug === t.slug ? t : x))) }}
-            onBook={() => bookTrip(activeTrip)}
+            onBook={() => setBookingFor(activeTrip)}
             booking={booking}
           />
           {tripError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginTop: '10px' }}>{tripError}</p>}
         </div>
-        <SuccessAnimation show={showBookingSuccess} onComplete={() => { setShowBookingSuccess(false); setScreen('active') }} />
+        <BookingSheet
+          open={bookingFor !== null}
+          onClose={() => setBookingFor(null)}
+          title={bookingFor === 'selected' ? selectedExperience?.name ?? '' : bookingFor?.name ?? ''}
+          unitPrice={bookingUnitPrice}
+          priceIsEstimate={bookingFor === 'selected' ? Boolean(selectedExperience?.generated) : !bookingFor?.experience}
+          defaultPartySize={bookingFor && bookingFor !== 'selected' ? bookingFor.members.length : 1 + survey.crew.length}
+          onConfirm={confirmBooking}
+          onDone={finishBookingFlow}
+        />
         <Dock />
       </main>
     )
@@ -1371,19 +1509,27 @@ export default function ExperiencesPage() {
     const nextStop = realStopsList[currentStopIndex]
     const paidCount = payments.filter(p => p.paid).length
     const totalPaid = payments.reduce((a, p) => a + p.amount, 0)
-    const etaMin = Math.floor(etaSeconds / 60)
+    // ETA from real distance: your live position (or the previous stop) to
+    // the next stop, at walking pace when it's close and taxi pace otherwise.
+    const prevStop = realStopsList[currentStopIndex - 1]
+    const from = userPos ?? (prevStop?.lat != null && prevStop?.lng != null ? { lat: prevStop.lat, lng: prevStop.lng } : null)
+    const eta = nextStop?.lat != null && nextStop?.lng != null && from
+      ? (() => {
+          const km = haversineKm(from, { lat: nextStop.lat!, lng: nextStop.lng! })
+          const mode = km <= 0.8 ? 'WALKING' as const : 'TAXI' as const
+          return { km, mode, minutes: km < 0.05 ? 0 : estimateMinutes(km, mode) }
+        })()
+      : null
 
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '0', overflow: 'hidden', position: 'relative' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--system-bg)' }}>
-          <svg viewBox="0 0 500 900" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%' }}>
-            <rect width="500" height="900" fill="var(--system-bg-secondary)" />
-            {[...Array(10)].map((_, i) => <line key={`v${i}`} x1={i * 50} y1="0" x2={i * 50} y2="900" stroke="var(--separator)" strokeWidth="1" />)}
-            {[...Array(18)].map((_, i) => <line key={`h${i}`} x1="0" y1={i * 50} x2="500" y2={i * 50} stroke="var(--separator)" strokeWidth="1" />)}
-            <path d="M 80 620 Q 180 480 260 500 T 400 260" fill="none" style={{ stroke: 'var(--live)' }} strokeWidth="3" strokeDasharray="6 6" opacity="0.8" />
-            <circle cx="400" cy="260" r="8" style={{ fill: 'var(--gold)' }} />
-            <circle cx="80" cy="620" r="9" style={{ fill: 'var(--rum)' }} />
-          </svg>
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--system-bg-secondary)' }}>
+          <TripMap
+            stops={realStopsList.map(s => ({ name: s.name, lat: s.lat ?? null, lng: s.lng ?? null }))}
+            currentIndex={currentStopIndex}
+            user={userPos}
+            fallbackCenter={[regionTown.lat, regionTown.lng]}
+          />
         </div>
 
         <div style={{ position: 'absolute', top: '0', left: '0', right: '0', zIndex: 20, padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1399,13 +1545,26 @@ export default function ExperiencesPage() {
         <div style={{ position: 'absolute', left: '0', right: '0', bottom: '0', zIndex: 10, background: 'var(--system-bg-elevated)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--shadow-sheet)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid var(--separator)' }}>
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--label-tertiary)' }}>Next Stop</p>
-              <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginTop: '2px' }}>{nextStop?.name || 'Complete'}</p>
+              <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--label-secondary)' }}>{nextStop ? t('m.trip.nextStop', { n: currentStopIndex + 1, total: realStopsList.length }) : t('m.trip.allDone')}</p>
+              <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginTop: '2px' }}>{nextStop?.name || t('m.trip.complete')}</p>
             </div>
-            <span className="num-font" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--live)' }}>{etaMin} min</span>
+            {eta && (
+              <div style={{ textAlign: 'right' }}>
+                <span className="num-font" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--live)' }}>{eta.minutes} min</span>
+                <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>
+                  {eta.km < 1 ? `${Math.round(eta.km * 1000)} m` : `${eta.km.toFixed(1)} km`} · {t(eta.mode === 'WALKING' ? 'exp.mode.WALKING' : 'exp.mode.TAXI')}
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+            {nextStop && (
+              <button className="btn btn-primary" onClick={arriveAtStop} style={{ width: '100%', marginBottom: '16px' }}>
+                <Icon name="check" size={16} />
+                {currentStopIndex + 1 < realStopsList.length ? t('m.trip.arrivedNext') : t('m.trip.arrivedLast')}
+              </button>
+            )}
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', marginBottom: '16px' }}>
               {realStopsList.map((stop, i) => (
                 <div key={i} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', background: i < currentStopIndex ? 'var(--system-bg-secondary)' : i === currentStopIndex ? 'var(--rum-tint)' : 'var(--system-bg-secondary)', color: i < currentStopIndex ? 'var(--success)' : i === currentStopIndex ? 'var(--rum)' : 'var(--label-tertiary)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
@@ -1417,13 +1576,13 @@ export default function ExperiencesPage() {
             <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '8px' }}>Your crew</p>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {groupMembers.map((member, i) => (
-                <div key={i} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', minHeight: '44px' }} onClick={() => cycleStatus(i)}>
+                <button key={i} aria-label={`${member.name}: ${statusLabel(member.status)}`} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', minHeight: '44px', background: 'none', border: 'none', fontFamily: 'inherit', padding: 0 }} onClick={() => cycleStatus(i)}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: avatarColor(member.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: 'white', border: member.status === 'arrived' ? '2px solid var(--success)' : '2px solid transparent' }}>
                     {member.name[0].toUpperCase()}
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--label-secondary)' }}>{member.name}</span>
-                  <span style={{ fontSize: '10px', color: 'var(--label-tertiary)' }}>{statusLabel(member.status)}</span>
-                </div>
+                  <span style={{ fontSize: '10px', color: 'var(--label-secondary)' }}>{statusLabel(member.status)}</span>
+                </button>
               ))}
             </div>
 
@@ -1439,21 +1598,31 @@ export default function ExperiencesPage() {
                     <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: avatarColor(p.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'white' }}>{p.name[0].toUpperCase()}</span>
                     <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--label-primary)' }}>{p.name}</span>
                   </div>
-                  <span onClick={() => togglePaid(i)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 10px', borderRadius: '999px', cursor: 'pointer', background: p.paid ? 'var(--system-bg)' : 'var(--rum-tint)', color: p.paid ? 'var(--success)' : 'var(--rum)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
+                  <button onClick={() => togglePaid(i)} aria-pressed={p.paid} aria-label={`${p.name}: ${p.paid ? 'Paid' : `owes $${p.amount}`}`} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 10px', borderRadius: '999px', cursor: 'pointer', border: 'none', fontFamily: 'inherit', background: p.paid ? 'var(--system-bg)' : 'var(--rum-tint)', color: p.paid ? 'var(--success)' : 'var(--rum-text)', minHeight: '36px', display: 'flex', alignItems: 'center' }}>
                     {p.paid ? 'Paid' : `$${p.amount}`}
-                  </span>
+                  </button>
                 </div>
               ))}
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowChangePlan(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'var(--system-bg-secondary)', border: 'none', cursor: 'pointer', color: 'var(--label-primary)', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px' }}>
-                Change plan
+              <button onClick={() => setShowChangePlan(true)} disabled={!nextStop} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'var(--system-bg-secondary)', border: 'none', cursor: 'pointer', color: 'var(--label-primary)', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px' }}>
+                {t('m.trip.changePlan')}
               </button>
               <button onClick={() => setShowRouteSheet(true)} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'var(--system-bg-secondary)', border: 'none', cursor: 'pointer', color: 'var(--label-primary)', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px' }}>
-                Full route
+                {t('m.trip.fullRoute')}
               </button>
             </div>
+            {activeTrip && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button onClick={shareLiveTrip} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'var(--system-bg-secondary)', border: 'none', cursor: 'pointer', color: 'var(--label-primary)', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <Icon name="share" size={16} /> {shareMsg ?? t('m.trip.shareLive')}
+                </button>
+                <button onClick={() => router.push('/safety')} style={{ flex: 1, padding: '12px', borderRadius: '14px', background: 'var(--system-bg-secondary)', border: 'none', cursor: 'pointer', color: 'var(--label-primary)', fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <Icon name="bell" size={16} /> {t('m.safety.title')}
+                </button>
+              </div>
+            )}
             {activeTrip?.canEdit && activeTrip.status === 'BOOKED' && (
               <button className="btn btn-primary" onClick={finishTrip} disabled={finishing || !online} style={{ width: '100%', marginTop: '8px' }}>
                 <Icon name="sparkle" size={16} />
@@ -1485,30 +1654,45 @@ export default function ExperiencesPage() {
             <div className="bottom-sheet-overlay open" onClick={() => setShowChangePlan(false)} />
             <div className="bottom-sheet open" style={{ padding: '20px' }}>
               <div className="sheet-grabber" />
-              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '12px' }}>Change your plan</h3>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '4px' }}>{t('m.trip.changePlanTitle')}</h3>
+              {realStops()[currentStopIndex] && (
+                <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{t('m.trip.swapInsteadOf', { name: realStops()[currentStopIndex].name })}</p>
+              )}
               {swapOptions.length === 0 ? (
                 <div className="empty-state">
                   <Icon name="shuffle" size={28} style={{ color: 'var(--label-tertiary)' }} />
-                  <p style={{ fontSize: '15px', fontWeight: 600 }}>No other experiences to swap in right now</p>
+                  <p style={{ fontSize: '15px', fontWeight: 600 }}>{t('m.trip.noSwaps')}</p>
                 </div>
               ) : (
-                swapOptions.map(exp => (
-                  <div
-                    key={exp.id}
-                    onClick={() => setSwapSelection(exp.name)}
+                swapOptions.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSwapSelection(opt.id)}
+                    aria-pressed={swapSelection === opt.id}
                     style={{
-                      padding: '14px',
+                      width: '100%',
+                      textAlign: 'left',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px',
                       borderRadius: '14px',
                       cursor: 'pointer',
                       marginBottom: '8px',
-                      background: swapSelection === exp.name ? 'var(--rum-tint)' : 'var(--system-bg-secondary)',
-                      border: swapSelection === exp.name ? '1px solid var(--rum)' : '1px solid var(--separator)',
+                      background: swapSelection === opt.id ? 'var(--rum-tint)' : 'var(--system-bg-secondary)',
+                      border: swapSelection === opt.id ? '1px solid var(--rum)' : '1px solid var(--separator)',
                       minHeight: '44px'
                     }}
                   >
-                    <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{exp.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{exp.vendor?.name || formatCity(exp.city)} · ${exp.price}</p>
-                  </div>
+                    {opt.img ? <img src={opt.img} alt="" style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} /> : null}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)' }}>{opt.name}</span>
+                      <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>
+                        {opt.sub}{opt.km !== null ? ` · ${opt.km < 1 ? `${Math.round(opt.km * 1000)} m` : `${opt.km.toFixed(1)} km`}` : ''}
+                      </span>
+                    </span>
+                  </button>
                 ))
               )}
               <button className="btn btn-primary" onClick={applySwap} disabled={!swapSelection} style={{ width: '100%', marginTop: '8px' }}>Fawud</button>

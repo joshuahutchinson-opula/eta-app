@@ -2,9 +2,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { usePatois } from '@/lib/i18n-client'
-import { getCurrentUser, type CurrentUser } from '@/lib/auth-client'
+import { getCurrentUser, setCurrentUser, type CurrentUser } from '@/lib/auth-client'
+import { authHeaders } from '@/lib/api-client'
+import { useLang } from '@/lib/i18n-client'
+import Price from '@/components/Price'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import Dock from '@/components/Dock'
 import { getTierForPoints } from '@/lib/rewardTiers'
@@ -12,8 +16,16 @@ import { hapticBookingConfirmed } from '@/lib/haptics'
 
 type Rail = 'JAM-DEX' | 'Lynk' | 'Stripe'
 
+const TIP_PRESETS = [10, 15, 20]
+
 export default function PayPage() {
   const patois = usePatois()
+  const router = useRouter()
+  const { t } = useLang()
+  // Tip: a preset %, a custom dollar amount, or none.
+  const [tipChoice, setTipChoice] = useState<number | 'custom' | null>(null)
+  const [customTip, setCustomTip] = useState('')
+  const [payError, setPayError] = useState<string | null>(null)
   const [view, setView] = useState<'scan' | 'qr'>('scan')
   const [amount, setAmount] = useState('')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -44,26 +56,38 @@ export default function PayPage() {
 
   const simulateScan = () => setCheckoutOpen(true)
 
+  const base = parseFloat(amount || '0') || 0
+  const tip = tipChoice === 'custom'
+    ? Math.max(0, parseFloat(customTip || '0') || 0)
+    : tipChoice ? Math.round(base * tipChoice) / 100 : 0
+  const total = Math.round((base + tip) * 100) / 100
+
   const processPayment = async () => {
-    if (!user || !amount || paying) return
+    if (!user || !base || paying) return
     setPaying(true)
+    setPayError(null)
     try {
-      await fetch('/api/transactions', {
+      const res = await fetch('/api/pay', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          amount: parseFloat(amount),
-          type: 'PAYMENT',
-          status: 'COMPLETED'
-        })
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ amount: base, tip, rail: autoRouting ? 'Auto (JAM-DEX → Lynk → Stripe)' : rail, vendorCode: manualInput })
       })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || patois.errorPaymentFailed)
+      if (typeof data.points === 'number') {
+        const updated = { ...user, points: data.points }
+        setCurrentUser(updated)
+        setUser(updated)
+      }
       setCheckoutOpen(false)
       setAmount('')
-      setShowSuccess(true)
+      setTipChoice(null)
+      setCustomTip('')
       hapticBookingConfirmed()
+      // The receipt screen is the confirmation; it's also kept in Wallet.
+      router.push(`/receipt/${data.transactionId}`)
     } catch (error) {
-      console.error('Payment error:', error)
+      setPayError(error instanceof Error ? error.message : patois.errorPaymentFailed)
     } finally {
       setPaying(false)
     }
@@ -153,21 +177,6 @@ export default function PayPage() {
               >
                 <Icon name="sparkle" size={18} />
               </button>
-              <div style={{
-                position: 'absolute',
-                bottom: '12px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                padding: '6px 12px',
-                borderRadius: '999px',
-                background: 'rgba(0,0,0,0.7)',
-                color: 'var(--live)',
-                fontSize: '13px',
-                fontWeight: 600,
-                whiteSpace: 'nowrap'
-              }}>
-                Splitting with 2 others
-              </div>
             </div>
             <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={simulateScan}>
               Simulate Scan
@@ -299,13 +308,36 @@ export default function PayPage() {
                 </div>
               )}
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <p style={{ fontSize: '15px', color: 'var(--label-secondary)' }}>
-                Points earned: <span className="num-font" style={{ color: 'var(--rum-text)', fontWeight: 700 }}>+{Math.floor(parseFloat(amount || '0'))}</span>
-              </p>
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.pay.addTip')}</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }} role="group" aria-label={t('m.pay.addTip')}>
+                <button className={`chip ${tipChoice === null ? 'active' : ''}`} aria-pressed={tipChoice === null} onClick={() => setTipChoice(null)}>{t('m.pay.noTip')}</button>
+                {TIP_PRESETS.map(p => (
+                  <button key={p} className={`chip ${tipChoice === p ? 'active' : ''}`} aria-pressed={tipChoice === p} onClick={() => setTipChoice(p)}>{p}%</button>
+                ))}
+                <button className={`chip ${tipChoice === 'custom' ? 'active' : ''}`} aria-pressed={tipChoice === 'custom'} onClick={() => setTipChoice('custom')}>{t('m.pay.custom')}</button>
+              </div>
+              {tipChoice === 'custom' && (
+                <input
+                  inputMode="decimal"
+                  value={customTip}
+                  onChange={e => setCustomTip(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="0.00"
+                  aria-label={t('m.pay.customTip')}
+                  style={{ width: '100%', marginTop: '8px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg-elevated)', fontSize: '17px', fontFamily: 'Space Mono, monospace', color: 'var(--label-primary)', minHeight: '44px' }}
+                />
+              )}
             </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment} disabled={paying}>
-              {paying ? patois.loadingHome : patois.ctaConfirm}
+            <div style={{ marginBottom: '20px', fontSize: '15px', color: 'var(--label-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {tip > 0 && <span>{t('m.pay.tip')}: <Price usd={tip} compact style={{ fontWeight: 700, color: 'var(--label-primary)' }} /></span>}
+              <span>{t('m.book.total')}: <Price usd={total} style={{ fontWeight: 700, color: 'var(--label-primary)' }} /></span>
+              <span>
+                Points earned: <span className="num-font" style={{ color: 'var(--rum-text)', fontWeight: 700 }}>+{Math.floor(base)}</span>
+              </span>
+            </div>
+            {payError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{payError}</p>}
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={processPayment} disabled={paying || !base}>
+              {paying ? patois.loadingPayment : patois.ctaConfirm}
             </button>
           </div>
         )}

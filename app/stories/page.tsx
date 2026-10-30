@@ -50,13 +50,19 @@ export default function StoriesPage() {
     fetchStories()
   }, [])
 
+  const [loadFailed, setLoadFailed] = useState(false)
+
   const fetchStories = async () => {
+    setLoading(true)
+    setLoadFailed(false)
     try {
       const response = await fetch('/api/stories')
+      if (!response.ok) throw new Error('stories')
       const data = await response.json()
       setStories(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error(error)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -79,12 +85,21 @@ export default function StoriesPage() {
     return Array.from(map.values())
   }, [stories])
 
+  // ?start=<vendorId|userId> opens that ring's stories (Home rings, vendor pages).
+  const [startKey, setStartKey] = useState<string | null>(null)
+  useEffect(() => { setStartKey(new URLSearchParams(window.location.search).get('start')) }, [])
+  useEffect(() => {
+    if (!startKey || groups.length === 0) return
+    const i = groups.findIndex(g => g.key === startKey)
+    if (i >= 0) { setGroupIndex(i); setItemIndex(0) }
+  }, [startKey, groups])
+
   const currentGroup = groups[groupIndex]
   const currentItem = currentGroup?.items[itemIndex]
 
   const exit = () => {
     setExiting(true)
-    setTimeout(() => router.push('/'), 200)
+    setTimeout(() => (startKey && window.history.length > 1 ? router.back() : router.push('/')), 200)
   }
 
   const goToItem = (nextGroupIndex: number, nextItemIndex: number) => {
@@ -186,7 +201,8 @@ export default function StoriesPage() {
   if (groups.length === 0) {
     return (
       <main style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', background: '#000000' }}>
-        <p style={{ color: 'rgba(255,255,255,0.7)' }}>Nuh nuh stories</p>
+        <p style={{ color: 'rgba(255,255,255,0.7)' }}>{loadFailed ? 'Sumth nah wuk — the stories didn’t load.' : 'Nuh nuh stories'}</p>
+        {loadFailed && <button onClick={fetchStories} className="btn btn-secondary">Try again</button>}
         <button onClick={() => router.push('/')} className="btn btn-primary">Back Home</button>
       </main>
     )
@@ -230,8 +246,8 @@ export default function StoriesPage() {
 
       {/* Tap zones (sit above content, below header/footer UI) */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
-        <div style={{ flex: 1 }} onClick={() => !isDraggingRef.current && handleTapZone('left')} />
-        <div style={{ flex: 1 }} onClick={() => !isDraggingRef.current && handleTapZone('right')} />
+        <button aria-label="Previous story" style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('left')} />
+        <button aria-label="Next story" style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('right')} />
       </div>
 
       {/* Progress bars - one segment per item in the current group */}

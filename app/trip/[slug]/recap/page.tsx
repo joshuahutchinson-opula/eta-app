@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import RecapShare from '@/components/RecapShare'
+import RecapReviews from '@/components/RecapReviews'
 import { getTripRecap } from '@/lib/recap'
 
 export const dynamic = 'force-dynamic'
@@ -77,6 +78,8 @@ export default async function RecapPage({ params }: { params: { slug: string } }
         {trip.members.length > 1 ? (
           <p style={{ fontSize: 14, color: 'rgba(251,248,244,0.75)', marginTop: 20 }}>With {trip.members.map(m => m.name).join(', ')}.</p>
         ) : null}
+
+        {recap.reviewTargets.length > 0 ? <RecapReviews targets={recap.reviewTargets} /> : null}
 
         <div style={{ marginTop: 28 }}>
           <RecapShare slug={trip.slug} name={trip.name} />

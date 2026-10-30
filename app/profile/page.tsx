@@ -10,6 +10,10 @@ import { getAuthToken, getCurrentUser, logout, setCurrentUser, type CurrentUser 
 import { useLang } from '@/lib/i18n-client'
 import { getTierForPoints } from '@/lib/rewardTiers'
 import { alertsEnabled, disableAlerts, enableAlerts, pushSupported, refreshAlertLocation, syncAlerts } from '@/lib/alerts-client'
+import { apiJson, uploadPhoto } from '@/lib/api-client'
+import { useCurrency, USD_TO_JMD } from '@/lib/currency'
+import { LANGS, LANG_NAMES } from '@/lib/i18n'
+import Price from '@/components/Price'
 
 function formatMemberSince(createdAt?: string | null): string | null {
   if (!createdAt) return null
@@ -27,7 +31,13 @@ export default function ProfilePage() {
   const [alertPrefs, setAlertPrefs] = useState({ liveAlerts: true, dealAlerts: true })
   const [alertsBusy, setAlertsBusy] = useState(false)
   const [alertsError, setAlertsError] = useState<string | null>(null)
-  const [profilePic, setProfilePic] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [form, setForm] = useState({ name: '', bio: '', homeCountry: '' })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const { currency, setCurrency } = useCurrency()
   const [showSettingsSheet, setShowSettingsSheet] = useState(false)
   const { lang, setLang, t } = useLang()
   const [referral, setReferral] = useState<{ code: string; pointsPerReferral: number; invited: number; rewarded: number; pointsEarned: number } | null>(null)
@@ -74,8 +84,8 @@ export default function ProfilePage() {
       if (prefs && typeof prefs === 'object') setAlertPrefs({ liveAlerts: prefs.liveAlerts !== false, dealAlerts: prefs.dealAlerts !== false })
     } catch {}
 
-    const savedPic = localStorage.getItem('profilePic')
-    if (savedPic) setProfilePic(savedPic)
+    // Deep link from the inbox: /profile?settings=1
+    if (new URLSearchParams(window.location.search).get('settings') === '1') setShowSettingsSheet(true)
 
     setMounted(true)
   }, [])
@@ -117,23 +127,50 @@ export default function ProfilePage() {
     syncAlerts(next)
   }
 
+  // Profile photo goes to Cloudinary and is saved on the account (avatarUrl).
   const handleProfilePicUpload = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const result = event.target?.result as string
-          setProfilePic(result)
-          localStorage.setItem('profilePic', result)
-        }
-        reader.readAsDataURL(file)
+      if (!file) return
+      setPhotoBusy(true)
+      setPhotoError(null)
+      try {
+        const avatarUrl = await uploadPhoto(file, 'avatars')
+        const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: { avatarUrl } })
+        setCurrentUser(updated)
+        setUser(updated)
+      } catch (err) {
+        setPhotoError(err instanceof Error ? err.message : 'Sumth nah wuk')
+      } finally {
+        setPhotoBusy(false)
       }
     }
     input.click()
+  }
+
+  const openEdit = () => {
+    if (!user) return
+    setForm({ name: user.name, bio: user.bio ?? '', homeCountry: user.homeCountry ?? '' })
+    setSaveError(null)
+    setEditOpen(true)
+  }
+
+  const saveProfile = async () => {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: form })
+      setCurrentUser(updated)
+      setUser(updated)
+      setEditOpen(false)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Sumth nah wuk')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const shareInvite = async () => {
@@ -155,10 +192,12 @@ export default function ProfilePage() {
   }
 
   const menuItems: { label: string; icon: string; href?: string; onClick?: () => void }[] = [
-    { label: t('m.profile.bookings'), icon: 'clock', href: '/experiences' },
-    { label: t('m.profile.saved'), icon: 'heart', href: '/marketplace' },
+    { label: t('m.profile.bookings'), icon: 'clock', href: '/bookings' },
+    { label: t('m.profile.saved'), icon: 'heart', href: '/saved' },
+    { label: t('m.inbox.title'), icon: 'bell', href: '/notifications' },
     { label: t('m.profile.wallet'), icon: 'sparkle', href: '/wallet' },
     { label: t('m.profile.rewards'), icon: 'gift', href: '/rewards' },
+    { label: t('m.safety.title'), icon: 'route', href: '/safety' },
     { label: t('m.profile.settings'), icon: 'settings', onClick: () => setShowSettingsSheet(true) }
   ]
 
@@ -194,10 +233,14 @@ export default function ProfilePage() {
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
         <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
-          <div
+          <button
             onClick={handleProfilePicUpload}
+            disabled={photoBusy}
+            aria-label={t('m.profile.changePhoto')}
             className="tappable"
             style={{
+              border: 'none',
+              padding: 0,
               width: '72px',
               height: '72px',
               borderRadius: '50%',
@@ -210,17 +253,24 @@ export default function ProfilePage() {
               cursor: 'pointer'
             }}
           >
-            {profilePic ? (
-              <img src={profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : user.avatarUrl ? (
-              <img src={user.avatarUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: photoBusy ? 0.5 : 1 }} />
             ) : (
-              <Icon name="user" size={32} style={{ color: 'var(--label-secondary)' }} />
+              <Icon name={photoBusy ? 'clock' : 'user'} size={32} style={{ color: 'var(--label-secondary)' }} />
             )}
-          </div>
-          <p style={{ fontSize: '11px', color: 'var(--label-tertiary)', marginBottom: '4px' }}>{t('m.profile.tapPhoto')}</p>
+          </button>
+          <p style={{ fontSize: '11px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{photoBusy ? t('m.stories.posting') : t('m.profile.tapPhoto')}</p>
+          {photoError && <p role="alert" style={{ fontSize: '12px', color: 'var(--error)', marginBottom: '4px' }}>{photoError}</p>}
           <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }}>{user.name}</h2>
           <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginTop: '2px' }}>{user.email}</p>
+          {(user.bio || user.homeCountry) && (
+            <p style={{ fontSize: '14px', color: 'var(--label-primary)', marginTop: '6px', lineHeight: 1.4 }}>
+              {user.bio}{user.bio && user.homeCountry ? ' · ' : ''}{user.homeCountry ? t('m.profile.from', { place: user.homeCountry }) : ''}
+            </p>
+          )}
+          <button className="btn btn-tertiary" onClick={openEdit} style={{ margin: '4px auto 0', minHeight: '36px', fontSize: '15px' }}>
+            <Icon name="settings" size={14} /> {t('m.profile.edit')}
+          </button>
           {memberSince && (
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px' }}>{memberSince}</p>
           )}
@@ -236,7 +286,7 @@ export default function ProfilePage() {
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.points')}</p>
           </div>
           <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
-            <p className="num-font" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }}>${user.walletBalance.toFixed(2)}</p>
+            <Price usd={user.walletBalance} style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }} />
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.wallet')}</p>
           </div>
         </div>
@@ -294,9 +344,9 @@ export default function ProfilePage() {
           }
 
           return (
-            <div key={i} className="tappable" onClick={item.onClick} style={{ textDecoration: 'none' }}>
+            <button key={i} className="tappable" onClick={item.onClick} style={{ display: 'block', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer' }}>
               {row}
-            </div>
+            </button>
           )
         })}
 
@@ -318,7 +368,7 @@ export default function ProfilePage() {
               <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.language')}</span>
             </div>
             <div role="group" aria-label={t('m.profile.language')} style={{ display: 'flex', gap: '4px' }}>
-              {(['en', 'es'] as const).map(code => (
+              {LANGS.map(code => (
                 <button
                   key={code}
                   onClick={() => setLang(code)}
@@ -326,15 +376,35 @@ export default function ProfilePage() {
                   className={`chip ${lang === code ? 'active' : ''}`}
                   style={{ minHeight: '36px', padding: '4px 12px' }}
                 >
-                  {code === 'en' ? 'English' : 'Español'}
+                  {LANG_NAMES[code]}
                 </button>
               ))}
             </div>
           </div>
 
-          <div
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Icon name="wallet" size={20} style={{ color: 'var(--label-secondary)' }} />
+                <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.currency')}</span>
+              </div>
+              <div role="group" aria-label={t('m.profile.currency')} style={{ display: 'flex', gap: '4px' }}>
+                {(['USD', 'JMD'] as const).map(c => (
+                  <button key={c} onClick={() => setCurrency(c)} aria-pressed={currency === c} className={`chip ${currency === c ? 'active' : ''}`} style={{ minHeight: '36px', padding: '4px 12px' }}>{c}</button>
+                ))}
+              </div>
+            </div>
+            <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.rate', { rate: USD_TO_JMD })}</p>
+          </div>
+
+          <button
             className="card"
+            role="switch"
+            aria-checked={darkMode}
             style={{
+              width: '100%',
+              border: 'none',
+              fontFamily: 'inherit',
               padding: '16px',
               display: 'flex',
               alignItems: 'center',
@@ -367,11 +437,18 @@ export default function ProfilePage() {
                 transition: 'left 0.2s ease'
               }} />
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
             className="card"
+            role="switch"
+            aria-checked={notifications}
+            disabled={alertsBusy}
             style={{
+              width: '100%',
+              border: 'none',
+              fontFamily: 'inherit',
+              textAlign: 'left',
               padding: '16px',
               display: 'flex',
               alignItems: 'center',
@@ -409,7 +486,7 @@ export default function ProfilePage() {
                 transition: 'left 0.2s ease'
               }} />
             </div>
-          </div>
+          </button>
 
           {alertsError && (
             <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', margin: '-4px 4px 12px' }}>{alertsError}</p>
@@ -434,6 +511,29 @@ export default function ProfilePage() {
             {t('m.profile.done')}
           </button>
         </div>
+      </div>
+
+      {/* Edit profile */}
+      <div className={`bottom-sheet-overlay ${editOpen ? 'open' : ''}`} onClick={() => setEditOpen(false)} />
+      <div className={`bottom-sheet ${editOpen ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.profile.edit')}>
+        <div className="sheet-grabber" />
+        {editOpen && (
+          <div style={{ padding: '0 20px 24px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.profile.edit')}</h3>
+            {([['name', t('m.profile.name'), 60], ['homeCountry', t('m.profile.homeCountry'), 60]] as const).map(([key, label, max]) => (
+              <label key={key} style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>
+                {label}
+                <input value={form[key]} maxLength={max} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit' }} />
+              </label>
+            ))}
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>
+              {t('m.profile.bio')}
+              <textarea value={form.bio} maxLength={280} rows={3} onChange={e => setForm({ ...form, bio: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', resize: 'vertical' }} />
+            </label>
+            {saveError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{saveError}</p>}
+            <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !form.name.trim()} style={{ width: '100%' }}>{saving ? '…' : t('m.profile.save')}</button>
+          </div>
+        )}
       </div>
 
       <Dock />

@@ -14,6 +14,12 @@ import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { useLang } from '@/lib/i18n-client'
 import { hapticSaved } from '@/lib/haptics'
+import EventsSection from '@/components/EventsSection'
+import Price from '@/components/Price'
+import { useRegion } from '@/components/RegionProvider'
+import ErrorState from '@/components/ErrorState'
+import { moodCategories } from '@/lib/mood-profiles'
+import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
@@ -39,6 +45,7 @@ interface Vendor {
   lat?: number
   lng?: number
   accessibility?: string[]
+  dishOfDay?: { name: string; price?: number | null; imageUrl?: string | null; videoUrl?: string | null; prepMinutes?: number | null } | null
 }
 
 interface Accommodation {
@@ -50,13 +57,15 @@ interface Accommodation {
   priceRange: string
   media: Array<{ type: string; url: string }>
   vetted?: boolean
+  city: string
+  nightlyPrice?: number | null
 }
 
 interface FlashDeal {
   id: string
   deal: string
   expires: string
-  vendor: { id: string; name: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
+  vendor: { id: string; name: string; city: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
 }
 
 const MOOD_ICONS: Record<string, string> = {
@@ -101,7 +110,7 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
-  const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY'>('NEGRIL')
+  const { city, town } = useRegion()
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
@@ -110,35 +119,31 @@ export default function MarketplacePage() {
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [selectedAccess, setSelectedAccess] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 18.2723, lng: -78.3521 })
-  const [dishesOfDay, setDishesOfDay] = useState<Array<{ id: string; vendorId: string; vendorName: string; dish: string; price: number; eta: string; imageUrl: string; videoUrl?: string }>>([])
+  const realLocation = useUserLocation()
+  const { town: regionTown } = useRegion()
+  const userLocation = realLocation ?? { lat: regionTown.lat, lng: regionTown.lng }
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     fetchData()
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
-    const savedCity = localStorage.getItem('marketplaceCity')
-    if (savedCity) setCity(savedCity as 'NEGRIL' | 'MONTEGO_BAY')
     const savedMood = localStorage.getItem('marketplaceMood')
     if (savedMood) setSelectedMood(savedMood)
     const savedSort = localStorage.getItem('marketplaceSort')
     if (savedSort) setSortBy(savedSort)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setUserLocation({ lat: 18.2723, lng: -78.3521 })
-      )
-    }
   }, [])
 
   const fetchData = async () => {
     try {
+      setLoadFailed(false)
       const [vendorsRes, accomRes, flashDealsRes] = await Promise.all([
         fetch('/api/vendors'),
         fetch('/api/accommodations'),
         fetch('/api/flashdeals')
       ])
 
+      if (!vendorsRes.ok) throw new Error('vendors')
       const vendorsData = await vendorsRes.json()
       const accomData = await accomRes.json()
       const flashDealsData = await flashDealsRes.json()
@@ -147,23 +152,9 @@ export default function MarketplacePage() {
       setAccommodations(Array.isArray(accomData) ? accomData : [])
       setFlashDeals(Array.isArray(flashDealsData) ? flashDealsData : [])
       
-      const margaritaville = Array.isArray(vendorsData) ? vendorsData.find((v: Vendor) => v.name === 'Margaritaville Negril') : null
-      if (margaritaville) {
-        setDishesOfDay([{
-          id: `dish-${margaritaville.id}`,
-          vendorId: margaritaville.id,
-          vendorName: margaritaville.name,
-          dish: 'Beach Burgers',
-          price: 16,
-          eta: '20 min',
-          imageUrl: margaritaville.images[0] || '',
-          videoUrl: 'https://res.cloudinary.com/wspvflyn/video/upload/vc_h264,q_auto/v1789881244/vendors/margaritaville-negril/zoahmywsmu9w96g7rvcw.mp4'
-        }])
-      } else {
-        setDishesOfDay([])
-      }
     } catch (error) {
       console.error(error)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -183,11 +174,6 @@ export default function MarketplacePage() {
     setSavedVendors(newSaved)
     localStorage.setItem('savedVendors', JSON.stringify(newSaved))
     syncAlerts()
-  }
-
-  const handleCityChange = (c: 'NEGRIL' | 'MONTEGO_BAY') => {
-    setCity(c)
-    localStorage.setItem('marketplaceCity', c)
   }
 
   const handleMoodChange = (mood: string | null) => {
@@ -211,7 +197,10 @@ export default function MarketplacePage() {
     return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
   }
 
-  const premiumVendors = vendors.filter(v => v.isPremium)
+  // Dish of the Day: whatever vendors in this region have set (Vendor.dishOfDay).
+  const dishesOfDay = vendors.filter(v => v.city === city && v.dishOfDay?.name)
+  const premiumVendors = vendors.filter(v => v.isPremium && v.city === city)
+  const regionFlashDeals = flashDeals.filter(fd => fd.vendor.city === city)
 
   const filteredVendors = vendors
     .filter(v => !search || 
@@ -220,20 +209,22 @@ export default function MarketplacePage() {
       v.neighborhood.toLowerCase().includes(search.toLowerCase())
     )
     .filter(v => !city || v.city === city)
-    .filter(v => !selectedMood || v.category === selectedMood.toUpperCase() || v.neighborhood === selectedMood)
+    .filter(v => !selectedMood || moodCategories(selectedMood).includes(v.category))
     .filter(v => !showSavedOnly || savedVendors.includes(v.id))
     .filter(v => selectedAccess.every(k => v.accessibility?.includes(k)))
     .sort((a, b) => {
       if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
       if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
-      if (sortBy === 'Distance') return (a.neighborhood || '').localeCompare(b.neighborhood || '')
       return 0
     })
+
+  // Distance: real distance from you (or the town centre until location is allowed); no coordinates → last.
+  const sortedVendors = sortBy === 'Distance' ? sortByDistance(filteredVendors, userLocation) : filteredVendors
 
   const activeFilterCount = [selectedMood, showSavedOnly || null].filter(Boolean).length + selectedAccess.length
 
   const filteredAccommodations = accommodations.filter(a =>
-    !accommodationType || a.type === accommodationType
+    a.city === city && (!accommodationType || a.type === accommodationType)
   )
 
   if (loading) {
@@ -365,18 +356,16 @@ export default function MarketplacePage() {
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; OpenStreetMap &copy; CARTO'
               />
-              {filteredVendors.map(v => {
-                const vendorLat = v.lat || userLocation.lat + (Math.random() * 0.02 - 0.01)
-                const vendorLng = v.lng || userLocation.lng + (Math.random() * 0.02 - 0.01)
+              {filteredVendors.filter(v => v.lat && v.lng).map(v => {
                 return (
-                  <Marker key={v.id} position={[vendorLat, vendorLng]}>
+                  <Marker key={v.id} position={[v.lat!, v.lng!]}>
                     <Popup>
                       <div style={{ minWidth: '150px', background: '#1C1C1E', color: '#FFFFFF', padding: '8px', borderRadius: '8px' }}>
                         <p style={{ fontSize: '15px', fontWeight: 600 }}>{v.name}</p>
                         <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{formatCategory(v.category)} · {v.priceRange}</p>
                         <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#A1A1A1' }}>
                           {v.open ? 'Open' : 'Closed'}
-                          {v.isPremium && ' · ★ Premium'}
+                          {v.isPremium && ' · ★ B.O.N'}
                         </p>
                       </div>
                     </Popup>
@@ -396,44 +385,40 @@ export default function MarketplacePage() {
                 <span className="section-title">Dish Of The Day</span>
               </div>
             </div>
-            <Link href={`/vendor/${dishesOfDay[0].vendorId}`} style={{ textDecoration: 'none' }}>
-              <div className="card" style={{ position: 'relative', height: '200px' }}>
-                {dishesOfDay[0].videoUrl ? (
-                  <video
-                    src={dishesOfDay[0].videoUrl}
-                    poster={dishesOfDay[0].imageUrl}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
-                  />
-                ) : (
-                  <img src={dishesOfDay[0].imageUrl} alt={dishesOfDay[0].dish} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                )}
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
-                <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.7)' }}>
-                    {dishesOfDay[0].vendorName}
-                  </p>
-                  <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{dishesOfDay[0].dish}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="num-font" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--rum-text)' }}>
-                      ${dishesOfDay[0].price}
-                    </span>
-                    <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
-                      {dishesOfDay[0].eta}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
+            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
+              {dishesOfDay.map(v => {
+                const dish = v.dishOfDay!
+                const image = dish.imageUrl || v.images[0] || ''
+                return (
+                  <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: dishesOfDay.length > 1 ? '85%' : '100%' }}>
+                    <div className="card" style={{ position: 'relative', height: '200px' }}>
+                      {dish.videoUrl ? (
+                        <video src={dish.videoUrl} poster={image} autoPlay muted loop playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      ) : (
+                        <img src={image} alt={dish.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      )}
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
+                      <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
+                        <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.75)' }}>{v.name}</p>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{dish.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {dish.price != null && <Price usd={dish.price} style={{ fontSize: '17px', fontWeight: 700, color: '#FFB4A3' }} />}
+                          {dish.prepMinutes ? <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>{dish.prepMinutes} min</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
           </div>
         )}
 
         {/* Flash Deals */}
-        {flashDeals.length > 0 && viewMode === 'list' && (
+        {/* This Week's Events */}
+        {viewMode === 'list' && !showSavedOnly && <EventsSection padded={false} />}
+
+        {regionFlashDeals.length > 0 && viewMode === 'list' && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
@@ -442,7 +427,7 @@ export default function MarketplacePage() {
               </div>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {flashDeals.map(fd => (
+              {regionFlashDeals.map(fd => (
                 <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div className="card" style={{ width: '200px' }}>
                     <div className="card-image" style={{ height: '110px' }}>
@@ -464,12 +449,12 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Premium Members */}
+        {/* B.O.N Members */}
         {premiumVendors.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-title">Premium Members</span>
+                <span className="section-title">{t('m.bon.members')}</span>
               </div>
               <Link href="/vendors?premium=true" className="section-link">See All</Link>
             </div>
@@ -519,7 +504,8 @@ export default function MarketplacePage() {
                       <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{a.type}</p>
                       <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum-text)' }}>
-                        {a.priceRange}<span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> /night</span>
+                        {a.nightlyPrice != null ? <Price usd={a.nightlyPrice} /> : a.priceRange}
+                        <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> /night</span>
                       </p>
                     </div>
                   </div>
@@ -537,17 +523,27 @@ export default function MarketplacePage() {
             </div>
             <Link href="/vendors" className="section-link">See All</Link>
           </div>
-          {filteredVendors.length === 0 ? (
+          {loadFailed ? (
+            <ErrorState onRetry={handleRefresh} />
+          ) : sortedVendors.length === 0 ? (
             <div className="empty-state">
               <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
-              <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
+              {vendors.some(v => v.city === city) ? (
+                <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: '17px', fontWeight: 600 }}>{t('m.region.emptyTitle', { town: town.name })}</p>
+                  <p>{t('m.region.emptyBody')}</p>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {filteredVendors.slice(0, 5).map(v => (
+              {sortedVendors.slice(0, 5).map(v => (
                 <VendorCard
                   key={v.id}
                   vendor={v}
+                  distanceKm={distanceFrom(realLocation, v)}
                   saved={savedVendors.includes(v.id)}
                   onToggleSave={() => toggleSaveVendor(v.id)}
                 />
@@ -600,20 +596,6 @@ export default function MarketplacePage() {
                 aria-pressed={selectedAccess.includes(opt.key)}
               >
                 {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Location</p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-            {['NEGRIL', 'MONTEGO_BAY'].map(c => (
-              <button
-                key={c}
-                onClick={() => handleCityChange(c as 'NEGRIL' | 'MONTEGO_BAY')}
-                className={`chip ${city === c ? 'active' : ''}`}
-                style={{ flex: 1, justifyContent: 'center' }}
-              >
-                {c === 'NEGRIL' ? 'Negril' : 'Montego Bay'}
               </button>
             ))}
           </div>

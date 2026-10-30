@@ -9,6 +9,9 @@ import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
 import SuccessAnimation from '@/components/SuccessAnimation'
 import { getCurrentUser, CurrentUser } from '@/lib/auth-client'
+import { authHeaders } from '@/lib/api-client'
+import { pressable } from '@/lib/pressable'
+import ErrorState from '@/components/ErrorState'
 import { getTierForPoints, tierProgress } from '@/lib/rewardTiers'
 
 interface PaymentCard {
@@ -28,6 +31,7 @@ interface Transaction {
   vendorId?: string | null
   user?: { name: string }
   vendor?: { name: string } | null
+  description?: string | null
 }
 
 const CARDS_STORAGE_KEY = 'etaWalletCards'
@@ -67,6 +71,7 @@ export default function WalletPage() {
   const [checkedAuth, setCheckedAuth] = useState(false)
   const [cards, setCards] = useState<PaymentCard[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [txFailed, setTxFailed] = useState(false)
   const [passportOpen, setPassportOpen] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showAddCardSheet, setShowAddCardSheet] = useState(false)
@@ -93,15 +98,18 @@ export default function WalletPage() {
 
     if (!currentUser) return
 
-    fetch('/api/transactions')
-      .then(res => res.json())
-      .then((data: Transaction[]) => {
-        if (Array.isArray(data)) {
-          setTransactions(data.filter(t => t.userId === currentUser.id))
-        }
-      })
-      .catch(() => {})
+    loadTransactions()
   }, [])
+
+  const loadTransactions = () => {
+    setTxFailed(false)
+    fetch('/api/transactions', { headers: authHeaders() })
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error('transactions'))))
+      .then((data: Transaction[]) => {
+        if (Array.isArray(data)) setTransactions(data)
+      })
+      .catch(() => setTxFailed(true))
+  }
 
   const points = user?.points ?? 0
   const balance = user?.walletBalance ?? 0
@@ -207,6 +215,8 @@ export default function WalletPage() {
           {!passportOpen ? (
             <div
               onClick={() => setPassportOpen(true)}
+              {...pressable(() => setPassportOpen(true))}
+              aria-label="Open membership passport"
               className="tappable"
               style={{
                 minHeight: '200px',
@@ -358,7 +368,9 @@ export default function WalletPage() {
               <span className="section-title">Transaction History</span>
             </div>
           </div>
-          {transactions.length === 0 ? (
+          {txFailed ? (
+            <ErrorState compact onRetry={loadTransactions} />
+          ) : transactions.length === 0 ? (
             <div className="empty-state">
               <Icon name="receipt" size={32} style={{ color: 'var(--label-tertiary)' }} />
               <p style={{ fontSize: '15px' }}>No transactions yet</p>
@@ -366,11 +378,12 @@ export default function WalletPage() {
           ) : (
             <div className="card" style={{ padding: '4px 16px' }}>
               {transactions.map((t, i) => (
-                <div key={t.id} style={{
+                <Link key={t.id} href={`/receipt/${t.id}`} aria-label={`Receipt: ${t.vendor?.name || t.description || TYPE_LABELS[t.type]}`} style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
                   padding: '12px 0',
+                  textDecoration: 'none',
                   borderBottom: i < transactions.length - 1 ? '0.5px solid var(--separator)' : 'none'
                 }}>
                   <div style={{
@@ -388,7 +401,7 @@ export default function WalletPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>
-                      {t.vendor?.name || TYPE_LABELS[t.type]}
+                      {t.vendor?.name || t.description || TYPE_LABELS[t.type]}
                     </p>
                     <p style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>
                       {formatDate(t.createdAt)}
@@ -402,7 +415,8 @@ export default function WalletPage() {
                   }}>
                     {isCredit(t.type) ? '+' : '-'}{Math.abs(t.amount)}
                   </span>
-                </div>
+                  <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+                </Link>
               ))}
             </div>
           )}

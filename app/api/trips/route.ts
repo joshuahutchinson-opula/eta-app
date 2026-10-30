@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { City, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { parseCity } from '@/lib/regions'
 import { TRIP_INCLUDE, cleanStopInput, newEditKey, newSlug, recalcShares, toTripDTO, type StopInput } from '@/lib/trips'
 
 export const dynamic = 'force-dynamic'
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const source = body.source === 'web' ? 'web' : 'app'
-    const city: City = body.city === 'MONTEGO_BAY' ? 'MONTEGO_BAY' : 'NEGRIL'
+    const city: City = parseCity(body.city)
     const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 80) : 'My Negril day'
 
     let ownerId: string | null = null

@@ -43,7 +43,7 @@ function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): num
 /** Sends once per (subscription, key). Returns true if a push went out. */
 async function deliver(sub: { id: string; endpoint: string; p256dh: string; auth: string }, key: string, payload: AlertPayload): Promise<boolean> {
   try {
-    await prisma.notificationLog.create({ data: { subscriptionId: sub.id, key } })
+    await prisma.notificationLog.create({ data: { subscriptionId: sub.id, key, title: payload.title, body: payload.body, url: payload.url } })
   } catch {
     return false // already sent (unique constraint)
   }

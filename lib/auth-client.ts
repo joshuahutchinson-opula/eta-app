@@ -12,7 +12,16 @@ export interface CurrentUser {
   streak: number
   city: string
   avatarUrl?: string | null
+  bio?: string | null
+  homeCountry?: string | null
   createdAt?: string
+}
+
+/** Stores a fresh session (login, register, OAuth, password reset). */
+export function signIn(token: string, user: CurrentUser) {
+  localStorage.setItem('eta_token', token)
+  localStorage.setItem('eta_user', JSON.stringify(user))
+  localStorage.removeItem(LOGGED_OUT_KEY)
 }
 
 export function getCurrentUser(): CurrentUser | null {

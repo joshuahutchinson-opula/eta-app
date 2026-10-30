@@ -79,6 +79,83 @@ export const patoisEs: Record<PatoisKey, string> = {
   ctaPushNotification: 'Mira esto'
 }
 
-export function getPatois(lang: 'en' | 'es'): Record<PatoisKey, string> {
-  return lang === 'es' ? patoisEs : patois
+// German and French follow the Spanish approach: same short, warm register,
+// "Wah Gwan" kept as the brand greeting, wordplay rewritten rather than
+// translated literally. Flagged for review by native speakers.
+export const patoisDe: Record<PatoisKey, string> = {
+  loadingHome: 'Moment noch',
+  loadingMarketplace: 'Wir suchen die Spots',
+  loadingVibe: 'Wir finden was Schönes für dich',
+  loadingPayment: 'Wir rechnen kurz, Moment',
+  loadingBooking: 'Wir buchen für dich',
+  loadingRedeem: 'Deine Prämie kommt',
+  loadingShare: 'Wird geteilt',
+  successPayment: 'Geld ist raus',
+  successBooked: 'Gebucht!',
+  successRedeemed: 'Prämie gesichert',
+  successSaved: 'Gespeichert',
+  successLinkCopied: 'Link kopiert',
+  successDiscovery: 'Gefunden!',
+  successShoutout: 'Gruß gesendet',
+  errorGeneric: 'Da lief was schief',
+  errorNetwork: 'Verbindung weg',
+  errorPaymentFailed: 'Zahlung ging nicht durch',
+  errorNotEnoughPoints: 'Nicht genug Punkte',
+  errorClosed: 'Hat zu',
+  emptySearch: 'Nichts gefunden',
+  emptySaved: 'Hier ist noch nichts',
+  emptyReceipts: 'Keine Belege',
+  emptyRewards: 'Noch keine Prämien',
+  emptyReviews: 'Noch keine Bewertungen',
+  ctaPrimary: 'Weiter',
+  ctaSkip: 'Überspringen',
+  ctaVibe: 'Los geht’s',
+  ctaSurprise: 'Überrasch mich',
+  ctaPay: 'Bezahlen',
+  ctaConfirm: 'Fertig',
+  ctaBook: 'Buchen',
+  ctaWelcome: 'Wah Gwan',
+  ctaGroupMode: 'Handy weitergeben',
+  ctaPushNotification: 'Schau mal'
+}
+
+export const patoisFr: Record<PatoisKey, string> = {
+  loadingHome: 'Deux secondes',
+  loadingMarketplace: 'On cherche les spots',
+  loadingVibe: 'On vous trouve un bon plan',
+  loadingPayment: 'On fait le calcul, patience',
+  loadingBooking: 'On réserve pour vous',
+  loadingRedeem: 'Votre récompense arrive',
+  loadingShare: 'Partage en cours',
+  successPayment: 'Paiement envoyé',
+  successBooked: 'Réservé !',
+  successRedeemed: 'Récompense prête',
+  successSaved: 'Enregistré',
+  successLinkCopied: 'Lien copié',
+  successDiscovery: 'Trouvé !',
+  successShoutout: 'Message envoyé',
+  errorGeneric: 'Quelque chose a coincé',
+  errorNetwork: 'Plus de connexion',
+  errorPaymentFailed: 'Le paiement n’est pas passé',
+  errorNotEnoughPoints: 'Pas assez de points',
+  errorClosed: 'C’est fermé',
+  emptySearch: 'Rien par ici',
+  emptySaved: 'Rien ici pour l’instant',
+  emptyReceipts: 'Aucun reçu',
+  emptyRewards: 'Pas encore de récompenses',
+  emptyReviews: 'Pas encore d’avis',
+  ctaPrimary: 'Allez',
+  ctaSkip: 'Passer',
+  ctaVibe: 'C’est parti',
+  ctaSurprise: 'Surprenez-moi',
+  ctaPay: 'Payer',
+  ctaConfirm: 'C’est bon',
+  ctaBook: 'Réserver',
+  ctaWelcome: 'Wah Gwan',
+  ctaGroupMode: 'Passez le téléphone',
+  ctaPushNotification: 'Regardez ça'
+}
+
+export function getPatois(lang: 'en' | 'es' | 'de' | 'fr'): Record<PatoisKey, string> {
+  return lang === 'es' ? patoisEs : lang === 'de' ? patoisDe : lang === 'fr' ? patoisFr : patois
 }

@@ -101,6 +101,19 @@ export async function fetchMyTrips(statuses: TripDTO['status'][] = ['PLANNING', 
     .map(t => ({ ...t, canEdit: Boolean(getTripKey(t.slug)) }))
 }
 
+export type BookedTrip = TripView & { bookingId?: string; transactionId?: string | null; walletBalance?: number | null }
+
+/** Books a planned trip with the traveler's date, time and party size, paying from the ETA Wallet. */
+export async function bookTripPaid(slug: string, details: { date: string; time: string | null; partySize: number }, estimatedPrice?: number): Promise<BookedTrip> {
+  const user = getCurrentUser()
+  if (!user) throw new Error('Log in to book — your trip is saved on this device.')
+  const booked = await tripApi<BookedTrip>(slug, '/book', {
+    method: 'POST',
+    body: { userId: user.id, ...details, estimatedPrice, payWithWallet: true }
+  })
+  return { ...booked, canEdit: true }
+}
+
 export async function addStopToTrip(slug: string, stop: { vendorId?: string; experienceId?: string; photoSpotId?: string }) {
   const user = getCurrentUser()
   return tripApi<TripView & { alreadyAdded: boolean }>(slug, '/stops', {

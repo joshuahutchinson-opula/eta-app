@@ -2,6 +2,7 @@
 // Experiences survey, built from live vendors and photo spots (see
 // lib/experience-generator.ts). POST the survey answers; nothing is saved.
 import { NextResponse } from 'next/server'
+import { parseCity } from '@/lib/regions'
 import { generateBundles, type GeneratorInput, type TimeBudget } from '@/lib/experience-generator'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     crewSize: Math.min(20, Math.max(1, Math.round(Number(body.crewSize) || 1))),
     budget: [1, 2, 3, 4].includes(Number(body.budget)) ? Number(body.budget) : undefined,
     occasion: typeof body.occasion === 'string' ? body.occasion.slice(0, 40) : undefined,
-    city: body.city === 'MONTEGO_BAY' ? 'MONTEGO_BAY' : 'NEGRIL',
+    city: parseCity(body.city),
     transport: ['drive', 'walk', 'handled'].includes(body.transport) ? body.transport : undefined
   }
   try {

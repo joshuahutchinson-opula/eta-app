@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { PHOTO_SPOT_MEDIA } from './photo-spot-media'
 import { PHOTO_SPOTS } from './photo-spots'
 import { EXPERIENCE_ROUTES, writeExperienceRoute } from './experience-routes'
+import { seedExtras } from './seed-extras'
 
 const prisma = new PrismaClient()
 
@@ -17,6 +18,22 @@ function withMedia<T extends { name: string }>(spots: T[]) {
 
 async function main() {
   // Clear all data in dependency order
+  await prisma.flashDealClaim.deleteMany()
+  await prisma.redemption.deleteMany()
+  await prisma.reservationRequest.deleteMany()
+  await prisma.passwordResetToken.deleteMany()
+  await prisma.event.deleteMany()
+  await prisma.notificationLog.deleteMany()
+  await prisma.alertSubscription.deleteMany()
+  await prisma.tripVote.deleteMany()
+  await prisma.tripMember.deleteMany()
+  await prisma.tripStop.deleteMany()
+  await prisma.trip.deleteMany()
+  await prisma.discovery.deleteMany()
+  await prisma.gemConfirmation.deleteMany()
+  await prisma.hiddenGem.deleteMany()
+  await prisma.referral.deleteMany()
+  await prisma.accommodationBlockedDate.deleteMany()
   await prisma.experienceStop.deleteMany()
   await prisma.flashDeal.deleteMany()
   await prisma.bundle.deleteMany()
@@ -2334,6 +2351,8 @@ async function main() {
       },
     ],
   })
+
+  await seedExtras(prisma)
 
   console.log('Seed complete!')
   console.log('Demo users:')

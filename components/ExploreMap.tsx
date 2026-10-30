@@ -9,6 +9,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
 const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false })
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
+const Circle = dynamic(() => import('react-leaflet').then(mod => mod.Circle), { ssr: false })
 
 // Leaflet measures its container's size once at mount. If that happens
 // before the surrounding flex/dvh layout has settled (common with a
@@ -38,6 +39,7 @@ export interface MapVendor {
   name: string
   category: string
   neighborhood: string
+  city?: string
   lat: number
   lng: number
   isPremium: boolean
@@ -53,12 +55,28 @@ export interface MapPhotoSpot {
   id: string
   name: string
   description: string
+  city?: string
   lat: number
   lng: number
   officialPhoto?: string
 }
 
+export interface MapGem {
+  id: string
+  name: string
+  lat: number
+  lng: number
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED'
+  isMine: boolean
+}
+
 interface ExploreMapProps {
+  /** Hidden gems revealed to this user (near them, or their own). */
+  gems?: MapGem[]
+  /** Coarse "something's hidden around here" cells for gems still fogged. */
+  fog?: Array<{ lat: number; lng: number; count: number }>
+  onGemTap?: (gem: MapGem) => void
+  user?: { lat: number; lng: number } | null
   vendors: MapVendor[]
   photoSpots: MapPhotoSpot[]
   center?: [number, number]
@@ -77,7 +95,11 @@ export default function ExploreMap({
   zoom = 14,
   height = '100%',
   onVendorTap,
-  onPhotoSpotTap
+  onPhotoSpotTap,
+  gems = [],
+  fog = [],
+  onGemTap,
+  user
 }: ExploreMapProps) {
   // The default "fill the parent" case uses inset:0 against the nearest
   // positioned ancestor instead of height:'100%' - percentage heights on a
@@ -153,6 +175,19 @@ export default function ExploreMap({
             )}
           </CircleMarker>
         ))}
+        {fog.map((c, i) => (
+          <Circle key={`fog-${i}`} center={[c.lat, c.lng]} radius={1100} pathOptions={{ color: '#8E8E93', weight: 1, dashArray: '4 6', fillColor: '#8E8E93', fillOpacity: 0.25 }} />
+        ))}
+        {gems.map(g => (
+          <CircleMarker
+            key={g.id}
+            center={[g.lat, g.lng]}
+            radius={9}
+            pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: g.status === 'VERIFIED' ? '#AF52DE' : '#D1A3EC', fillOpacity: 0.95, dashArray: g.status === 'PENDING' ? '3 3' : undefined }}
+            eventHandlers={onGemTap ? { click: () => onGemTap(g) } : undefined}
+          />
+        ))}
+        {user && <CircleMarker center={[user.lat, user.lng]} radius={7} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#007AFF', fillOpacity: 1 }} />}
       </MapContainer>
     </div>
   )

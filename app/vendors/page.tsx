@@ -11,6 +11,10 @@ import VendorCard from '@/components/VendorCard'
 import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { hapticSaved } from '@/lib/haptics'
+import { useRegion } from '@/components/RegionProvider'
+import { useLang } from '@/lib/i18n-client'
+import { isCityCode } from '@/lib/regions'
+import ErrorState from '@/components/ErrorState'
 
 interface Vendor {
   id: string
@@ -77,7 +81,9 @@ function VendorsContent() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [city, setCity] = useState<'NEGRIL' | 'MONTEGO_BAY' | null>(null)
+  const { city, town, setCity } = useRegion()
+  const [loadFailed, setLoadFailed] = useState(false)
+  const { t } = useLang()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedPriceTier, setSelectedPriceTier] = useState<string | null>(null)
   const [premiumOnly, setPremiumOnly] = useState(false)
@@ -97,7 +103,7 @@ function VendorsContent() {
     if (categoryParam) setSelectedCategory(categoryParam)
 
     const cityParam = searchParams.get('city')
-    if (cityParam === 'NEGRIL' || cityParam === 'MONTEGO_BAY') setCity(cityParam)
+    if (isCityCode(cityParam)) setCity(cityParam)
 
     if (searchParams.get('premium') === 'true') setPremiumOnly(true)
 
@@ -110,12 +116,15 @@ function VendorsContent() {
   }, [])
 
   const fetchVendors = async () => {
+    setLoadFailed(false)
     try {
       const res = await fetch('/api/vendors')
+      if (!res.ok) throw new Error('vendors')
       const data = await res.json()
       setVendors(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error(error)
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -137,7 +146,7 @@ function VendorsContent() {
       v.category.toLowerCase().includes(search.toLowerCase()) ||
       v.neighborhood.toLowerCase().includes(search.toLowerCase())
     )
-    .filter(v => !city || v.city === city)
+    .filter(v => v.city === city)
     .filter(v => !selectedCategory || v.category === selectedCategory.toUpperCase())
     .filter(v => !selectedPriceTier || v.priceRange === selectedPriceTier)
     .filter(v => !premiumOnly || v.isPremium)
@@ -152,7 +161,7 @@ function VendorsContent() {
       return 0
     })
 
-  const activeFilterCount = [selectedCategory, city, selectedPriceTier, premiumOnly || null].filter(Boolean).length + selectedAccess.length
+  const activeFilterCount = [selectedCategory, selectedPriceTier, premiumOnly || null].filter(Boolean).length + selectedAccess.length
 
   if (loading) {
     return (
@@ -238,11 +247,13 @@ function VendorsContent() {
         {/* Count */}
         <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '12px' }}>
           <span className="num-font">{filteredVendors.length}</span> vendors
-          {city && ` in ${city === 'NEGRIL' ? 'Negril' : 'Montego Bay'}`}
+          {` in ${town.name}`}
         </p>
 
         {/* Vendor grid - flat iOS-style cards, 2 columns */}
-        {filteredVendors.length === 0 ? (
+        {loadFailed ? (
+          <ErrorState onRetry={fetchVendors} />
+        ) : filteredVendors.length === 0 ? (
           <div className="empty-state">
             <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
             <p style={{ fontSize: '17px', fontWeight: 600 }}>Nuttin nuh go suh</p>
@@ -295,20 +306,6 @@ function VendorsContent() {
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Destination</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {CITIES.map(c => (
-              <button
-                key={c.value}
-                onClick={() => setCity(city === c.value ? null : c.value)}
-                className={`chip ${city === c.value ? 'active' : ''}`}
-              >
-                <Icon name="mapPin" size={14} />
-                {c.label}
-              </button>
-            ))}
-          </div>
-
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Price</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {PRICE_TIERS.map(tier => (
@@ -357,7 +354,7 @@ function VendorsContent() {
               className={`chip ${premiumOnly ? 'active' : ''}`}
             >
               <Icon name="crown" size={14} />
-              Premium only
+              {t('m.bon.only')}
             </button>
           </div>
 
@@ -368,7 +365,6 @@ function VendorsContent() {
                 style={{ flex: 1 }}
                 onClick={() => {
                   setSelectedCategory(null)
-                  setCity(null)
                   setSelectedPriceTier(null)
                   setPremiumOnly(false)
                   setSelectedAccess([])

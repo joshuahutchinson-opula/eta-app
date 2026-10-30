@@ -4,10 +4,12 @@
 // screen load doesn't hit the upstream API. Returns null when the service
 // can't be reached; callers fall back to time-of-day-only suggestions.
 
+import { townFor, type CityCode } from '@/lib/regions'
+
 export type WeatherCondition = 'clear' | 'cloudy' | 'fog' | 'rain' | 'storm'
 
 export interface WeatherNow {
-  city: 'NEGRIL' | 'MONTEGO_BAY'
+  city: CityCode
   tempC: number
   condition: WeatherCondition
   isRaining: boolean
@@ -19,11 +21,6 @@ export interface WeatherNow {
   /** Today's sunset (ISO, with the Jamaica offset). */
   sunsetAt: string | null
   fetchedAt: string
-}
-
-const COORDS: Record<WeatherNow['city'], { lat: number; lng: number }> = {
-  NEGRIL: { lat: 18.2683, lng: -78.3478 },
-  MONTEGO_BAY: { lat: 18.4762, lng: -77.8939 }
 }
 
 const TTL_MS = 10 * 60 * 1000
@@ -41,7 +38,7 @@ function classify(code: number): { condition: WeatherCondition; label: string } 
 export async function getWeather(city: WeatherNow['city'] = 'NEGRIL'): Promise<WeatherNow | null> {
   const hit = cache.get(city)
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value
-  const { lat, lng } = COORDS[city]
+  const { lat, lng } = townFor(city)
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
     '&current=temperature_2m,precipitation,weather_code,is_day,wind_speed_10m' +
     '&hourly=precipitation_probability&forecast_hours=3&daily=sunset&forecast_days=1&timezone=America%2FJamaica'

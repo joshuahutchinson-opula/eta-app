@@ -10,11 +10,12 @@ import { useParams } from 'next/navigation'
 import Dock from '@/components/Dock'
 import TripPlanner from '@/components/TripPlanner'
 import Icon from '@/lib/icons'
-import { usePatois } from '@/lib/i18n-client'
+import { useLang, usePatois } from '@/lib/i18n-client'
 import { getMemberId, getTripKey, setMemberId, tripApi, type TripView } from '@/lib/trip-client'
 
 export default function SharedTripPage() {
   const patois = usePatois()
+  const { t } = useLang()
   const { slug } = useParams() as { slug: string }
   const [trip, setTrip] = useState<TripView | null>(null)
   const [notFound, setNotFound] = useState(false)
@@ -90,6 +91,18 @@ export default function SharedTripPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: 96 }}>
       <div style={{ padding: 16 }}>
+        {trip.status === 'BOOKED' && trip.stops.length > 0 ? (
+          // Live progress for whoever holds the link ("Share live trip"); refreshes every 15s.
+          <div className="card" role="status" style={{ padding: 14, marginBottom: 16, cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--live)' }}>
+              <span className="live-dot" /> {t('m.trip.liveProgress', { n: Math.min(trip.currentStopIndex + 1, trip.stops.length), total: trip.stops.length })}
+            </p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--label-primary)', marginTop: 4 }}>
+              {trip.currentStopIndex < trip.stops.length ? t('m.trip.liveNext', { name: trip.stops[trip.currentStopIndex].name }) : t('m.trip.liveDone')}
+            </p>
+          </div>
+        ) : null}
+
         {trip.status === 'COMPLETED' ? (
           <Link href={`/trip/${slug}/recap`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, marginBottom: 16, textDecoration: 'none' }}>
             <Icon name="sparkle" size={20} style={{ color: 'var(--gold)' }} />

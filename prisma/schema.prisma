@@ -20,9 +20,30 @@ enum Level {
   LOCAL_LEGEND
 }
 
+// Tourist towns, grouped into Jamaica's 14 parishes in lib/regions.ts.
+// NEGRIL and MONTEGO_BAY are the original values; the rest were added for
+// the region selector and can hold no data yet.
 enum City {
   NEGRIL
   MONTEGO_BAY
+  SAVANNA_LA_MAR
+  LUCEA
+  FALMOUTH
+  OCHO_RIOS
+  ST_ANNS_BAY
+  RUNAWAY_BAY
+  DISCOVERY_BAY
+  TREASURE_BEACH
+  BLACK_RIVER
+  MANDEVILLE
+  MAY_PEN
+  SPANISH_TOWN
+  KINGSTON
+  PORT_ROYAL
+  MORANT_BAY
+  PORT_ANTONIO
+  PORT_MARIA
+  ORACABESSA
 }
 
 enum VendorCategory {
@@ -74,8 +95,15 @@ model User {
   streak        Int      @default(0)
   city          City     @default(NEGRIL)
   avatarUrl     String?
+  bio           String?
+  homeCountry   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  redemptions         Redemption[]
+  dealClaims          FlashDealClaim[]
+  reservationRequests ReservationRequest[]
+  passwordResetTokens PasswordResetToken[]
 
   vendors         Vendor[]
   bookings        Booking[]
@@ -129,59 +157,98 @@ model Vendor {
   // Mobility/accessibility features the vendor has confirmed, as keys from
   // lib/accessibility.ts (e.g. WHEELCHAIR_ACCESSIBLE). Empty = not yet verified.
   accessibility        String[]       @default([])
+  // Weekly opening hours, Jamaica time: { mon: [["09:00","17:00"]], ... }.
+  // A missing day means closed that day; a null value means hours not listed.
+  hours                Json?
+  phone                String?
+  // Digits only with country code (e.g. 18765551234), for wa.me links.
+  whatsapp             String?
+  // What the vendor is pushing today: { name, price, imageUrl, videoUrl?, prepMinutes? }.
+  dishOfDay            Json?
+  acceptsReservations  Boolean        @default(false)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   ownerId              String?
   owner                User?          @relation(fields: [ownerId], references: [id])
 
-  stories         Story[]
-  reviews         Review[]
-  checkIns        CheckIn[]
-  transactions    Transaction[]
-  experienceStops ExperienceStop[]
-  bookings        Booking[]
-  discoveries     Discovery[]
-  flashDeals      FlashDeal[]
-  tripStops       TripStop[]
+  reservationRequests ReservationRequest[]
+  redemptions         Redemption[]
+  hostedEvents        Event[]
+  stories             Story[]
+  reviews             Review[]
+  checkIns            CheckIn[]
+  transactions        Transaction[]
+  experienceStops     ExperienceStop[]
+  bookings            Booking[]
+  discoveries         Discovery[]
+  flashDeals          FlashDeal[]
+  tripStops           TripStop[]
 }
 
 model Accommodation {
-  id          String            @id @default(cuid())
-  name        String
-  type        AccommodationType
-  googleStars Float
-  description String
-  amenities   String[]
-  priceRange  String
-  lat         Float
-  lng         Float
-  city        City
-  vetted      Boolean           @default(false)
-  hostName    String?
-  media       Json
-  roomViews   String[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id           String            @id @default(cuid())
+  name         String
+  type         AccommodationType
+  googleStars  Float
+  description  String
+  amenities    String[]
+  priceRange   String
+  lat          Float
+  lng          Float
+  city         City
+  vetted       Boolean           @default(false)
+  hostName     String?
+  media        Json
+  roomViews    String[]
+  // USD per night. Null = not listed yet; booking is disabled without it.
+  nightlyPrice Float?
+  maxGuests    Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  bookings Booking[]
-  bundles  Bundle[]
+  bookings     Booking[]
+  bundles      Bundle[]
+  blockedDates AccommodationBlockedDate[]
+}
+
+// A night the property can't be booked (owner block or sold out elsewhere).
+model AccommodationBlockedDate {
+  id     String   @id @default(cuid())
+  // Midnight UTC of the night that's blocked.
+  date   DateTime
+  reason String?
+
+  accommodationId String
+  accommodation   Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+
+  @@unique([accommodationId, date])
 }
 
 model Experience {
-  id            String   @id @default(cuid())
-  name          String
-  tagline       String
-  price         Float
-  imageUrl      String
-  videoUrl      String?
-  city          City
-  startLocation String
-  travelTime    Int
-  travelMode    String
-  accessibility String[] @default([])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  tagline            String
+  price              Float
+  imageUrl           String
+  videoUrl           String?
+  city               City
+  startLocation      String
+  travelTime         Int
+  travelMode         String
+  accessibility      String[] @default([])
+  // What the price covers, one line each. Empty = not listed.
+  included           String[] @default([])
+  meetingPoint       String?
+  meetingLat         Float?
+  meetingLng         Float?
+  cancellationPolicy String?
+  // Start times offered, "HH:MM" 24h. Empty = any time the traveler picks.
+  startTimes         String[] @default([])
+  maxPartySize       Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
+  reviews   Review[]
   // An experience is an ordered route of vendor and photo-spot stops.
   stops     ExperienceStop[]
   bookings  Booking[]
@@ -260,6 +327,7 @@ model PhotoSpot {
   createdAt     DateTime @default(now())
 
   userPhotos      UserMoment[]
+  checkIns        CheckIn[]
   discoveries     Discovery[]
   tripStops       TripStop[]
   experienceStops ExperienceStop[]
@@ -283,8 +351,17 @@ model Booking {
   id           String        @id @default(cuid())
   status       BookingStatus @default(PENDING)
   date         DateTime
+  // Check-out for stays; null for single-day bookings.
+  endDate      DateTime?
+  // "HH:MM" start time the traveler picked, when the booking has one.
+  time         String?
+  partySize    Int           @default(1)
+  // Per person (experiences) or per night (stays), before fees.
+  unitPrice    Float?
+  fees         Float         @default(0)
   totalPrice   Float
   pointsEarned Int           @default(0)
+  transactions Transaction[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -321,33 +398,48 @@ model Review {
   comment   String?
   createdAt DateTime @default(now())
 
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
-  vendorId String
-  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  vendorId     String
+  vendor       Vendor      @relation(fields: [vendorId], references: [id])
+  // Set when the review is of an experience (vendorId is then its host).
+  experienceId String?
+  experience   Experience? @relation(fields: [experienceId], references: [id], onDelete: SetNull)
 }
 
 model CheckIn {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
+  points    Int      @default(0)
+  lat       Float?
+  lng       Float?
 
-  userId   String
-  user     User    @relation(fields: [userId], references: [id])
-  vendorId String?
-  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  vendorId    String?
+  vendor      Vendor?    @relation(fields: [vendorId], references: [id])
+  photoSpotId String?
+  photoSpot   PhotoSpot? @relation(fields: [photoSpotId], references: [id])
 }
 
 model Transaction {
-  id        String            @id @default(cuid())
-  amount    Float
-  type      TransactionType
-  status    TransactionStatus @default(PENDING)
-  createdAt DateTime          @default(now())
+  id          String            @id @default(cuid())
+  // Total charged, tip included.
+  amount      Float
+  tip         Float             @default(0)
+  fees        Float             @default(0)
+  description String?
+  rail        String?
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
 
-  userId   String
-  user     User    @relation(fields: [userId], references: [id])
-  vendorId String?
-  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  vendorId  String?
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id])
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 }
 
 model UserMoment {
@@ -393,7 +485,23 @@ model FlashDeal {
   createdAt DateTime @default(now())
 
   vendorId String
-  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  vendor   Vendor           @relation(fields: [vendorId], references: [id])
+  claims   FlashDealClaim[]
+}
+
+// A traveler claiming a flash deal: the code is what they show the vendor.
+model FlashDealClaim {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  redeemedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  dealId String
+  deal   FlashDeal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId String
+  user   User      @relation(fields: [userId], references: [id])
+
+  @@unique([dealId, userId])
 }
 
 model Bundle {
@@ -420,17 +528,19 @@ enum TripStatus {
 // add-to-trip, offline cache, post-trip recap) and by the no-login web day
 // planner - web trips have no owner and are edited with editKey instead.
 model Trip {
-  id        String     @id @default(cuid())
-  slug      String     @unique
-  name      String
-  status    TripStatus @default(PLANNING)
-  source    String     @default("app")
-  city      City       @default(NEGRIL)
-  date      DateTime?
-  notes     String?
-  editKey   String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  slug             String     @unique
+  name             String
+  status           TripStatus @default(PLANNING)
+  source           String     @default("app")
+  city             City       @default(NEGRIL)
+  date             DateTime?
+  notes            String?
+  editKey          String?
+  // Which stop the crew is at on a booked trip; shared via the trip link.
+  currentStopIndex Int        @default(0)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   ownerId      String?
   owner        User?       @relation(fields: [ownerId], references: [id])
@@ -512,9 +622,14 @@ model AlertSubscription {
 // One row per alert delivered, so the same live session / flash deal never
 // notifies the same device twice.
 model NotificationLog {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   key       String
-  createdAt DateTime @default(now())
+  // What the alert said, for the in-app inbox.
+  title     String?
+  body      String?
+  url       String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
 
   subscriptionId String
   subscription   AlertSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
@@ -605,4 +720,91 @@ model GemConfirmation {
   gem    HiddenGem @relation(fields: [gemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gemId])
+}
+
+// Parties and events posted by promoters for This Week's Events. Not vendors:
+// a promoter may not have a listing, and an event can be anywhere.
+model Event {
+  id           String    @id @default(cuid())
+  title        String
+  promoterName String
+  description  String
+  imageUrl     String?
+  videoUrl     String?
+  venueName    String
+  lat          Float?
+  lng          Float?
+  startAt      DateTime
+  endAt        DateTime?
+  // USD. Null with isFree false means price not listed.
+  price        Float?
+  isFree       Boolean   @default(false)
+  ticketUrl    String?
+  city         City
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Optional: the venue's ETA listing, when it has one.
+  vendorId String?
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  @@index([city, startAt])
+}
+
+enum RedemptionStatus {
+  ACTIVE
+  USED
+  EXPIRED
+}
+
+// Points spent on a reward. The code (and its QR) is the voucher the
+// traveler shows; the points are deducted when this row is created.
+model Redemption {
+  id         String           @id @default(cuid())
+  rewardId   String
+  rewardName String
+  pointCost  Int
+  code       String           @unique
+  status     RedemptionStatus @default(ACTIVE)
+  expiresAt  DateTime?
+  createdAt  DateTime         @default(now())
+
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  vendorId String?
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+}
+
+enum ReservationStatus {
+  REQUESTED
+  CONFIRMED
+  DECLINED
+}
+
+// A table/slot request sent to a vendor; the vendor confirms it themselves.
+model ReservationRequest {
+  id        String            @id @default(cuid())
+  date      DateTime
+  time      String
+  partySize Int
+  note      String?
+  status    ReservationStatus @default(REQUESTED)
+  createdAt DateTime          @default(now())
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  // sha256 of the token emailed to the user; the raw token is never stored.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

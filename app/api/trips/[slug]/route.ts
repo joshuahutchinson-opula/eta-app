@@ -15,7 +15,9 @@ export async function GET(request: Request, { params }: { params: { slug: string
   }
 }
 
-// PATCH — owner edits: name, date, notes, or cancelling a trip still in planning.
+// PATCH — owner edits: name, date, notes, cancelling a trip still in planning,
+// advancing currentStopIndex on a booked trip ("Arrived → next stop"), or
+// swapStop { stopId, vendorId | photoSpotId } to change a stop mid-trip.
 export async function PATCH(request: Request, { params }: { params: { slug: string } }) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -23,7 +25,17 @@ export async function PATCH(request: Request, { params }: { params: { slug: stri
     if (!trip) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     if (!hasEditKey(trip, request, body)) return NextResponse.json({ error: 'Only the trip owner can do that' }, { status: 403 })
 
-    const data: { name?: string; date?: Date | null; notes?: string | null; status?: 'CANCELLED' } = {}
+    const data: { name?: string; date?: Date | null; notes?: string | null; status?: 'CANCELLED'; currentStopIndex?: number } = {}
+    if (Number.isInteger(body.currentStopIndex) && body.currentStopIndex >= 0 && body.currentStopIndex <= 50) data.currentStopIndex = body.currentStopIndex
+    const swap = body.swapStop
+    if (swap && typeof swap.stopId === 'string' && (typeof swap.vendorId === 'string' || typeof swap.photoSpotId === 'string')) {
+      await prisma.tripStop.updateMany({
+        where: { id: swap.stopId, tripId: trip.id },
+        data: typeof swap.vendorId === 'string'
+          ? { vendorId: swap.vendorId, photoSpotId: null, experienceId: null }
+          : { photoSpotId: swap.photoSpotId, vendorId: null, experienceId: null }
+      })
+    }
     if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 80)
     if (body.date === null) data.date = null
     else if (typeof body.date === 'string' && !isNaN(Date.parse(body.date))) data.date = new Date(body.date)

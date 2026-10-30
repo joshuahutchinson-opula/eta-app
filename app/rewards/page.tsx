@@ -10,89 +10,22 @@ import { getCurrentUser, setCurrentUser, CurrentUser } from '@/lib/auth-client'
 import { usePatois } from '@/lib/i18n-client'
 import { hapticRewardRedeemed } from '@/lib/haptics'
 import { REWARD_TIERS, getTierForPoints } from '@/lib/rewardTiers'
-
-interface RewardItem {
-  id: string
-  name: string
-  cost: number
-  description: string
-  icon: string
-  minTier?: string
-}
+import { REWARD_CATALOG, type RewardItem } from '@/lib/rewards'
+import { authHeaders } from '@/lib/api-client'
+import { getAuthToken } from '@/lib/auth-client'
+import QRCode from '@/components/QRCode'
+import ErrorState from '@/components/ErrorState'
+import { useLang } from '@/lib/i18n-client'
 
 interface Redemption {
   id: string
   rewardName: string
   pointCost: number
-  redeemedAt: string
+  code: string
+  status: 'ACTIVE' | 'USED' | 'EXPIRED'
+  expiresAt: string | null
+  createdAt: string
 }
-
-const REWARD_CATALOG: RewardItem[] = [
-  {
-    id: 'credit-10',
-    name: '$10 Marketplace Credit',
-    cost: 500,
-    description: 'Knock $10 off any vendor order in the marketplace.',
-    icon: 'gift'
-  },
-  {
-    id: 'booking-10off',
-    name: '10% Off Next Booking',
-    cost: 300,
-    description: 'A discount on your next experience booking.',
-    icon: 'sparkle'
-  },
-  {
-    id: 'rum-punch',
-    name: 'Free Round of Rum Punch',
-    cost: 350,
-    description: 'On the house at a participating beach bar.',
-    icon: 'glass'
-  },
-  {
-    id: 'airport-transfer',
-    name: 'Free Airport Transfer',
-    cost: 800,
-    description: 'One-way transfer between MBJ and your stay.',
-    icon: 'route'
-  },
-  {
-    id: 'priority-table',
-    name: 'Priority Restaurant Table',
-    cost: 600,
-    description: 'Skip the wait at a top-rated Negril spot.',
-    icon: 'star'
-  },
-  {
-    id: 'sunset-cruise',
-    name: 'Free Sunset Cruise Upgrade',
-    cost: 1200,
-    description: 'Upgrade to the sunset sail on your next catamaran trip.',
-    icon: 'wave'
-  },
-  {
-    id: 'spa-pass',
-    name: 'Half-Day Spa Pass',
-    cost: 1500,
-    description: 'A half day of spa access at a partner resort.',
-    icon: 'spa'
-  },
-  {
-    id: 'vip-cabana',
-    name: 'VIP Cabana for a Day',
-    cost: 2000,
-    description: 'A full day in a private beachfront cabana.',
-    icon: 'crown'
-  },
-  {
-    id: 'legend-concierge',
-    name: 'Personal Concierge Day',
-    cost: 2500,
-    description: 'A dedicated local concierge plans and runs your whole day. Legend tier exclusive.',
-    icon: 'star',
-    minTier: 'LOCAL_LEGEND'
-  }
-]
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -107,15 +40,35 @@ export default function RewardsPage() {
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [voucher, setVoucher] = useState<Redemption | null>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const [redeemError, setRedeemError] = useState<string | null>(null)
+  const [historyFailed, setHistoryFailed] = useState(false)
+  const { t } = useLang()
+
+  // Points and vouchers live on the server; the device only caches them.
+  const loadRedemptions = async () => {
+    setHistoryFailed(false)
+    try {
+      const res = await fetch('/api/rewards/redemptions', { headers: authHeaders() })
+      if (!res.ok) throw new Error()
+      setRedemptions(await res.json())
+    } catch {
+      setHistoryFailed(true)
+    }
+  }
 
   useEffect(() => {
-    setUser(getCurrentUser())
-    try {
-      const raw = localStorage.getItem('etaRedemptions')
-      if (raw) setRedemptions(JSON.parse(raw))
-    } catch {
-      setRedemptions([])
+    const current = getCurrentUser()
+    setUser(current)
+    const token = getAuthToken()
+    if (token) {
+      fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d?.user) { setCurrentUser(d.user); setUser(d.user) } })
+        .catch(() => {})
     }
+    if (current) loadRedemptions()
     setMounted(true)
   }, [])
 
@@ -136,31 +89,32 @@ export default function RewardsPage() {
     setSheetOpen(false)
   }
 
-  const handleConfirmRedeem = () => {
+  const handleConfirmRedeem = async () => {
     if (!user || !selectedReward) return
-    const cost = selectedReward.cost
-    const updatedUser: CurrentUser = { ...user, points: user.points - cost }
-    setCurrentUser(updatedUser)
-    setUser(updatedUser)
-    hapticRewardRedeemed()
-
-    const newRedemption: Redemption = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      rewardName: selectedReward.name,
-      pointCost: cost,
-      redeemedAt: new Date().toISOString()
-    }
-    const updatedRedemptions = [newRedemption, ...redemptions]
-    setRedemptions(updatedRedemptions)
+    setRedeeming(true)
+    setRedeemError(null)
     try {
-      localStorage.setItem('etaRedemptions', JSON.stringify(updatedRedemptions))
-    } catch {
-      // ignore storage errors
+      const res = await fetch('/api/rewards/redeem', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ rewardId: selectedReward.id })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+      const updatedUser: CurrentUser = { ...user, points: data.points }
+      setCurrentUser(updatedUser)
+      setUser(updatedUser)
+      hapticRewardRedeemed()
+      setRedemptions(prev => [data.redemption, ...prev])
+      setSheetOpen(false)
+      setSelectedReward(null)
+      setShowSuccess(true)
+      setVoucher(data.redemption)
+    } catch (e) {
+      setRedeemError(e instanceof Error ? e.message : 'Sumth nah wuk')
+    } finally {
+      setRedeeming(false)
     }
-
-    setSheetOpen(false)
-    setSelectedReward(null)
-    setShowSuccess(true)
   }
 
   if (!mounted) {
@@ -281,7 +235,6 @@ export default function RewardsPage() {
                   opacity: canAfford ? 1 : 0.5,
                   pointerEvents: canAfford ? 'auto' : 'none'
                 }}
-                onClick={() => openConfirm(reward)}
               >
                 <div className="card-content">
                   <div
@@ -326,7 +279,9 @@ export default function RewardsPage() {
             </div>
           </div>
 
-          {redemptions.length === 0 ? (
+          {historyFailed ? (
+            <ErrorState compact onRetry={loadRedemptions} />
+          ) : redemptions.length === 0 ? (
             <div className="empty-state">
               <Icon name="gift" size={28} style={{ color: 'var(--label-tertiary)' }} />
               <p>{patois.emptyRewards}</p>
@@ -334,9 +289,17 @@ export default function RewardsPage() {
           ) : (
             <div className="card" style={{ padding: '4px 16px' }}>
               {redemptions.map((r, i) => (
-                <div
+                <button
                   key={r.id}
+                  onClick={() => setVoucher(r)}
+                  aria-label={t('m.rewards.showVoucher', { name: r.rewardName })}
                   style={{
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
@@ -360,12 +323,14 @@ export default function RewardsPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{r.rewardName}</p>
-                    <p className="caption-font" style={{ color: 'var(--label-secondary)' }}>{formatDate(r.redeemedAt)}</p>
+                    <p className="caption-font" style={{ color: 'var(--label-secondary)' }}>
+                      {formatDate(r.createdAt)} · <span className="num-font">{r.code}</span>{r.status !== 'ACTIVE' ? ` · ${t(`m.rewards.status.${r.status}` as 'm.rewards.status.USED')}` : ''}
+                    </p>
                   </div>
                   <span className="num-font" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-secondary)' }}>
                     -{r.pointCost.toLocaleString()}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -414,12 +379,32 @@ export default function RewardsPage() {
               </span>
             </div>
 
-            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={handleConfirmRedeem}>
-              Confirm Redemption
+            {redeemError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px', textAlign: 'center' }}>{redeemError}</p>}
+            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '8px' }} onClick={handleConfirmRedeem} disabled={redeeming}>
+              {redeeming ? patois.loadingRedeem : 'Confirm Redemption'}
             </button>
             <button className="btn btn-tertiary" style={{ width: '100%' }} onClick={closeSheet}>
               Cancel
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Voucher */}
+      <div className={`bottom-sheet-overlay ${voucher ? 'open' : ''}`} onClick={() => setVoucher(null)} />
+      <div className={`bottom-sheet ${voucher ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.rewards.voucher')}>
+        <div className="sheet-grabber" />
+        {voucher && (
+          <div style={{ padding: '0 20px 24px', textAlign: 'center' }}>
+            <p className="section-eyebrow">{t('m.rewards.voucher')}</p>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', margin: '2px 0 12px' }}>{voucher.rewardName}</h3>
+            <QRCode value={voucher.code} size={200} />
+            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--label-primary)', marginTop: '12px' }}>{voucher.code}</p>
+            <p style={{ fontSize: '13px', color: 'var(--label-secondary)', margin: '4px 0 16px' }}>
+              {t('m.rewards.showVendor')}
+              {voucher.expiresAt ? ` · ${t('m.rewards.validUntil', { date: new Date(voucher.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })}` : ''}
+            </p>
+            <button className="btn btn-tertiary" onClick={() => setVoucher(null)} style={{ width: '100%' }}>{t('m.profile.done')}</button>
           </div>
         )}
       </div>
