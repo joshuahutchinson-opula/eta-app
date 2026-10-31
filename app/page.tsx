@@ -1,13 +1,13 @@
-// app/page.tsx
+// app/page.tsx — Home. Everything here is for the selected region and is
+// filtered on the server: Featured (B.O.N vendors with video), Right now,
+// events, vibes → experiences, and the nearest vendors.
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import VendorCard from '@/components/VendorCard'
 import Icon from '@/lib/icons'
-import LongPressCard from '@/components/LongPressCard'
 import BrandedRefresh from '@/components/BrandedRefresh'
 import FloatingPill from '@/components/FloatingPill'
 import ActiveTripBanner from '@/components/ActiveTripBanner'
@@ -17,14 +17,20 @@ import { authHeaders } from '@/lib/api-client'
 import EventsSection from '@/components/EventsSection'
 import ExperienceCard from '@/components/ExperienceCard'
 import RegionSelector from '@/components/RegionSelector'
+import RegionMismatchPrompt from '@/components/RegionMismatchPrompt'
+import RightNowStrip from '@/components/RightNowStrip'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
 import StoriesRow from '@/components/StoriesRow'
 import ContextTip from '@/components/ContextTip'
 import NotificationBell from '@/components/NotificationBell'
+import VerifyEmailBanner from '@/components/VerifyEmailBanner'
+import SmartVideo from '@/components/SmartVideo'
+import Img from '@/components/Img'
 import { vibeMoodNames } from '@/lib/vibes'
 import ErrorState from '@/components/ErrorState'
 import { moodCategories } from '@/lib/mood-profiles'
+import { categoryStyle } from '@/lib/vendor-style'
 import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
 
 interface Vendor {
@@ -45,7 +51,6 @@ interface Vendor {
   lng?: number | null
   rating?: number
   reviewCount?: number
-  stories: Array<{ id: string; content: string; type: string; imageUrl: string }>
 }
 
 interface Experience {
@@ -59,10 +64,8 @@ interface Experience {
   startLocation: string
   travelTime: number
   travelMode: string
-  stopCount?: number
   totalDuration?: number | null
   bookedToday?: number
-  travelIncluded?: boolean
   stops?: Array<{ id: string; name: string; type: string }>
   vendor?: { name: string; isPremium?: boolean }
   moods?: Array<{ id: string; name: string; icon: string }>
@@ -83,9 +86,10 @@ interface Booking {
   id: string
   status: string
   date: string
-  userId: string
   experience?: { name: string } | null
   vendor?: { name: string } | null
+  accommodation?: { name: string } | null
+  trip?: { slug: string; status: string; name: string } | null
 }
 
 const MOOD_ICONS: Record<string, string> = {
@@ -101,12 +105,8 @@ const MOOD_ICONS: Record<string, string> = {
   'Rum & Bass': 'glass'
 }
 
-function formatCategory(category: string): string {
-  return category.charAt(0) + category.slice(1).toLowerCase()
-}
-
 export default function HomePage() {
-  const router = useRouter()
+  const [featured, setFeatured] = useState<Vendor[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
@@ -122,18 +122,11 @@ export default function HomePage() {
   const moodPickerRef = useRef<HTMLDivElement>(null)
   const isTouchingRef = useRef(false)
   const vibeAppliedRef = useRef(false)
-  const { city, town } = useRegion()
+  const { city, town, ready } = useRegion()
   const { t } = useLang()
 
-  useEffect(() => {
-    fetchAll()
-    const user = getCurrentUser()
-    if (user?.name) setFirstName(user.name.split(' ')[0])
-  }, [])
-
   // Pause the Featured auto-advance while a touch is active anywhere on the
-  // page (not just on the carousel), so it doesn't fight the user mid-swipe
-  // or mid-scroll elsewhere, then resumes on release.
+  // page, so it doesn't fight the user mid-swipe, then resume on release.
   useEffect(() => {
     const handleTouchStart = () => { isTouchingRef.current = true }
     const handleTouchEnd = () => { isTouchingRef.current = false }
@@ -148,47 +141,36 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    const featuredList = vendors.filter(v => v.city === city && v.isPremium && v.videos && v.videos.length > 0)
     setFeaturedIndex(0)
     featuredScrollRef.current?.scrollTo({ left: 0 })
-    if (featuredList.length <= 1) return
-
+    if (featured.length <= 1) return
     const autoScroll = setInterval(() => {
       if (isTouchingRef.current) return
       setFeaturedIndex(prevIndex => {
-        const nextIndex = (prevIndex + 1) % featuredList.length
-        if (featuredScrollRef.current) {
-          featuredScrollRef.current.scrollTo({
-            left: nextIndex * featuredScrollRef.current.clientWidth,
-            behavior: 'smooth'
-          })
-        }
+        const nextIndex = (prevIndex + 1) % featured.length
+        featuredScrollRef.current?.scrollTo({ left: nextIndex * featuredScrollRef.current.clientWidth, behavior: 'smooth' })
         return nextIndex
       })
     }, 5000)
-
     return () => clearInterval(autoScroll)
-  }, [vendors, city])
+  }, [featured])
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
-      const [vendorsRes, experiencesRes, moodsRes, bookingsRes] = await Promise.allSettled([
-        fetch('/api/vendors'),
-        fetch('/api/experiences'),
+      const signedIn = Boolean(getCurrentUser())
+      const [featuredRes, vendorsRes, experiencesRes, moodsRes, bookingsRes] = await Promise.allSettled([
+        fetch(`/api/vendors?city=${city}&featured=1&limit=8`),
+        fetch(`/api/vendors?city=${city}&limit=40`),
+        fetch(`/api/experiences?city=${city}&limit=30`),
         fetch('/api/moods'),
-        fetch('/api/bookings', { headers: authHeaders() })
+        signedIn ? fetch('/api/bookings', { headers: authHeaders() }) : Promise.reject(new Error('signed out'))
       ])
-
-      setLoadFailed(!(vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) && !(experiencesRes.status === 'fulfilled' && experiencesRes.value.ok))
-      if (vendorsRes.status === 'fulfilled' && vendorsRes.value.ok) {
-        const data = await vendorsRes.value.json()
-        setVendors(Array.isArray(data) ? data : [])
-      }
-      if (experiencesRes.status === 'fulfilled' && experiencesRes.value.ok) {
-        const data = await experiencesRes.value.json()
-        setExperiences(Array.isArray(data) ? data : [])
-      }
-      if (moodsRes.status === 'fulfilled' && moodsRes.value.ok) {
+      const ok = (r: PromiseSettledResult<Response>): r is PromiseFulfilledResult<Response> => r.status === 'fulfilled' && r.value.ok
+      setLoadFailed(!ok(vendorsRes) && !ok(experiencesRes))
+      if (ok(featuredRes)) { const d = await featuredRes.value.json(); setFeatured(Array.isArray(d) ? d : []) }
+      if (ok(vendorsRes)) { const d = await vendorsRes.value.json(); setVendors(Array.isArray(d) ? d : []) }
+      if (ok(experiencesRes)) { const d = await experiencesRes.value.json(); setExperiences(Array.isArray(d) ? d : []) }
+      if (ok(moodsRes)) {
         const data = await moodsRes.value.json()
         const mappedMoods = data.map((mood: Mood) => {
           let name = mood.name
@@ -207,20 +189,19 @@ export default function HomePage() {
         if (first && !vibeAppliedRef.current) setSelectedMood(first.id)
         vibeAppliedRef.current = true
       }
-      if (bookingsRes.status === 'fulfilled' && bookingsRes.value.ok) {
-        const currentUser = getCurrentUser()
-        if (currentUser) {
-          const data: Booking[] = await bookingsRes.value.json()
-          const now = Date.now()
-          const active = data
-            .filter(b => b.status === 'CONFIRMED')
-            .filter(b => {
-              const t = new Date(b.date).getTime()
-              return t >= now - 3 * 3600000 && t <= now + 6 * 3600000
-            })
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
-          setActiveBooking(active || null)
-        }
+      if (ok(bookingsRes)) {
+        const data: Booking[] = await bookingsRes.value.json()
+        const now = Date.now()
+        const active = data
+          .filter(b => b.status === 'CONFIRMED')
+          .filter(b => {
+            const start = new Date(b.date).getTime()
+            return start >= now - 3 * 3600000 && start <= now + 6 * 3600000
+          })
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+        setActiveBooking(active || null)
+      } else {
+        setActiveBooking(null)
       }
     } catch (error) {
       console.error('Fetch error:', error)
@@ -228,7 +209,14 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [city])
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    if (user?.name) setFirstName(user.name.split(' ')[0])
+  }, [])
+
+  useEffect(() => { if (ready) fetchAll() }, [ready, fetchAll])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -236,40 +224,28 @@ export default function HomePage() {
     setRefreshing(false)
   }
 
-  const regionVendors = vendors.filter(v => v.city === city)
-  const regionExperiences = experiences.filter(e => e.city === city)
-  const featuredVendors = regionVendors.filter(v => v.isPremium && v.videos && v.videos.length > 0)
-
   const handleFeaturedScroll = () => {
     if (featuredScrollRef.current) {
-      const scrollLeft = featuredScrollRef.current.scrollLeft
-      const cardWidth = featuredScrollRef.current.clientWidth
-      const newIndex = Math.round(scrollLeft / cardWidth)
-      setFeaturedIndex(Math.min(newIndex, featuredVendors.length - 1))
+      const newIndex = Math.round(featuredScrollRef.current.scrollLeft / featuredScrollRef.current.clientWidth)
+      setFeaturedIndex(Math.min(newIndex, featured.length - 1))
     }
   }
 
   const snapMoodToCentre = (moodId: string) => {
     triggerHaptic('selection')
     setSelectedMood(selectedMood === moodId ? null : moodId)
-    if (moodPickerRef.current) {
-      const pill = moodPickerRef.current.querySelector(`[data-mood="${moodId}"]`)
-      if (pill) {
-        pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-      }
-    }
+    const pill = moodPickerRef.current?.querySelector(`[data-mood="${moodId}"]`)
+    pill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }
 
   const filteredExperiences = selectedMood
-    ? regionExperiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
-    : regionExperiences
+    ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
+    : experiences
 
   // A mood maps to the vendor categories it's about (lib/mood-profiles.ts),
   // the same mapping the route generator uses.
   const moodCats = moods.find(m => m.id === selectedMood)?.categories ?? []
-  const moodVendors = selectedMood
-    ? regionVendors.filter(v => moodCats.includes(v.category))
-    : regionVendors
+  const moodVendors = selectedMood ? vendors.filter(v => moodCats.includes(v.category)) : vendors
   // Near You Now: nearest first by real distance; no coordinates → last.
   const filteredVendors = sortByDistance(moodVendors, userLocation)
 
@@ -289,6 +265,8 @@ export default function HomePage() {
     )
   }
 
+  const bookingTitle = activeBooking ? activeBooking.experience?.name || activeBooking.accommodation?.name || activeBooking.trip?.name || activeBooking.vendor?.name || t('m.home.yourTrip') : ''
+
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <FloatingPill />
@@ -296,11 +274,12 @@ export default function HomePage() {
 
       <div className="content-fade-in">
         <RegionSelector />
+        <RegionMismatchPrompt />
 
         {/* Greeting */}
         <div style={{ padding: '16px 16px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 className="greeting-text" style={{ flex: 1, minWidth: 0 }}>Wah Gwan{firstName ? `, ${firstName}` : ''}</h1>
+            <h1 className="greeting-text" style={{ flex: 1, minWidth: 0 }}>{t('m.home.greeting', { name: firstName ? `, ${firstName}` : '' })}</h1>
             <Link href="/search" aria-label={t('m.search.open')} className="heart-btn" style={{ background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', color: 'var(--label-primary)' }}>
               <Icon name="search" size={18} />
             </Link>
@@ -308,12 +287,15 @@ export default function HomePage() {
           </div>
         </div>
 
+        <VerifyEmailBanner />
+
         {activeBooking && (
           <div style={{ paddingTop: '12px' }}>
             <ActiveTripBanner
-              tripName={activeBooking.experience?.name || activeBooking.vendor?.name || 'Your trip'}
-              etaMinutes={Math.max(0, Math.round((new Date(activeBooking.date).getTime() - Date.now()) / 60000))}
-              nextStopName={activeBooking.experience?.name || activeBooking.vendor?.name || 'your stop'}
+              title={bookingTitle}
+              start={activeBooking.date}
+              tripSlug={activeBooking.trip?.status === 'BOOKED' ? activeBooking.trip.slug : null}
+              href={activeBooking.trip?.status === 'BOOKED' ? `/experiences?trip=${activeBooking.trip.slug}` : '/bookings'}
             />
           </div>
         )}
@@ -322,74 +304,44 @@ export default function HomePage() {
 
         <ContextTip />
 
-        {/* Divider below stories */}
         <div className="divider-faded" />
 
-        {/* Featured / Destinations */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <div className="section-heading">
-            <span className="section-eyebrow">Featured</span>
-            <span className="section-title section-title-shimmer">Destinations</span>
-          </div>
-        </div>
-
-        {/* Featured Cards */}
-        {featuredVendors.length > 0 && (
+        {/* Featured / Destinations — only when the region has featured vendors. */}
+        {featured.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            <div
-              ref={featuredScrollRef}
-              onScroll={handleFeaturedScroll}
-              className="horizontal-scroll"
-              style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}
-            >
-              {featuredVendors.map((vendor, index) => (
-                <Link
-                  key={vendor.id}
-                  href={`/vendor/${vendor.id}`}
-                  onClick={() => triggerHaptic('light')}
-                  style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}
-                >
+            <div style={{ padding: '0 16px 12px' }}>
+              <div className="section-heading">
+                <span className="section-eyebrow">{t('m.home.featured')}</span>
+                <span className="section-title section-title-shimmer">{t('m.home.destinations')}</span>
+              </div>
+            </div>
+            <div ref={featuredScrollRef} onScroll={handleFeaturedScroll} className="horizontal-scroll" style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}>
+              {featured.map((vendor, index) => (
+                <Link key={vendor.id} href={`/vendor/${vendor.id}`} onClick={() => triggerHaptic('light')} style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}>
                   <div className="featured-hero" style={{ margin: '0 4px' }}>
-                    {vendor.videos && vendor.videos.length > 0 ? (
-                      <video
-                        ref={(el) => {
-                          if (el && index === featuredIndex) {
-                            el.muted = true
-                            el.playsInline = true
-                            el.play().catch(() => {})
-                          }
-                        }}
-                        src={vendor.videos[0]}
-                        muted
-                        loop
-                        playsInline
-                        preload={index === featuredIndex || index === (featuredIndex + 1) % featuredVendors.length ? 'auto' : 'metadata'}
-                        poster={vendor.images[0]}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                    {vendor.videos?.[0] ? (
+                      <SmartVideo src={vendor.videos[0]} poster={vendor.images[0]} alt={vendor.name} active={index === featuredIndex} />
                     ) : (
-                      <img src={vendor.images[0]} alt={vendor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <Img src={vendor.images[0]} alt={vendor.name} width={1080} height={1350} priority={index === 0} />
                     )}
                     <div className="featured-hero-overlay" />
                     {vendor.live && (
                       <div className="featured-hero-badge">
                         <span className="live-dot" />
-                        <span className="num-font">{vendor.whoThere}</span> here now
+                        <span className="num-font">{vendor.whoThere}</span> {t('m.home.hereNow')}
                       </div>
                     )}
                     <div className="featured-hero-content">
                       <h2 className="featured-hero-title">{vendor.name}</h2>
-                      <p className="featured-hero-sub">
-                        {formatCategory(vendor.category)} · {vendor.neighborhood}
-                      </p>
+                      <p className="featured-hero-sub">{categoryStyle(vendor.category).label} · {vendor.neighborhood}</p>
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
-            {featuredVendors.length > 1 && (
+            {featured.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                {featuredVendors.map((_, i) => (
+                {featured.map((_, i) => (
                   <div key={i} style={{ width: i === featuredIndex ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', transition: 'all 0.3s ease' }} />
                 ))}
               </div>
@@ -399,7 +351,7 @@ export default function HomePage() {
 
         {loadFailed && <ErrorState onRetry={handleRefresh} />}
 
-        {!loadFailed && regionVendors.length === 0 && regionExperiences.length === 0 && (
+        {!loadFailed && vendors.length === 0 && experiences.length === 0 && (
           <div className="empty-state" style={{ padding: '24px 16px' }}>
             <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.region.emptyTitle', { town: town.name })}</p>
@@ -407,30 +359,23 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* This Week's Events (replaces Promotions) */}
+        <RightNowStrip />
+
+        {/* This Week's Events */}
         <EventsSection />
 
-
-        {/* Divider above moods with extra spacing */}
         <div className="divider-faded" style={{ marginBottom: '48px' }} />
 
         {/* Moods */}
         {moods.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)' }}>
-                Choose Your Vibe
-              </h2>
+              <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)' }}>{t('m.home.chooseVibe')}</h2>
             </div>
             <div className="mood-picker" ref={moodPickerRef}>
               {moods.map(mood => (
-                <button
-                  key={mood.id}
-                  data-mood={mood.id}
-                  onClick={() => snapMoodToCentre(mood.id)}
-                  className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}
-                >
-                  <Icon name={mood.icon as any} size={16} />
+                <button key={mood.id} data-mood={mood.id} onClick={() => snapMoodToCentre(mood.id)} className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}>
+                  <Icon name={mood.icon} size={16} />
                   {mood.name}
                 </button>
               ))}
@@ -443,15 +388,13 @@ export default function HomePage() {
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
               <div className="section-heading">
-                <span className="section-eyebrow">Curated for You</span>
-                <span className="section-title">Experiences</span>
+                <span className="section-eyebrow">{t('m.home.curated')}</span>
+                <span className="section-title">{t('m.home.experiences')}</span>
               </div>
               <Link href="/experiences/browse" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
-              {filteredExperiences.slice(0, 4).map(e => (
-                <ExperienceCard key={e.id} exp={e} />
-              ))}
+              {filteredExperiences.slice(0, 4).map(e => <ExperienceCard key={e.id} exp={e} />)}
             </div>
           </div>
         )}
@@ -461,15 +404,13 @@ export default function HomePage() {
           <div style={{ padding: '0 16px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Close By</span>
-                <span className="section-title">Near You Now</span>
+                <span className="section-eyebrow">{t('m.home.closeBy')}</span>
+                <span className="section-title">{t('m.home.nearYou')}</span>
               </div>
-              <Link href="/vendors" className="section-link">See All</Link>
+              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {filteredVendors.slice(0, 5).map(v => (
-                <VendorCard key={v.id} vendor={v} distanceKm={distanceFrom(userLocation, v)} />
-              ))}
+              {filteredVendors.slice(0, 5).map(v => <VendorCard key={v.id} vendor={v} distanceKm={distanceFrom(userLocation, v)} />)}
             </div>
           </div>
         )}

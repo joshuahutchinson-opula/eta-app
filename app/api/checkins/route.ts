@@ -7,16 +7,27 @@
 // server-side.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
+import { evaluateChallenges } from '@/lib/challenges'
 import { distanceM, MAX_GPS_ACCURACY_M, parseCoord } from '@/lib/hidden-gems'
 import { CHECKIN_POINTS, CHECKIN_RADIUS_M, DISCOVERY_POINTS } from '@/lib/checkins'
 import { startOfJamaicaDay } from '@/lib/booking-counts'
+import { id, parseBody, z } from '@/lib/validate'
+
+const schema = z.object({
+  vendorId: id.optional(),
+  photoSpotId: id.optional(),
+  lat: z.number().finite().min(-90).max(90).optional(),
+  lng: z.number().finite().min(-180).max(180).optional(),
+  accuracy: z.number().finite().min(0).optional()
+})
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json([])
+  const auth = await requireUser(request)
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
   try {
     const checkIns = await prisma.checkIn.findMany({
       where: { userId },
@@ -32,9 +43,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to check in' }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
+  const auth = await requireUser(request, { message: 'Log in to check in' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
   const lat = parseCoord(body.lat, -90, 90)
   const lng = parseCoord(body.lng, -180, 180)
   const accuracy = Number(body.accuracy)
@@ -42,8 +56,8 @@ export async function POST(request: Request) {
   if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) {
     return NextResponse.json({ error: `Your GPS is fuzzy (±${Math.round(accuracy)} m). Step outside and try again.` }, { status: 422 })
   }
-  const vendorId = typeof body.vendorId === 'string' ? body.vendorId : null
-  const photoSpotId = !vendorId && typeof body.photoSpotId === 'string' ? body.photoSpotId : null
+  const vendorId = body.vendorId ?? null
+  const photoSpotId = !vendorId ? body.photoSpotId ?? null : null
   if (!vendorId && !photoSpotId) return NextResponse.json({ error: 'Pick a place to check in' }, { status: 400 })
 
   try {
@@ -68,7 +82,9 @@ export async function POST(request: Request) {
       const user = await tx.user.update({ where: { id: userId }, data: { points: { increment: CHECKIN_POINTS + discoveryPoints } }, select: { points: true } })
       return { pointsAwarded: CHECKIN_POINTS + discoveryPoints, firstDiscovery: firstTime, totalPoints: user.points }
     })
-    return NextResponse.json({ ...result, place: place.name })
+    // Monthly challenges this check-in completes pay their bonus now.
+    const challenges = await evaluateChallenges(userId).catch(err => { console.error('Challenge check failed:', err); return [] })
+    return NextResponse.json({ ...result, place: place.name, challengesCompleted: challenges })
   } catch (error) {
     console.error('Error creating check-in:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

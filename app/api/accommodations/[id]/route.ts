@@ -11,7 +11,6 @@ export async function GET(
     const accommodation = await prisma.accommodation.findUnique({
       where: { id: params.id },
       include: {
-        bookings: true,
         bundles: {
           include: {
             experience: true

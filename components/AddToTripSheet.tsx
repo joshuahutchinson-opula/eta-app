@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
 import { addStopToTrip, createTrip, fetchMyTrips, type TripView } from '@/lib/trip-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
 
 interface Props {
   vendor: { id: string; name: string } | null
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export default function AddToTripSheet({ vendor, onClose }: Props) {
+  const { t: tr } = useLang()
+  const errorText = useErrorText()
   const [trips, setTrips] = useState<TripView[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<{ slug: string; name: string; already: boolean } | null>(null)
@@ -38,7 +41,7 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
       hapticSaved()
       setDone({ slug: trip.slug, name: updated.name, already: updated.alreadyAdded })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setError(errorText(e))
     } finally {
       setBusy(null)
     }
@@ -49,11 +52,11 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
     setBusy('new')
     setError(null)
     try {
-      const trip = await createTrip({ name: `My day around ${vendor.name}`, stops: [{ vendorId: vendor.id }] })
+      const trip = await createTrip({ name: tr('m.addTrip.newName', { name: vendor.name }), stops: [{ vendorId: vendor.id }] })
       hapticSaved()
       setDone({ slug: trip.slug, name: trip.name, already: false })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setError(errorText(e))
     } finally {
       setBusy(null)
     }
@@ -62,7 +65,7 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
   return (
     <>
       <div className={`bottom-sheet-overlay ${open ? 'open' : ''}`} onClick={onClose} />
-      <div className={`bottom-sheet ${open ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label="Add to trip">
+      <div className={`bottom-sheet ${open ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={tr('m.addTrip.title')}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 24px' }}>
           {done ? (
@@ -71,7 +74,7 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
                 <Icon name="check" size={22} />
               </div>
               <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--label-primary)' }}>
-                {done.already ? 'Already on' : 'Added to'} {done.name}
+                {done.already ? tr('m.addTrip.alreadyOn', { name: done.name }) : tr('m.addTrip.addedTo', { name: done.name })}
               </p>
               <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Keep browsing</button>
@@ -80,7 +83,7 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
             </div>
           ) : (
             <>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--label-primary)', marginBottom: 4 }}>Add to trip</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--label-primary)', marginBottom: 4 }}>{tr('m.addTrip.title')}</h3>
               <p style={{ fontSize: 15, color: 'var(--label-secondary)', marginBottom: 16 }}>{vendor?.name}</p>
 
               {trips === null ? (
@@ -103,7 +106,7 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--label-primary)' }}>{t.name}</span>
                         <span style={{ display: 'block', fontSize: 13, color: 'var(--label-secondary)' }}>
-                          {t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'} · {t.status === 'BOOKED' ? 'Booked' : 'Planning'}{t.members.length > 1 ? ` · ${t.members.length} in crew` : ''}
+                          {t.stops.length === 1 ? tr('m.addTrip.oneStop') : tr('m.addTrip.stops', { n: t.stops.length })} · {t.status === 'BOOKED' ? tr('m.crew.booked') : tr('m.crew.planning')}{t.members.length > 1 ? ` · ${t.members.length} in crew` : ''}
                         </span>
                       </span>
                       {busy === t.slug ? <span className="num-font" style={{ color: 'var(--label-tertiary)' }}>…</span> : <Icon name="plus" size={16} style={{ color: 'var(--rum-text)' }} />}
@@ -111,11 +114,11 @@ export default function AddToTripSheet({ vendor, onClose }: Props) {
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 14, color: 'var(--label-secondary)', marginBottom: 12 }}>No trips in progress yet.</p>
+                <p style={{ fontSize: 14, color: 'var(--label-secondary)', marginBottom: 12 }}>{tr('m.addTrip.none')}</p>
               )}
 
               <button className="btn btn-primary" style={{ width: '100%' }} onClick={startNew} disabled={busy !== null}>
-                <Icon name="plus" size={16} /> {busy === 'new' ? 'Starting…' : 'Start a new trip with this stop'}
+                <Icon name="plus" size={16} /> {busy === 'new' ? tr('m.addTrip.starting') : tr('m.addTrip.startNew')}
               </button>
               {error ? <p role="alert" style={{ fontSize: 13, color: 'var(--error)', marginTop: 10 }}>{error}</p> : null}
             </>

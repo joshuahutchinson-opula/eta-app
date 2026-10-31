@@ -41,9 +41,9 @@ function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): num
 }
 
 /** Sends once per (subscription, key). Returns true if a push went out. */
-async function deliver(sub: { id: string; endpoint: string; p256dh: string; auth: string }, key: string, payload: AlertPayload): Promise<boolean> {
+async function deliver(sub: { id: string; endpoint: string; p256dh: string; auth: string }, key: string, payload: AlertPayload, type: 'live' | 'deals'): Promise<boolean> {
   try {
-    await prisma.notificationLog.create({ data: { subscriptionId: sub.id, key, title: payload.title, body: payload.body, url: payload.url } })
+    await prisma.notificationLog.create({ data: { subscriptionId: sub.id, key, type, title: payload.title, body: payload.body, url: payload.url } })
   } catch {
     return false // already sent (unique constraint)
   }
@@ -72,7 +72,8 @@ export async function notifyVendorLive(vendorId: string): Promise<number> {
   if (!pushConfigured()) return 0
   const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, name: true, live: true, whoThere: true, neighborhood: true, images: true } })
   if (!vendor?.live) return 0
-  const subs = await prisma.alertSubscription.findMany({ where: { liveAlerts: true, savedVendorIds: { has: vendorId } } })
+  // Signed-in devices also follow the account's "Live vendors" preference.
+  const subs = await prisma.alertSubscription.findMany({ where: { liveAlerts: true, savedVendorIds: { has: vendorId }, OR: [{ userId: null }, { user: { notifyLive: true, deletedAt: null } }] } })
   let sent = 0
   for (const sub of subs) {
     const ok = await deliver(sub, `live:${vendorId}:${today()}`, {
@@ -81,7 +82,7 @@ export async function notifyVendorLive(vendorId: string): Promise<number> {
       url: `/vendor/${vendor.id}`,
       tag: `live-${vendor.id}`,
       image: vendor.images[0]
-    })
+    }, 'live')
     if (ok) sent++
   }
   return sent
@@ -95,7 +96,7 @@ export async function notifyFlashDeal(dealId: string): Promise<number> {
     include: { vendor: { select: { id: true, name: true, lat: true, lng: true, images: true } } }
   })
   if (!deal || deal.expires.getTime() <= Date.now()) return 0
-  const subs = await prisma.alertSubscription.findMany({ where: { dealAlerts: true } })
+  const subs = await prisma.alertSubscription.findMany({ where: { dealAlerts: true, OR: [{ userId: null }, { user: { notifyDeals: true, deletedAt: null } }] } })
   let sent = 0
   for (const sub of subs) {
     const saved = sub.savedVendorIds.includes(deal.vendor.id)
@@ -108,7 +109,7 @@ export async function notifyFlashDeal(dealId: string): Promise<number> {
       url: `/vendor/${deal.vendor.id}`,
       tag: `deal-${deal.id}`,
       image: deal.vendor.images[0]
-    })
+    }, 'deals')
     if (ok) sent++
   }
   return sent

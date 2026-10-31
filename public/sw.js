@@ -4,9 +4,14 @@
 //   1. Web push: show time-sensitive alerts and open the right screen on tap.
 //   2. Offline trips: keep the booked trip's screens, data and photos
 //      available when the connection drops mid-trip.
+//   3. Offline account screens: My Bookings, Saved and receipts (the page
+//      shells and photos; their data is kept per account in localStorage by
+//      lib/offline.ts, since API calls carry a bearer token). Cleared on
+//      log-out (CLEAR_USER).
 // Everything else passes straight through to the network.
 
 const TRIP_CACHE = 'eta-trip-v1'
+const USER_CACHE = 'eta-user-v1'
 const STATIC_CACHE = 'eta-static-v1'
 const STATIC_LIMIT = 200
 
@@ -14,7 +19,7 @@ self.addEventListener('install', () => self.skipWaiting())
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    const keep = [TRIP_CACHE, STATIC_CACHE]
+    const keep = [TRIP_CACHE, USER_CACHE, STATIC_CACHE]
     for (const key of await caches.keys()) {
       if (!keep.includes(key)) await caches.delete(key)
     }
@@ -60,14 +65,18 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('message', event => {
   const msg = event.data || {}
   if (msg.type === 'CACHE_TRIP' && Array.isArray(msg.urls)) {
-    event.waitUntil(cacheUrls(msg.urls))
+    event.waitUntil(cacheUrls(msg.urls, TRIP_CACHE))
   } else if (msg.type === 'CLEAR_TRIP') {
     event.waitUntil(caches.delete(TRIP_CACHE))
+  } else if (msg.type === 'CACHE_USER' && Array.isArray(msg.urls)) {
+    event.waitUntil(cacheUrls(msg.urls, USER_CACHE))
+  } else if (msg.type === 'CLEAR_USER') {
+    event.waitUntil(caches.delete(USER_CACHE))
   }
 })
 
-async function cacheUrls(urls) {
-  const cache = await caches.open(TRIP_CACHE)
+async function cacheUrls(urls, name) {
+  const cache = await caches.open(name)
   await Promise.all(urls.map(async url => {
     try {
       const sameOrigin = new URL(url, self.location.origin).origin === self.location.origin
@@ -86,6 +95,10 @@ async function trimStatic() {
 
 function isTripPage(url) {
   return url.pathname === '/experiences' || url.pathname.startsWith('/trip/')
+}
+
+function isUserPage(url) {
+  return url.pathname === '/bookings' || url.pathname === '/saved' || url.pathname.startsWith('/receipt/')
 }
 
 self.addEventListener('fetch', event => {
@@ -132,13 +145,39 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // Photos saved with a booked trip.
+  // My Bookings, Saved and receipts: network first, cached copy when offline.
+  if (req.mode === 'navigate' && sameOrigin && isUserPage(url)) {
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(req)
+        if (res.ok) {
+          const cache = await caches.open(USER_CACHE)
+          if (await cache.match(req, { ignoreSearch: true })) cache.put(req, res.clone())
+        }
+        return res
+      } catch (e) {
+        const hit = await caches.match(req, { ignoreSearch: true })
+        if (hit) return hit
+        throw e
+      }
+    })())
+    return
+  }
+
+  // Photos saved with a booked trip, a booking or a saved place. Network
+  // first so sizes stay right; offline, a kept copy of the same photo at
+  // another size (Unsplash sizes differ only in the query) still shows.
   if (req.destination === 'image') {
     event.respondWith((async () => {
-      const cache = await caches.open(TRIP_CACHE)
-      const hit = await cache.match(req.url)
-      if (hit) return hit
-      return fetch(req)
+      const exact = (await caches.open(TRIP_CACHE).then(c => c.match(req.url))) || (await caches.open(USER_CACHE).then(c => c.match(req.url)))
+      if (exact) return exact
+      try {
+        return await fetch(req)
+      } catch (e) {
+        const near = (await caches.open(TRIP_CACHE).then(c => c.match(req.url, { ignoreSearch: true }))) || (await caches.open(USER_CACHE).then(c => c.match(req.url, { ignoreSearch: true })))
+        if (near) return near
+        throw e
+      }
     })())
   }
 })

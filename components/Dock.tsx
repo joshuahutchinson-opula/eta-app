@@ -1,4 +1,9 @@
-// components/Dock.tsx
+// components/Dock.tsx — the bottom tab bar. It shows on the five tab roots
+// and on list/browse screens reached from them. Full-screen detail pages and
+// step-by-step flows (vendor, experience, event, stay, trip, receipt, mood,
+// photo spot, stories, booking/plan flows, login, onboarding) leave it out
+// and use the shared <BackButton /> instead, so their bottom CTA can sit at
+// the very bottom of the screen.
 'use client'
 
 import { useEffect, useState } from 'react'

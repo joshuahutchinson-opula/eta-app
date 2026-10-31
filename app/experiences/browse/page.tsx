@@ -10,8 +10,9 @@ import ExperienceCard, { type ExperienceCardData } from '@/components/Experience
 import ErrorState from '@/components/ErrorState'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
-import { cityName } from '@/lib/regions'
+import { CITY_CODES, cityName } from '@/lib/regions'
 import { triggerHaptic } from '@/lib/haptics'
+import BackButton from '@/components/BackButton'
 
 type Exp = ExperienceCardData & { city: string; moods?: Array<{ id: string; name: string; icon: string }> }
 
@@ -30,19 +31,19 @@ export default function BrowseExperiencesPage() {
   const load = useCallback(async () => {
     setFailed(false)
     try {
-      const res = await fetch('/api/experiences')
+      const res = await fetch(city ? `/api/experiences?city=${city}` : '/api/experiences')
       if (!res.ok) throw new Error()
       const data = await res.json()
       setExperiences(Array.isArray(data) ? data : [])
     } catch {
       setFailed(true)
     }
-  }, [])
+  }, [city])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { if (ready) load() }, [ready, load])
 
   const all = experiences ?? []
-  const cities = Array.from(new Set([regionCity, ...all.map(e => e.city)]))
+  const cities = Array.from(new Set([regionCity, ...CITY_CODES]))
   const moods = Array.from(new Map(all.flatMap(e => e.moods ?? []).map(m => [m.id, m])).values())
   const shown = all
     .filter(e => !city || e.city === city)
@@ -51,9 +52,7 @@ export default function BrowseExperiencesPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button onClick={() => router.back()} aria-label="Back" style={{ width: '44px', height: '44px', borderRadius: '50%', border: 'none', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--label-primary)' }}>
-          <Icon name="back" size={16} />
-        </button>
+        <BackButton fallback="/experiences" />
         <div className="section-heading">
           <span className="section-eyebrow">{t('m.exp.browseEyebrow')}</span>
           <h1 className="section-title">{t('m.exp.browseAll')}</h1>

@@ -16,6 +16,7 @@ export async function GET(
         ...EXPERIENCE_STOPS_INCLUDE,
         moods: true,
         reviews: {
+          where: { hidden: false },
           orderBy: { createdAt: 'desc' },
           include: { user: { select: { name: true, avatarUrl: true } } }
         }
@@ -43,7 +44,9 @@ export async function GET(
       vendor: host ? { id: host.id, name: host.name, image: host.images[0] ?? null, neighborhood: host.neighborhood, isPremium: host.isPremium, rating: avg(hostRatings), reviewCount: hostRatings.length } : null,
       stops: stopViews(stops),
       totalMinutes: routeMinutes(stops),
-      reviews: reviews.map(r => ({ id: r.id, rating: r.rating, comment: r.comment, createdAt: r.createdAt, user: r.user })),
+      // The latest few inline; /experiences/[id]/reviews lists them all.
+      reviews: reviews.slice(0, 3).map(r => ({ id: r.id, rating: r.rating, comment: r.comment, createdAt: r.createdAt, user: { name: r.user.name.split(' ')[0], avatarUrl: r.user.avatarUrl } })),
+      reviewCount: reviews.length,
       // The experience's own reviews when it has them; otherwise its route vendors' ratings.
       rating: avg(ownRatings.length ? ownRatings : routeRatings(stops)),
       bookedToday

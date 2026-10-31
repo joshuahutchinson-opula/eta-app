@@ -8,6 +8,9 @@ import Icon from '@/lib/icons'
 import { categoryStyle, priceTier, vendorPitch } from '@/lib/vendor-style'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { formatDistance } from '@/lib/geo'
+import { useLang } from '@/lib/i18n-client'
+import { useLabels } from '@/lib/labels'
+import Img from '@/components/Img'
 
 export interface VendorCardVendor {
   id: string
@@ -40,9 +43,10 @@ interface Props {
 }
 
 function PriceTier({ priceRange, color }: { priceRange: string; color: string }) {
+  const { t } = useLang()
   const tier = priceTier(priceRange)
   return (
-    <span className="num-font" aria-label={`Price ${tier} of 4`} style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+    <span className="num-font" aria-label={t('m.common.priceTier', { n: tier })} style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
       <span style={{ color }}>{'$'.repeat(tier)}</span>
       <span style={{ color: 'var(--label-tertiary)', opacity: 0.6 }}>{'$'.repeat(4 - tier)}</span>
     </span>
@@ -50,25 +54,28 @@ function PriceTier({ priceRange, color }: { priceRange: string; color: string })
 }
 
 function Rating({ rating, reviewCount, compact }: { rating?: number | null; reviewCount?: number | null; compact?: boolean }) {
+  const { t } = useLang()
   if (!rating) {
-    return <span style={{ color: 'var(--label-tertiary)', fontWeight: 600 }}>New on ETA</span>
+    return <span style={{ color: 'var(--label-tertiary)', fontWeight: 600 }}>{t('m.common.newOnEta')}</span>
   }
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: 'var(--label-primary)', fontWeight: 700 }}>
       <span style={{ color: 'var(--gold)' }} aria-hidden>★</span>
       <span className="num-font">{rating.toFixed(1)}</span>
       <span className="num-font" style={{ color: 'var(--label-secondary)', fontWeight: 500 }}>
-        ({reviewCount ?? 0}{compact ? '' : reviewCount === 1 ? ' review' : ' reviews'})
+        ({reviewCount ?? 0}{compact ? '' : ` ${reviewCount === 1 ? t('m.common.review1') : t('m.common.reviewsN')}`})
       </span>
     </span>
   )
 }
 
 export default function VendorCard({ vendor: v, variant = 'row', saved, onToggleSave, onAddToTrip, href, distanceKm }: Props) {
+  const { t } = useLang()
+  const labels = useLabels()
   const distance = formatDistance(distanceKm ?? null)
   const style = categoryStyle(v.category)
   const pitch = vendorPitch(v.description)
-  const access = (v.accessibility ?? []).map(k => ACCESSIBILITY_OPTIONS.find(o => o.key === k)?.short).filter(Boolean)
+  const access = (v.accessibility ?? []).filter(k => ACCESSIBILITY_OPTIONS.some(o => o.key === k)).map(k => labels.access(k))
   const link = href ?? `/vendor/${v.id}`
 
   const chip = (
@@ -77,7 +84,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
       background: `${style.color}1F`, color: style.color, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap'
     }}>
       <Icon name={style.icon} size={11} />
-      {style.label}
+      {labels.category(v.category)}
     </span>
   )
 
@@ -86,14 +93,14 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
   const actions = (onToggleSave || onAddToTrip) ? (
     <div style={{ display: 'flex', flexDirection: variant === 'tile' ? 'column' : 'row', gap: variant === 'tile' ? '6px' : '2px', flexShrink: 0 }}>
       {onAddToTrip && (
-        <button className="heart-btn" aria-label={`Add ${v.name} to a trip`} onClick={e => { e.preventDefault(); onAddToTrip() }} style={{ color: 'var(--label-secondary)', ...btnSize }}>
+        <button className="heart-btn" aria-label={`${t('m.addTrip.title')}: ${v.name}`} onClick={e => { e.preventDefault(); onAddToTrip() }} style={{ color: 'var(--label-secondary)', ...btnSize }}>
           <Icon name="plus" size={variant === 'tile' ? 15 : 18} />
         </button>
       )}
       {onToggleSave && (
         <button
           className="heart-btn"
-          aria-label={saved ? `Unsave ${v.name}` : `Save ${v.name}`}
+          aria-label={saved ? `${t('m.saved.unsave')}: ${v.name}` : `${t('m.saved.save')}: ${v.name}`}
           onClick={e => { e.preventDefault(); onToggleSave() }}
           style={{ color: saved ? 'var(--rum)' : 'var(--label-secondary)', ...btnSize }}
         >
@@ -106,7 +113,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
   const liveLine = v.live ? (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--live)', fontWeight: 600 }}>
       <span className="live-dot" />
-      <span className="num-font">{v.whoThere}</span> here now
+      <span className="num-font">{v.whoThere}</span> {t('m.home.hereNow')}
     </span>
   ) : null
 
@@ -115,22 +122,22 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
       <Link href={link} style={{ textDecoration: 'none' }}>
         <div className="card" style={{ height: '100%' }}>
           <div className="card-image" style={{ height: '120px', borderBottom: `3px solid ${style.color}` }}>
-            <img src={v.images[0]} alt={v.name} />
+            {v.images[0] && <Img src={v.images[0]} alt={v.name} width={400} height={240} sizes="50vw" />}
             {v.isPremium && (
               <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Icon name="crown" size={11} /> B.O.N
+                <Icon name="crown" size={11} /> {t('common.premium')}
               </div>
             )}
             {actions && <div style={{ position: 'absolute', top: '6px', right: '6px' }}>{actions}</div>}
             {v.live && (
               <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '999px' }}>
-                <span className="live-dot" /><span className="num-font">{v.whoThere}</span> here
+                <span className="live-dot" /><span className="num-font">{v.whoThere}</span> {t('m.home.hereNow')}
               </div>
             )}
           </div>
           <div className="card-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? 'Open now' : 'Closed'} />
+              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? t('m.common.openNow') : t('m.common.closed')} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
@@ -151,9 +158,9 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
     <Link href={link} style={{ textDecoration: 'none' }}>
       <div className="card" style={{ display: 'flex', gap: '12px', padding: '12px', borderLeft: `3px solid ${style.color}` }}>
         <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-          <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {v.images[0] && <Img src={v.images[0]} alt={v.name} width={200} height={200} sizes="100px" />}
           {v.isPremium && (
-            <span style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', color: 'var(--gold)' }} aria-label="B.O.N member">
+            <span style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', color: 'var(--gold)' }} aria-label={t('m.common.bonMember')}>
               <Icon name="crown" size={12} />
             </span>
           )}
@@ -161,7 +168,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? 'Open now' : 'Closed'} style={{ flexShrink: 0 }} />
+              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? t('m.common.openNow') : t('m.common.closed')} style={{ flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
             </p>
             {actions}

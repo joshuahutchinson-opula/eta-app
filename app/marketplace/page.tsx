@@ -20,6 +20,10 @@ import { useRegion } from '@/components/RegionProvider'
 import ErrorState from '@/components/ErrorState'
 import { moodCategories } from '@/lib/mood-profiles'
 import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
+import { RegionPill } from '@/components/RegionSelector'
+import { useLabels } from '@/lib/labels'
+import SmartVideo from '@/components/SmartVideo'
+import Img from '@/components/Img'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
@@ -103,6 +107,7 @@ function formatCategory(category: string): string {
 export default function MarketplacePage() {
   const patois = usePatois()
   const { t } = useLang()
+  const labels = useLabels()
   const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [accommodations, setAccommodations] = useState<Accommodation[]>([])
@@ -110,7 +115,7 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
-  const { city, town } = useRegion()
+  const { city, town, ready } = useRegion()
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
@@ -124,8 +129,9 @@ export default function MarketplacePage() {
   const userLocation = realLocation ?? { lat: regionTown.lat, lng: regionTown.lng }
   const [loadFailed, setLoadFailed] = useState(false)
 
+  useEffect(() => { if (ready) fetchData() }, [ready, city])
+
   useEffect(() => {
-    fetchData()
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
     const savedMood = localStorage.getItem('marketplaceMood')
@@ -138,9 +144,9 @@ export default function MarketplacePage() {
     try {
       setLoadFailed(false)
       const [vendorsRes, accomRes, flashDealsRes] = await Promise.all([
-        fetch('/api/vendors'),
-        fetch('/api/accommodations'),
-        fetch('/api/flashdeals')
+        fetch(`/api/vendors?city=${city}`),
+        fetch(`/api/accommodations?city=${city}`),
+        fetch(`/api/flashdeals?city=${city}`)
       ])
 
       if (!vendorsRes.ok) throw new Error('vendors')
@@ -256,6 +262,7 @@ export default function MarketplacePage() {
           marginBottom: '12px',
           minHeight: '44px'
         }}>
+          <RegionPill />
           <div className="card" style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -362,9 +369,9 @@ export default function MarketplacePage() {
                     <Popup>
                       <div style={{ minWidth: '150px', background: '#1C1C1E', color: '#FFFFFF', padding: '8px', borderRadius: '8px' }}>
                         <p style={{ fontSize: '15px', fontWeight: 600 }}>{v.name}</p>
-                        <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{formatCategory(v.category)} · {v.priceRange}</p>
+                        <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{labels.category(v.category)} · {v.priceRange}</p>
                         <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#A1A1A1' }}>
-                          {v.open ? 'Open' : 'Closed'}
+                          {v.open ? t('m.common.open') : t('m.common.closed')}
                           {v.isPremium && ' · ★ B.O.N'}
                         </p>
                       </div>
@@ -381,8 +388,8 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Today&apos;s Pick</span>
-                <span className="section-title">Dish Of The Day</span>
+                <span className="section-eyebrow">{t('m.market.todaysPick')}</span>
+                <span className="section-title">{t('m.market.dishOfDay')}</span>
               </div>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
@@ -393,10 +400,10 @@ export default function MarketplacePage() {
                   <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: dishesOfDay.length > 1 ? '85%' : '100%' }}>
                     <div className="card" style={{ position: 'relative', height: '200px' }}>
                       {dish.videoUrl ? (
-                        <video src={dish.videoUrl} poster={image} autoPlay muted loop playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                      ) : (
-                        <img src={image} alt={dish.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                      )}
+                        <div style={{ position: 'absolute', inset: 0 }}><SmartVideo src={dish.videoUrl} poster={image} alt={dish.name} /></div>
+                      ) : image ? (
+                        <Img src={image} alt={dish.name} width={800} height={600} style={{ position: 'absolute', inset: 0 }} />
+                      ) : null}
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
                       <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
                         <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.75)' }}>{v.name}</p>
@@ -422,7 +429,7 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Limited Time</span>
+                <span className="section-eyebrow">{t('m.market.limited')}</span>
                 <span className="section-title">{t('m.market.flashDeals')}</span>
               </div>
             </div>
@@ -431,7 +438,7 @@ export default function MarketplacePage() {
                 <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div className="card" style={{ width: '200px' }}>
                     <div className="card-image" style={{ height: '110px' }}>
-                      {fd.vendor.images?.[0] && <img src={fd.vendor.images[0]} alt={fd.vendor.name} />}
+                      {fd.vendor.images?.[0] && <Img src={fd.vendor.images[0]} alt={fd.vendor.name} width={600} height={400} sizes="80vw" />}
                       <div className="card-overlay" />
                     </div>
                     <div className="card-content">
@@ -456,7 +463,7 @@ export default function MarketplacePage() {
               <div className="section-heading">
                 <span className="section-title">{t('m.bon.members')}</span>
               </div>
-              <Link href="/vendors?premium=true" className="section-link">See All</Link>
+              <Link href="/vendors?premium=true" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
               {premiumVendors.map(v => (
@@ -473,10 +480,10 @@ export default function MarketplacePage() {
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Stay Awhile</span>
-                <span className="section-title">Accommodation</span>
+                <span className="section-eyebrow">{t('m.market.stayAwhile')}</span>
+                <span className="section-title">{t('m.market.accommodation')}</span>
               </div>
-              <Link href="/vendors" className="section-link">See All</Link>
+              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px' }}>
               {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
@@ -494,7 +501,7 @@ export default function MarketplacePage() {
                 <Link key={a.id} href={`/accommodations/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '240px' }}>
                   <div className="card">
                     <div className="card-image" style={{ height: '160px' }}>
-                      <img src={a.media?.[0]?.url || ''} alt={a.name} />
+                      {a.media?.[0]?.url && <Img src={a.media[0].url} alt={a.name} width={600} height={400} sizes="80vw" />}
                     </div>
                     <div className="card-content">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
@@ -505,7 +512,7 @@ export default function MarketplacePage() {
                       <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{a.type}</p>
                       <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum-text)' }}>
                         {a.nightlyPrice != null ? <Price usd={a.nightlyPrice} /> : a.priceRange}
-                        <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> /night</span>
+                        <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> {t('m.common.perNightShort')}</span>
                       </p>
                     </div>
                   </div>
@@ -521,7 +528,7 @@ export default function MarketplacePage() {
             <div className="section-heading">
               <span className="section-title">{t('m.market.allVendors')}</span>
             </div>
-            <Link href="/vendors" className="section-link">See All</Link>
+            <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
           </div>
           {loadFailed ? (
             <ErrorState onRetry={handleRefresh} />
@@ -529,7 +536,7 @@ export default function MarketplacePage() {
             <div className="empty-state">
               <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
               {vendors.some(v => v.city === city) ? (
-                <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch || "Nuttin nuh go suh"}</p>
+                <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch}</p>
               ) : (
                 <>
                   <p style={{ fontSize: '17px', fontWeight: 600 }}>{t('m.region.emptyTitle', { town: town.name })}</p>
@@ -560,7 +567,7 @@ export default function MarketplacePage() {
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.market.filterTitle')}</h3>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Mood / Category</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.moodCategory')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {MOOD_NAMES.map(mood => (
               <button
@@ -574,19 +581,19 @@ export default function MarketplacePage() {
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Show</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.show')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             <button
               onClick={() => setShowSavedOnly(!showSavedOnly)}
               className={`chip ${showSavedOnly ? 'active' : ''}`}
             >
               <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
-              Saved only
+              {t('m.market.savedOnly')}
             </button>
           </div>
 
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>{t('m.market.accessibility')}</p>
-          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>Only vendors who&apos;ve confirmed a feature show up.</p>
+          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>{t('m.market.accessNote')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {ACCESSIBILITY_OPTIONS.map(opt => (
               <button
@@ -595,16 +602,16 @@ export default function MarketplacePage() {
                 className={`chip ${selectedAccess.includes(opt.key) ? 'active' : ''}`}
                 aria-pressed={selectedAccess.includes(opt.key)}
               >
-                {opt.label}
+                {labels.access(opt.key)}
               </button>
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.sortBy')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {SORT_OPTIONS.map(option => (
               <button
-                key={option}
+                key={t(`m.sort.${option}` as 'm.sort.Price')}
                 onClick={() => handleSortChange(option)}
                 className={`chip ${sortBy === option ? 'active' : ''}`}
               >

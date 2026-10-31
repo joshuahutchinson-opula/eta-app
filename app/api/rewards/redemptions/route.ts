@@ -1,13 +1,14 @@
 // GET — the signed-in caller's redemptions (vouchers), newest first.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json([])
+  const auth = await requireUser(request, { message: 'Log in to see your vouchers' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
   try {
     const rows = await prisma.redemption.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 })
     return NextResponse.json(rows)

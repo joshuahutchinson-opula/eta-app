@@ -1,16 +1,28 @@
 import { NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { EXPERIENCE_STOPS_INCLUDE, hostVendor, routeMinutes, routeRatings, stopViews } from '@/lib/experience-stops'
 import { bookedTodayByExperience } from '@/lib/booking-counts'
+import { listParams } from '@/lib/list-params'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// GET ?city= | ?region=  ?mood=<moodId>  ?ids=  ?limit=
+export async function GET(request: Request) {
+  const { cities, ids, limit } = listParams(request.url)
+  const mood = new URL(request.url).searchParams.get('mood')
+  const where: Prisma.ExperienceWhereInput = {
+    ...(cities ? { city: { in: cities } } : {}),
+    ...(ids ? { id: { in: ids } } : {}),
+    ...(mood ? { moods: { some: { id: mood } } } : {})
+  }
   try {
     const [experiences, bookedToday] = await Promise.all([
       prisma.experience.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
-        include: { ...EXPERIENCE_STOPS_INCLUDE, moods: true, reviews: { select: { rating: true } } }
+        take: limit,
+        include: { ...EXPERIENCE_STOPS_INCLUDE, moods: true, reviews: { where: { hidden: false }, select: { rating: true } } }
       }),
       bookedTodayByExperience()
     ])
@@ -25,6 +37,7 @@ export async function GET() {
         stops: stopViews(stops),
         // Hours, rounded to the half hour — what the Home cards show. Null without a route.
         totalDuration: minutes > 0 ? Math.round(minutes / 30) / 2 : null,
+        totalMinutes: minutes > 0 ? minutes : null,
         rating: ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : undefined,
         reviewCount: ratings.length || undefined,
         // Real bookings made today; 0 means show nothing.
@@ -33,9 +46,6 @@ export async function GET() {
     }))
   } catch (error) {
     console.error('Error fetching experiences:', error)
-    return NextResponse.json(
-      { error: 'Sumth nah wuk' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }
 }

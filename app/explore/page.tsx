@@ -4,22 +4,24 @@
 import { useEffect, useState } from 'react'
 import Dock from '@/components/Dock'
 import ExploreMap, { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
+import { useLang } from '@/lib/i18n-client'
+import { useRegion } from '@/components/RegionProvider'
 
 export default function ExplorePage() {
+  const { t } = useLang()
   const [vendors, setVendors] = useState<MapVendor[]>([])
   const [photoSpots, setPhotoSpots] = useState<MapPhotoSpot[]>([])
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    fetchData()
-  }, [])
+  const { city, ready } = useRegion()
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { if (ready) fetchData() }, [ready, city])
 
   const fetchData = async () => {
     try {
       const [vendorsRes, spotsRes] = await Promise.all([
-        fetch('/api/vendors'),
-        fetch('/api/photospots')
+        fetch(`/api/vendors?city=${city}`),
+        fetch(`/api/photospots?city=${city}`)
       ])
       const vendorsData = await vendorsRes.json()
       const spotsData = await spotsRes.json()
@@ -34,7 +36,7 @@ export default function ExplorePage() {
     return (
       <main style={{ minHeight: '100dvh', background: '#000000', display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.6)' }}>Wull on deh...</p>
+          <p style={{ color: 'rgba(255,255,255,0.6)' }}>{t('m.common.loading')}</p>
         </div>
         <Dock />
       </main>

@@ -6,11 +6,13 @@
 // Run: npx tsx scripts/seed-extras.ts [--apply]
 import { PrismaClient } from '@prisma/client'
 import { seedExtras } from '../prisma/seed-extras'
+import { assertSeedAllowed } from '../prisma/seed-guard'
 
 const prisma = new PrismaClient()
 const apply = process.argv.includes('--apply')
 
 async function main() {
+  assertSeedAllowed('scripts/seed-extras.ts')
   const [events, vendors, jordan] = await Promise.all([
     prisma.event.count(),
     prisma.vendor.count(),

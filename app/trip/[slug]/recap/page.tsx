@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import RecapShare from '@/components/RecapShare'
+import { t } from '@/lib/i18n'
+import { getServerLang } from '@/lib/i18n-server'
 import RecapReviews from '@/components/RecapReviews'
 import { getTripRecap } from '@/lib/recap'
 
@@ -10,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const recap = await getTripRecap(params.slug)
-  if (!recap) return { title: 'Trip recap' }
+  if (!recap) return { title: t(getServerLang(), 'm.recap.title') }
   const desc = `${recap.trip.stops.length} stops · +${recap.pointsEarned} points on ETA`
   return {
     title: `${recap.trip.name} — trip recap`,
@@ -21,6 +23,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function RecapPage({ params }: { params: { slug: string } }) {
+  const lang = getServerLang()
   const recap = await getTripRecap(params.slug)
   if (!recap) notFound()
   const { trip } = recap
@@ -57,10 +60,10 @@ export default async function RecapPage({ params }: { params: { slug: string } }
           </div>
         ) : null}
         {recap.moments.length === 0 && photos.length > 0 ? (
-          <p style={{ fontSize: 12, color: 'rgba(251,248,244,0.5)', marginTop: 8 }}>Photos from the stops — post moments during your next trip to see your own here.</p>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,244,0.5)', marginTop: 8 }}>{t(lang, 'm.recap.photosNote')}</p>
         ) : null}
 
-        <h2 style={{ fontSize: 17, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>The route</h2>
+        <h2 style={{ fontSize: 17, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>{t(lang, 'm.recap.route')}</h2>
         <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {trip.stops.map((s, i) => (
             <li key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: 10 }}>

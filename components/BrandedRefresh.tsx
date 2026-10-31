@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import Icon from '@/lib/icons'
+import { useLang } from '@/lib/i18n-client'
 
 interface BrandedRefreshProps {
   refreshing: boolean
@@ -10,6 +11,7 @@ interface BrandedRefreshProps {
 }
 
 export default function BrandedRefresh({ refreshing, onRefresh }: BrandedRefreshProps) {
+  const { t } = useLang()
   const [pullDistance, setPullDistance] = useState(0)
   const [startY, setStartY] = useState<number | null>(null)
 
@@ -46,14 +48,14 @@ export default function BrandedRefresh({ refreshing, onRefresh }: BrandedRefresh
         <div className="branded-refresh" style={{ height: pullDistance }}>
           <Icon name="sparkle" size={20} style={{ color: 'var(--rum)' }} />
           <span style={{ fontSize: '13px', fontWeight: 600 }}>
-            {pullDistance > 50 ? 'Release to refresh' : 'Pull to refresh'}
+            {pullDistance > 50 ? t('m.refresh.release') : t('m.refresh.pull')}
           </span>
         </div>
       )}
       {refreshing && (
         <div className="branded-refresh">
           <div className="branded-refresh-spinner" />
-          <span>Refreshing...</span>
+          <span>{t('m.refresh.busy')}</span>
         </div>
       )}
     </div>

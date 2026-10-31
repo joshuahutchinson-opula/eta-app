@@ -3,9 +3,12 @@
 
 import type { TripDTO } from '@/lib/trips'
 import { getCurrentUser } from '@/lib/auth-client'
+import { authHeaders } from '@/lib/api-client'
+import { absoluteUrl } from '@/lib/site-url'
+import { ApiError, responseError } from '@/lib/errors'
 
 export type { TripDTO, TripStopDTO, TripMemberDTO } from '@/lib/trips'
-export type TripView = TripDTO & { canEdit?: boolean }
+export type TripView = TripDTO & { canEdit?: boolean; invite?: { name: string | null; owner: string | null } }
 
 interface RememberedTrip {
   slug: string
@@ -38,28 +41,31 @@ export function getTripKey(slug: string): string | undefined {
   return readMine().find(t => t.slug === slug)?.editKey
 }
 
-/** Which crew member this device is, on a shared trip link. */
-export function getMemberId(slug: string): string | null {
-  try { return localStorage.getItem(`eta_trip_member_${slug}`) } catch { return null }
+/** Invite (?invite=) and view (?view=) tokens from the link this page was opened with. */
+function linkTokens(slug: string): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  const q = new URLSearchParams(window.location.search)
+  const out: Record<string, string> = {}
+  const onThisTrip = window.location.pathname.includes(slug)
+  if (onThisTrip && q.get('invite')) out['x-trip-invite'] = q.get('invite')!
+  if (onThisTrip && q.get('view')) out['x-trip-view'] = q.get('view')!
+  return out
 }
 
-export function setMemberId(slug: string, memberId: string) {
-  localStorage.setItem(`eta_trip_member_${slug}`, memberId)
-}
-
+/** The crew link for a trip. Joining needs an invite link (createInviteLink). */
 export function tripShareUrl(slug: string): string {
-  return `${window.location.origin}/trip/${slug}`
+  return absoluteUrl(`/trip/${slug}`)
 }
 
 export async function tripApi<T = TripView>(slug: string, path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const key = getTripKey(slug)
   const res = await fetch(`/api/trips/${slug}${path}`, {
     method: init.method ?? 'GET',
-    headers: { 'Content-Type': 'application/json', ...(key ? { 'x-trip-key': key } : {}) },
+    headers: authHeaders({ 'Content-Type': 'application/json', ...(key ? { 'x-trip-key': key } : {}), ...linkTokens(slug) }),
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(data.error || '', res.status, data.code)
   return data as T
 }
 
@@ -73,51 +79,55 @@ export async function createTrip(input: {
   date?: string
   notes?: string
 }): Promise<TripView> {
-  const user = getCurrentUser()
   const res = await fetch('/api/trips', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...input, ownerId: user?.id, ownerName: user?.name?.split(' ')[0] })
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(input)
   })
+  if (!res.ok) throw await responseError(res)
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
   rememberTrip({ slug: data.trip.slug, editKey: data.editKey, name: data.trip.name })
   return { ...data.trip, canEdit: true }
 }
 
-/** Trips created on this device or owned by the signed-in user, newest first. */
+/** Trips the signed-in user owns or joined (plus web plans made on this device), newest first. */
 export async function fetchMyTrips(statuses: TripDTO['status'][] = ['PLANNING', 'BOOKED']): Promise<TripView[]> {
-  const mine = readMine()
-  const user = getCurrentUser()
+  const web = readMine()
   const params = new URLSearchParams()
-  if (mine.length) params.set('slugs', mine.map(t => t.slug).join(','))
-  if (user) params.set('ownerId', user.id)
-  if (!params.toString()) return []
-  const res = await fetch(`/api/trips?${params}`)
+  if (web.length) params.set('slugs', web.map(t => t.slug).join(','))
+  if (!getCurrentUser() && !params.toString()) return []
+  const res = await fetch(`/api/trips?${params}`, { headers: authHeaders() })
   if (!res.ok) return []
   const trips: TripDTO[] = await res.json()
   return trips
     .filter(t => statuses.includes(t.status))
-    .map(t => ({ ...t, canEdit: Boolean(getTripKey(t.slug)) }))
+    .map(t => ({ ...t, canEdit: t.access === 'owner' || Boolean(getTripKey(t.slug)) }))
 }
 
 export type BookedTrip = TripView & { bookingId?: string; transactionId?: string | null; walletBalance?: number | null }
 
 /** Books a planned trip with the traveler's date, time and party size, paying from the ETA Wallet. */
-export async function bookTripPaid(slug: string, details: { date: string; time: string | null; partySize: number }, estimatedPrice?: number): Promise<BookedTrip> {
-  const user = getCurrentUser()
-  if (!user) throw new Error('Log in to book — your trip is saved on this device.')
+export async function bookTripPaid(slug: string, details: { date: string; time: string | null; partySize: number }, estimatedPrice?: number, split = false): Promise<BookedTrip> {
+  if (!getCurrentUser()) throw new ApiError('Log in to book — your trip is saved on this device.', 401, 'LOGIN_REQUIRED')
   const booked = await tripApi<BookedTrip>(slug, '/book', {
     method: 'POST',
-    body: { userId: user.id, ...details, estimatedPrice, payWithWallet: true }
+    body: { ...details, estimatedPrice, payWithWallet: true, split }
   })
   return { ...booked, canEdit: true }
 }
 
 export async function addStopToTrip(slug: string, stop: { vendorId?: string; experienceId?: string; photoSpotId?: string }) {
-  const user = getCurrentUser()
-  return tripApi<TripView & { alreadyAdded: boolean }>(slug, '/stops', {
-    method: 'POST',
-    body: { ...stop, addedBy: user?.name?.split(' ')[0] ?? 'You' }
-  })
+  return tripApi<TripView & { alreadyAdded: boolean }>(slug, '/stops', { method: 'POST', body: stop })
+}
+
+/** A link that lets someone join the crew with their own account. */
+export async function createInviteLink(slug: string, name?: string): Promise<string> {
+  const { url } = await tripApi<{ url: string }>(slug, '/invites', { method: 'POST', body: { name } })
+  return url
+}
+
+/** A read-only link to follow the trip live (Safety screen). */
+export async function createViewLink(slug: string): Promise<string> {
+  const { url } = await tripApi<{ url: string }>(slug, '/view-link', { method: 'POST' })
+  return url
 }

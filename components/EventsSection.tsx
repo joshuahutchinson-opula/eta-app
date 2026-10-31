@@ -1,16 +1,15 @@
 // components/EventsSection.tsx — "This Week's Events" on Home and Market.
-// Promoter events (not vendors) for the selected region.
+// Promoter events (not vendors) for the selected region, with a way into
+// the full list (/events).
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import Icon from '@/lib/icons'
-import Price from '@/components/Price'
 import ErrorState from '@/components/ErrorState'
+import EventCard from '@/components/EventCard'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
-import { triggerHaptic } from '@/lib/haptics'
-import { eventWhen, type EventItem } from '@/lib/events'
+import type { EventItem } from '@/lib/events'
 
 export default function EventsSection({ padded = true }: { padded?: boolean }) {
   const { city, town, ready } = useRegion()
@@ -21,7 +20,7 @@ export default function EventsSection({ padded = true }: { padded?: boolean }) {
   const load = useCallback(async () => {
     setFailed(false)
     try {
-      const res = await fetch(`/api/events?city=${city}&days=7`)
+      const res = await fetch(`/api/events?city=${city}&days=7&limit=10`)
       if (!res.ok) throw new Error()
       const data = await res.json()
       setEvents(Array.isArray(data) ? data : [])
@@ -41,6 +40,7 @@ export default function EventsSection({ padded = true }: { padded?: boolean }) {
           <span className="section-eyebrow">{t('m.events.eyebrow')}</span>
           <span className="section-title">{t('m.events.title')}</span>
         </div>
+        <Link href="/events" className="section-link">{t('m.events.seeAll')}</Link>
       </div>
       {failed ? (
         <ErrorState compact onRetry={load} />
@@ -58,37 +58,7 @@ export default function EventsSection({ padded = true }: { padded?: boolean }) {
         </p>
       ) : (
         <div className="horizontal-scroll" style={{ padding: `4px ${pad} 12px` }}>
-          {events.map(ev => (
-            <Link key={ev.id} href={`/events/${ev.id}`} onClick={() => triggerHaptic('light')} style={{ textDecoration: 'none', flexShrink: 0 }}>
-              <div className="card" style={{ width: '240px' }}>
-                <div className="card-image" style={{ height: '130px', background: 'var(--system-bg-secondary)' }}>
-                  {ev.imageUrl ? <img src={ev.imageUrl} alt={ev.title} /> : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-tertiary)' }}>
-                      <Icon name="party" size={32} />
-                    </div>
-                  )}
-                  <div className="card-overlay" />
-                  <div className="card-badge">
-                    <Icon name="clock" size={11} />
-                    {eventWhen(ev.startAt)}
-                  </div>
-                </div>
-                <div className="card-content">
-                  <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <Icon name="mapPin" size={11} /> {ev.venueName}
-                  </p>
-                  {ev.isFree ? (
-                    <span className="card-price">{t('m.events.free')}</span>
-                  ) : ev.price !== null ? (
-                    <Price usd={ev.price} className="card-price" />
-                  ) : (
-                    <span style={{ fontSize: '13px', color: 'var(--label-tertiary)' }}>{t('m.events.priceNotListed')}</span>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
+          {events.map(ev => <EventCard key={ev.id} ev={ev} />)}
         </div>
       )}
     </div>

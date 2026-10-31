@@ -75,6 +75,7 @@ enum TransactionType {
   REWARD
   TOPUP
   TRANSFER
+  REFUND
 }
 
 enum TransactionStatus {
@@ -100,10 +101,45 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  redemptions         Redemption[]
-  dealClaims          FlashDealClaim[]
-  reservationRequests ReservationRequest[]
-  passwordResetTokens PasswordResetToken[]
+  // Null until the user opens the link in their verification email.
+  // Unverified users can browse but not book, review or post.
+  emailVerifiedAt       DateTime?
+  // Bumped on log-out and account deletion; tokens carry the version they
+  // were issued with, so older ones stop working (lib/auth-server.ts).
+  tokenVersion          Int       @default(0)
+  // Set when the user deletes their account; personal fields are wiped then.
+  deletedAt             DateTime?
+  // Which terms/privacy version the user agreed to at sign-up (lib/legal.ts).
+  termsVersion          String?
+  termsAcceptedAt       DateTime?
+  // Who "I feel unsafe" shares the live location link with (Safety screen).
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  // Shown on the monthly leaderboard as first name + initial only.
+  leaderboardOptIn      Boolean   @default(false)
+  // Notification preferences per type, respected by every sender (lib/notify.ts).
+  notifyBookings        Boolean   @default(true)
+  notifyEvents          Boolean   @default(true)
+  notifyDeals           Boolean   @default(true)
+  notifyLive            Boolean   @default(true)
+  notifyCrew            Boolean   @default(true)
+
+  redemptions             Redemption[]
+  dealClaims              FlashDealClaim[]
+  reservationRequests     ReservationRequest[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  reports                 Report[]
+  saved                   Saved[]
+  savedLists              SavedList[]
+  storyViews              StoryView[]
+  eventInterests          EventInterest[]
+  tickets                 Ticket[]
+  tripMemberships         TripMember[]
+  challengeCompletions    ChallengeCompletion[]
+  notifications           NotificationLog[]
+  safetyShares            SafetyShare[]
+  moodMedia               MoodMedia[]
 
   vendors         Vendor[]
   bookings        Booking[]
@@ -166,10 +202,17 @@ model Vendor {
   // What the vendor is pushing today: { name, price, imageUrl, videoUrl?, prepMinutes? }.
   dishOfDay            Json?
   acceptsReservations  Boolean        @default(false)
+  // Placeholder listing from the seed, not a real vetted vendor.
+  // scripts/remove-mock-data.ts deletes everything flagged this way.
+  isMock               Boolean        @default(false)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   ownerId              String?
   owner                User?          @relation(fields: [ownerId], references: [id])
+
+  menuItems            MenuItem[]
+  rewardVendors        RewardVendor[]
+  agreementAcceptances VendorAgreementAcceptance[]
 
   reservationRequests ReservationRequest[]
   redemptions         Redemption[]
@@ -186,25 +229,28 @@ model Vendor {
 }
 
 model Accommodation {
-  id           String            @id @default(cuid())
-  name         String
-  type         AccommodationType
-  googleStars  Float
-  description  String
-  amenities    String[]
-  priceRange   String
-  lat          Float
-  lng          Float
-  city         City
-  vetted       Boolean           @default(false)
-  hostName     String?
-  media        Json
-  roomViews    String[]
+  id               String            @id @default(cuid())
+  name             String
+  type             AccommodationType
+  googleStars      Float
+  description      String
+  amenities        String[]
+  priceRange       String
+  lat              Float
+  lng              Float
+  city             City
+  vetted           Boolean           @default(false)
+  hostName         String?
+  media            Json
+  roomViews        String[]
   // USD per night. Null = not listed yet; booking is disabled without it.
-  nightlyPrice Float?
-  maxGuests    Int?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  nightlyPrice     Float?
+  maxGuests        Int?
+  // Refund rules key from lib/cancellation.ts.
+  cancellationTier String            @default("standard")
+  isMock           Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   bookings     Booking[]
   bundles      Bundle[]
@@ -245,8 +291,23 @@ model Experience {
   // Start times offered, "HH:MM" 24h. Empty = any time the traveler picks.
   startTimes         String[] @default([])
   maxPartySize       Int?
+  // Refund rules key from lib/cancellation.ts (flexible | standard | strict).
+  // cancellationPolicy above is the vendor's own wording, shown alongside.
+  cancellationTier   String   @default("standard")
+  // Spots per start time (all party members count). Null = no limit listed.
+  capacityPerSlot    Int?
+  // Extra photos for the detail page gallery (imageUrl is the cover).
+  gallery            String[] @default([])
+  whatToBring        String[] @default([])
+  // Free-text detail beyond the accessibility keys (steps, terrain, boats...).
+  accessibilityNotes String?
+  // Languages the guide speaks, e.g. ["English", "Patois", "Spanish"].
+  guideLanguages     String[] @default([])
+  isMock             Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  slots ExperienceSlot[]
 
   reviews   Review[]
   // An experience is an ordered route of vendor and photo-spot stops.
@@ -306,11 +367,16 @@ model MoodMedia {
   id         String   @id @default(cuid())
   type       String
   url        String
+  // Display name of who posted it.
   uploadedBy String
+  // Hidden after REPORT_HIDE_THRESHOLD reports, pending review.
+  hidden     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   moodId String
-  mood   Mood   @relation(fields: [moodId], references: [id])
+  mood   Mood    @relation(fields: [moodId], references: [id])
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model PhotoSpot {
@@ -335,11 +401,19 @@ model PhotoSpot {
 
 model Story {
   id        String   @id @default(cuid())
+  // The caption.
   content   String
   type      String
+  // The photo, or the poster frame for a video story.
   imageUrl  String
+  videoUrl  String?
+  // Region the story was posted in (traveler stories); vendor stories use the vendor's town.
+  city      City?
+  hidden    Boolean  @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  views StoryView[]
 
   vendorId String?
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
@@ -348,22 +422,27 @@ model Story {
 }
 
 model Booking {
-  id           String        @id @default(cuid())
-  status       BookingStatus @default(PENDING)
-  date         DateTime
+  id            String        @id @default(cuid())
+  status        BookingStatus @default(PENDING)
+  date          DateTime
   // Check-out for stays; null for single-day bookings.
-  endDate      DateTime?
+  endDate       DateTime?
   // "HH:MM" start time the traveler picked, when the booking has one.
-  time         String?
-  partySize    Int           @default(1)
+  time          String?
+  partySize     Int           @default(1)
   // Per person (experiences) or per night (stays), before fees.
-  unitPrice    Float?
-  fees         Float         @default(0)
-  totalPrice   Float
-  pointsEarned Int           @default(0)
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  unitPrice     Float?
+  fees          Float         @default(0)
+  totalPrice    Float
+  pointsEarned  Int           @default(0)
+  transactions  Transaction[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  cancelledAt   DateTime?
+  // Refunded to the wallet on cancellation, per the cancellation policy.
+  refundAmount  Float?
+  // Set each time the traveler moves the booking to a new date/time.
+  rescheduledAt DateTime?
 
   userId          String
   user            User           @relation(fields: [userId], references: [id])
@@ -396,6 +475,7 @@ model Review {
   id        String   @id @default(cuid())
   rating    Int
   comment   String?
+  hidden    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   userId       String
@@ -447,6 +527,7 @@ model UserMoment {
   url       String
   caption   String?
   likes     Int      @default(0)
+  hidden    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   userId      String
@@ -539,6 +620,10 @@ model Trip {
   editKey          String?
   // Which stop the crew is at on a booked trip; shared via the trip link.
   currentStopIndex Int        @default(0)
+  // Read-only link for people outside the crew (Safety: share live trip).
+  viewToken        String?    @unique
+  // Each crew member pays their own share through the trip link.
+  splitPayment     Boolean    @default(false)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -549,8 +634,10 @@ model Trip {
   bookingId    String?     @unique
   booking      Booking?    @relation(fields: [bookingId], references: [id])
 
-  stops   TripStop[]
-  members TripMember[]
+  stops    TripStop[]
+  members  TripMember[]
+  invites  TripInvite[]
+  messages TripMessage[]
 }
 
 model TripStop {
@@ -573,17 +660,60 @@ model TripStop {
 }
 
 model TripMember {
-  id       String   @id @default(cuid())
-  name     String
-  isOwner  Boolean  @default(false)
-  status   String   @default("pending")
-  share    Float    @default(0)
-  paid     Boolean  @default(false)
-  joinedAt DateTime @default(now())
+  id                String    @id @default(cuid())
+  name              String
+  isOwner           Boolean   @default(false)
+  status            String    @default("pending")
+  share             Float     @default(0)
+  paid              Boolean   @default(false)
+  paidAt            DateTime?
+  // The wallet payment that covered this member's share.
+  paidTransactionId String?
+  joinedAt          DateTime  @default(now())
+  // Live location, opt-in, shared with the crew only while the trip is booked.
+  sharingLocation   Boolean   @default(false)
+  lat               Float?
+  lng               Float?
+  locationAt        DateTime?
+
+  tripId   String
+  trip     Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  // Set when the member joined with their own account (invite link).
+  userId   String?
+  user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  votes    TripVote[]
+  messages TripMessage[]
+
+  @@unique([tripId, userId])
+}
+
+// A share link that lets someone join the crew with their own account.
+model TripInvite {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  // Optional: who it's for (fills in their member name).
+  name       String?
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+  memberId   String?
 
   tripId String
-  trip   Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  votes  TripVote[]
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+// Crew chat and quick messages ("Running late", "Here") on a trip.
+model TripMessage {
+  id        String   @id @default(cuid())
+  body      String
+  kind      String   @default("text")
+  createdAt DateTime @default(now())
+
+  tripId   String
+  trip     Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  memberId String
+  member   TripMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, createdAt])
 }
 
 model TripVote {
@@ -621,9 +751,14 @@ model AlertSubscription {
 
 // One row per alert delivered, so the same live session / flash deal never
 // notifies the same device twice.
+// The in-app inbox plus push de-duplication. Device alerts (live vendors,
+// flash deals) are logged per subscription; account notifications
+// (bookings, events, crew, reservations) per user (lib/notify.ts).
 model NotificationLog {
   id        String    @id @default(cuid())
   key       String
+  // bookings | events | deals | live | crew, matching the user's preferences.
+  type      String?
   // What the alert said, for the in-app inbox.
   title     String?
   body      String?
@@ -631,10 +766,13 @@ model NotificationLog {
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
-  subscriptionId String
-  subscription   AlertSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   AlertSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([subscriptionId, key])
+  @@unique([userId, key])
 }
 
 enum ReferralStatus {
@@ -694,6 +832,7 @@ model HiddenGem {
   confirmationCount Int         @default(0)
   // The submitter's one-time bonus, paid when the gem is verified.
   submitterRewarded Boolean     @default(false)
+  hidden            Boolean     @default(false)
   verifiedAt        DateTime?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -725,24 +864,31 @@ model GemConfirmation {
 // Parties and events posted by promoters for This Week's Events. Not vendors:
 // a promoter may not have a listing, and an event can be anywhere.
 model Event {
-  id           String    @id @default(cuid())
-  title        String
-  promoterName String
-  description  String
-  imageUrl     String?
-  videoUrl     String?
-  venueName    String
-  lat          Float?
-  lng          Float?
-  startAt      DateTime
-  endAt        DateTime?
+  id             String    @id @default(cuid())
+  title          String
+  promoterName   String
+  description    String
+  imageUrl       String?
+  videoUrl       String?
+  venueName      String
+  lat            Float?
+  lng            Float?
+  startAt        DateTime
+  endAt          DateTime?
   // USD. Null with isFree false means price not listed.
-  price        Float?
-  isFree       Boolean   @default(false)
-  ticketUrl    String?
-  city         City
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  price          Float?
+  isFree         Boolean   @default(false)
+  ticketUrl      String?
+  // In-app tickets (Get tickets). Without them, ticketUrl is the fallback.
+  inAppTickets   Boolean   @default(false)
+  ticketCapacity Int?
+  city           City
+  isMock         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tickets   Ticket[]
+  interests EventInterest[]
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -767,6 +913,7 @@ model Redemption {
   code       String           @unique
   status     RedemptionStatus @default(ACTIVE)
   expiresAt  DateTime?
+  usedAt     DateTime?
   createdAt  DateTime         @default(now())
 
   userId   String
@@ -783,13 +930,16 @@ enum ReservationStatus {
 
 // A table/slot request sent to a vendor; the vendor confirms it themselves.
 model ReservationRequest {
-  id        String            @id @default(cuid())
-  date      DateTime
-  time      String
-  partySize Int
-  note      String?
-  status    ReservationStatus @default(REQUESTED)
-  createdAt DateTime          @default(now())
+  id          String            @id @default(cuid())
+  date        DateTime
+  time        String
+  partySize   Int
+  note        String?
+  status      ReservationStatus @default(REQUESTED)
+  // When the vendor accepted or declined, and anything they said.
+  respondedAt DateTime?
+  vendorNote  String?
+  createdAt   DateTime          @default(now())
 
   vendorId String
   vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
@@ -807,4 +957,328 @@ model PasswordResetToken {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  // sha256 of the token in the emailed link; the raw token is never stored.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Trust & safety ----------
+
+enum ReportTarget {
+  MOMENT
+  MOOD_MEDIA
+  STORY
+  REVIEW
+  HIDDEN_GEM
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+// A user flagging a photo, story, review or hidden gem. Content is hidden
+// once REPORT_HIDE_THRESHOLD reports are pending (lib/reports.ts).
+model Report {
+  id         String       @id @default(cuid())
+  targetType ReportTarget
+  targetId   String
+  reason     String
+  note       String?
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  reporterId String
+  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([targetType, targetId, status])
+}
+
+// A vendor agreeing to a version of the vendor agreement (app/vendor-agreement).
+// Written by the vendor app.
+model VendorAgreementAcceptance {
+  id               String   @id @default(cuid())
+  version          String
+  acceptedAt       DateTime @default(now())
+  acceptedByUserId String?
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, version])
+}
+
+// Hospitals, clinics, tourist police and embassies for the Safety screen.
+// Seeded numbers must be verified before launch (prisma/seed-extras.ts).
+enum SafetyContactKind {
+  HOSPITAL
+  CLINIC
+  TOURIST_POLICE
+  EMBASSY
+}
+
+model SafetyContact {
+  id        String            @id @default(cuid())
+  kind      SafetyContactKind
+  name      String
+  phone     String?
+  address   String?
+  city      City?
+  lat       Float?
+  lng       Float?
+  // Embassies: ISO code of the country it represents (US, CA, GB, DE).
+  country   String?
+  notes     String?
+  verified  Boolean           @default(false)
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+}
+
+// "I feel unsafe": a live location link the app keeps updating while open.
+model SafetyShare {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  lat       Float?
+  lng       Float?
+  accuracy  Float?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime
+  endedAt   DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Saved & collections ----------
+
+enum SavedKind {
+  VENDOR
+  EXPERIENCE
+  EVENT
+}
+
+model Saved {
+  id        String    @id @default(cuid())
+  kind      SavedKind
+  refId     String
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, refId])
+}
+
+// Named lists of saved things ("Date night", "Day 2").
+model SavedList {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  SavedListItem[]
+}
+
+model SavedListItem {
+  id      String    @id @default(cuid())
+  kind    SavedKind
+  refId   String
+  addedAt DateTime  @default(now())
+
+  listId String
+  list   SavedList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, kind, refId])
+}
+
+// ---------- Stories & events ----------
+
+model StoryView {
+  id       String   @id @default(cuid())
+  viewedAt DateTime @default(now())
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+}
+
+model EventInterest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+enum TicketStatus {
+  CONFIRMED
+  CANCELLED
+  USED
+}
+
+// In-app event tickets. The code is what the QR encodes at the door.
+model Ticket {
+  id            String       @id @default(cuid())
+  quantity      Int
+  unitPrice     Float
+  fees          Float        @default(0)
+  totalPrice    Float
+  status        TicketStatus @default(CONFIRMED)
+  code          String       @unique
+  transactionId String?
+  usedAt        DateTime?
+  cancelledAt   DateTime?
+  refundAmount  Float?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+}
+
+// Per-slot overrides for an experience (the vendor app will write these):
+// a different capacity on one date/time, or the slot closed.
+model ExperienceSlot {
+  id       String  @id @default(cuid())
+  // Jamaica date, YYYY-MM-DD.
+  date     String
+  time     String
+  capacity Int?
+  closed   Boolean @default(false)
+
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([experienceId, date, time])
+}
+
+// ---------- Vendors ----------
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  // USD. Null = price not listed.
+  price       Float?
+  imageUrl    String?
+  // Keys from lib/dietary.ts: VEGETARIAN, VEGAN, SEAFOOD, HALAL, GLUTEN_FREE.
+  dietaryTags String[] @default([])
+  section     String?
+  sortOrder   Int      @default(0)
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+}
+
+// ---------- Rewards & challenges ----------
+
+// The reward catalog. id is a stable slug (Redemption.rewardId).
+model Reward {
+  id          String   @id
+  name        String
+  description String
+  cost        Int
+  icon        String
+  minTier     String?
+  validDays   Int
+  // Null = available everywhere in Jamaica.
+  city        City?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  isMock      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendors RewardVendor[]
+}
+
+// Which vendors honour a reward.
+model RewardVendor {
+  rewardId String
+  reward   Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@id([rewardId, vendorId])
+}
+
+// "Visit 3 new beaches this month". metric is a key from lib/challenges.ts.
+model Challenge {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  metric      String
+  target      Int
+  bonusPoints Int
+  // YYYY-MM, Jamaica time.
+  month       String
+  city        City?
+  active      Boolean  @default(true)
+  isMock      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  completions ChallengeCompletion[]
+}
+
+model ChallengeCompletion {
+  id            String   @id @default(cuid())
+  pointsAwarded Int
+  completedAt   DateTime @default(now())
+
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+}
+
+// ---------- Search & infrastructure ----------
+
+// What people search for, for "Popular searches". No user id is stored.
+model SearchLog {
+  id        String   @id @default(cuid())
+  query     String
+  city      City?
+  results   Int
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Cached daily FX rate (lib/exchange-rate.ts). id is the pair, e.g. USD_JMD.
+model ExchangeRate {
+  id        String   @id
+  rate      Float
+  source    String
+  fetchedAt DateTime
 }

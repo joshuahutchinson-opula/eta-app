@@ -2,19 +2,24 @@
 // Server-side trip logic shared by every /api/trips route. A Trip is an
 // ordered list of stops (vendors, experiences, photo spots) plus a crew.
 //
-// Access model (matching the rest of the API, which has no server-side
-// session): the unguessable slug is the share link. Anyone holding it can
-// view, and for app trips can join the crew, vote and suggest stops. The
-// editKey — returned once at creation and kept on the creator's device —
-// is required for owner actions: renaming, removing stops, booking, and
-// any edit at all on a no-login web trip.
+// Access model (tripAccess below). The slug alone is no longer enough:
+//  • owner — the signed-in owner, or whoever holds the editKey (returned
+//    once at creation; the only credential for no-login web trips);
+//  • member — a signed-in user who joined through an invite link;
+//  • invitee — holds a valid invite token, sees a preview and can join;
+//  • viewer — holds the trip's viewToken (Safety → share live trip) and
+//    sees read-only progress. Web trips stay readable by slug: that link
+//    is the web planner's public share.
+// Owners and members can vote, suggest stops and chat; only owners
+// rename, remove stops, book and finish.
 
 import crypto from 'crypto'
-import type { Prisma } from '@prisma/client'
+import type { Prisma, TripMember } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { userIdFromRequest } from '@/lib/auth-server'
 
 export const TRIP_INCLUDE = {
-  experience: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true, travelTime: true, travelMode: true, startLocation: true } },
+  experience: { select: { id: true, name: true, tagline: true, price: true, imageUrl: true, travelTime: true, travelMode: true, startLocation: true, startTimes: true, maxPartySize: true, capacityPerSlot: true, cancellationTier: true, cancellationPolicy: true } },
   booking: { select: { id: true, status: true, pointsEarned: true, totalPrice: true, date: true, userId: true } },
   stops: {
     orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
@@ -25,7 +30,8 @@ export const TRIP_INCLUDE = {
       votes: { select: { memberId: true, value: true } }
     }
   },
-  members: { orderBy: { joinedAt: 'asc' } }
+  members: { orderBy: { joinedAt: 'asc' } },
+  invites: { select: { token: true, acceptedAt: true } }
 } satisfies Prisma.TripInclude
 
 export type TripWithRelations = Prisma.TripGetPayload<{ include: typeof TRIP_INCLUDE }>
@@ -54,6 +60,10 @@ export interface TripMemberDTO {
   status: string
   share: number
   paid: boolean
+  /** Joined with their own account (can pay their share and chat). */
+  hasAccount: boolean
+  /** Live position, only for the crew, only while the trip is booked and they're sharing. */
+  location: { lat: number; lng: number; at: string } | null
 }
 
 export interface TripDTO {
@@ -70,15 +80,25 @@ export interface TripDTO {
   ownerId: string | null
   experience: TripWithRelations['experience']
   booking: { id: string; status: string; pointsEarned: number; totalPrice: number; date: string } | null
+  splitPayment: boolean
   stops: TripStopDTO[]
   members: TripMemberDTO[]
+  /** Which member the caller is (null when they aren't one). */
+  myMemberId?: string | null
+  /** owner | member | viewer — what the caller can do. */
+  access?: TripRole
 }
 
 function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase()
 }
 
-export function toTripDTO(trip: TripWithRelations): TripDTO {
+/** Shared positions older than this aren't shown. */
+const LOCATION_FRESH_MS = 20 * 60000
+
+export function toTripDTO(trip: TripWithRelations, access?: TripAccess): TripDTO {
+  const crew = access?.role === 'owner' || access?.role === 'member'
+  const live = crew && trip.status === 'BOOKED'
   return {
     id: trip.id,
     slug: trip.slug,
@@ -95,6 +115,9 @@ export function toTripDTO(trip: TripWithRelations): TripDTO {
     booking: trip.booking
       ? { id: trip.booking.id, status: trip.booking.status, pointsEarned: trip.booking.pointsEarned, totalPrice: trip.booking.totalPrice, date: trip.booking.date.toISOString() }
       : null,
+    splitPayment: trip.splitPayment,
+    myMemberId: access?.member?.id ?? null,
+    access: access?.role ?? undefined,
     stops: trip.stops.map(s => {
       const up = s.votes.filter(v => v.value > 0).length
       const down = s.votes.filter(v => v.value < 0).length
@@ -108,8 +131,66 @@ export function toTripDTO(trip: TripWithRelations): TripDTO {
       }
       return { ...base, kind: 'photospot' as const, refId: s.photoSpot?.id ?? '', name: s.photoSpot?.name ?? 'Photo spot', subtitle: `Best at ${s.photoSpot?.bestTime ?? 'any time'}`, image: s.photoSpot?.officialPhoto ?? null, lat: s.photoSpot?.lat ?? null, lng: s.photoSpot?.lng ?? null, live: false }
     }),
-    members: trip.members.map(m => ({ id: m.id, name: m.name, isOwner: m.isOwner, status: m.status, share: m.share, paid: m.paid }))
+    members: trip.members.map(m => ({
+      id: m.id, name: m.name, isOwner: m.isOwner, status: m.status, share: m.share, paid: m.paid,
+      hasAccount: Boolean(m.userId),
+      location: live && m.sharingLocation && m.lat !== null && m.lng !== null && m.locationAt && Date.now() - m.locationAt.getTime() < LOCATION_FRESH_MS
+        ? { lat: m.lat, lng: m.lng, at: m.locationAt.toISOString() }
+        : null
+    }))
   }
+}
+
+export type TripRole = 'owner' | 'member' | 'invitee' | 'viewer'
+
+export interface TripAccess {
+  role: TripRole | null
+  userId: string | null
+  member: TripMember | null
+  invite: { token: string; name: string | null } | null
+}
+
+/**
+ * What the caller may do with this trip. Credentials: Bearer token (owner /
+ * member), x-trip-key or body.editKey (owner), x-trip-invite or ?invite=
+ * (invitee), x-trip-view or ?view= (viewer).
+ */
+export async function tripAccess(
+  trip: { id: string; source: string; editKey: string | null; ownerId: string | null; viewToken: string | null },
+  request: Request,
+  body?: { editKey?: unknown }
+): Promise<TripAccess> {
+  const userId = userIdFromRequest(request)
+  const url = new URL(request.url)
+  const member = userId ? await prisma.tripMember.findFirst({ where: { tripId: trip.id, userId } }) : null
+  const base = { userId, member, invite: null }
+  if (hasEditKey(trip, request, body) || (userId && trip.ownerId === userId)) {
+    return { ...base, role: 'owner', member: member ?? (await prisma.tripMember.findFirst({ where: { tripId: trip.id, isOwner: true } })) }
+  }
+  if (member) return { ...base, role: 'member' }
+  const inviteToken = request.headers.get('x-trip-invite') ?? url.searchParams.get('invite')
+  if (inviteToken) {
+    const invite = await prisma.tripInvite.findFirst({ where: { tripId: trip.id, token: inviteToken }, select: { token: true, name: true } })
+    if (invite) return { ...base, role: 'invitee', invite }
+  }
+  const viewToken = request.headers.get('x-trip-view') ?? url.searchParams.get('view')
+  if ((viewToken && trip.viewToken && safeEqual(viewToken, trip.viewToken)) || trip.source === 'web') return { ...base, role: 'viewer' }
+  return { ...base, role: null }
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a)
+  const y = Buffer.from(b)
+  return x.length === y.length && crypto.timingSafeEqual(x, y)
+}
+
+export function isCrew(access: TripAccess): boolean {
+  return access.role === 'owner' || access.role === 'member'
+}
+
+/** A token for invite and view links. */
+export function newToken(): string {
+  return crypto.randomBytes(12).toString('base64url')
 }
 
 export function newSlug(): string {
@@ -134,12 +215,13 @@ export function hasEditKey(trip: { editKey: string | null }, request: Request, b
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
-/** Crew actions (vote, join, suggest) are open on app trips; web trips are read-only without the key. */
-export function canCollaborate(trip: { source: string; editKey: string | null; status: string }, request: Request, body?: { editKey?: unknown }): boolean {
+/** Crew actions (vote, suggest, chat) need an open trip and an owner or member. */
+export function canCollaborate(trip: { status: string }, access: TripAccess): boolean {
   if (trip.status === 'CANCELLED' || trip.status === 'COMPLETED') return false
-  if (hasEditKey(trip, request, body)) return true
-  return trip.source === 'app'
+  return isCrew(access)
 }
+
+export const NO_ACCESS = 'Ask the trip owner for an invite link'
 
 /** Each crew member pays the experience's per-person price (the existing split model). */
 export async function recalcShares(tripId: string) {

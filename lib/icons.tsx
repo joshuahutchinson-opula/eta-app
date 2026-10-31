@@ -320,6 +320,71 @@ export default function Icon({ name, size = 20, className = '', style, onClick }
         <path d="M12 2a15 15 0 010 20 15 15 0 010-20z" />
       </svg>
     ),
+    lock: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect x="4" y="11" width="16" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 018 0v4" />
+      </svg>
+    ),
+    flag: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M4 22V4" />
+        <path d="M4 4h12l-2 4 2 4H4" />
+      </svg>
+    ),
+    calendar: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </svg>
+    ),
+    trash: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15" />
+      </svg>
+    ),
+    download: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
+      </svg>
+    ),
+    shield: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" />
+      </svg>
+    ),
+    send: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" />
+      </svg>
+    ),
+    navigate: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 11l19-9-9 19-2-8z" />
+      </svg>
+    ),
+    video: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect x="2" y="6" width="14" height="12" rx="2" />
+        <path d="M16 10l6-3v10l-6-3z" />
+      </svg>
+    ),
+    list: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      </svg>
+    ),
+    ticket: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 8a2 2 0 002-2h14a2 2 0 002 2v2a2 2 0 000 4v2a2 2 0 00-2 2H5a2 2 0 00-2-2v-2a2 2 0 000-4z" />
+        <path d="M13 6v12" strokeDasharray="2 2" />
+      </svg>
+    ),
+    phone: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" />
+      </svg>
+    ),
   }
 
   return (

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LANG_COOKIE, normalizeLang, t as translate, type DictKey, type Lang } from '@/lib/i18n'
 import { getPatois, type PatoisKey } from '@/lib/patois'
+import { errorText } from '@/lib/errors'
 
 const EVENT = 'eta-lang-change'
 
@@ -33,6 +34,12 @@ export function useLang(): { lang: Lang; setLang: (lang: Lang) => void; t: (key:
   const setLang = useCallback((next: Lang) => writeLang(next), [])
   const t = useCallback((key: DictKey, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang])
   return { lang, setLang, t }
+}
+
+/** errorText() bound to the current language: patois in English only. */
+export function useErrorText(): (error: unknown) => string {
+  const { lang } = useLang()
+  return useCallback((error: unknown) => errorText(error, lang), [lang])
 }
 
 /** The patois dictionary in the current language (see lib/patois.ts). */

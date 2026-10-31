@@ -5,11 +5,14 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
-import { uploadPhoto } from '@/lib/api-client'
+import { apiJson, uploadPhoto } from '@/lib/api-client'
 import PhotoPicker from '@/components/PhotoPicker'
 import CheckInButton from '@/components/CheckInButton'
 import ErrorState from '@/components/ErrorState'
-import { useLang } from '@/lib/i18n-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
+import ReportButton from '@/components/ReportButton'
+import BackButton from '@/components/BackButton'
+import Img from '@/components/Img'
 
 interface PhotoSpot {
   id: string
@@ -34,6 +37,7 @@ export default function PhotoSpotDetailPage() {
   const [postError, setPostError] = useState<string | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const { t } = useLang()
+  const errorText = useErrorText()
   const [caption, setCaption] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [slide, setSlide] = useState(0)
@@ -62,7 +66,7 @@ export default function PhotoSpotDetailPage() {
   const handleAddShotClick = () => {
     const user = getCurrentUser()
     if (!user) {
-      alert('Log in to add your shot')
+      alert(t('m.photo.loginToAddShot'))
       router.push('/login')
       return
     }
@@ -72,7 +76,7 @@ export default function PhotoSpotDetailPage() {
   const submitShot = async () => {
     const user = getCurrentUser()
     if (!user) {
-      alert('Log in to add your shot')
+      alert(t('m.photo.loginToAddShot'))
       router.push('/login')
       return
     }
@@ -82,20 +86,7 @@ export default function PhotoSpotDetailPage() {
     setPostError(null)
     try {
       const url = await uploadPhoto(photo, 'moments')
-      const body: Record<string, unknown> = {
-        userId: user.id,
-        photoSpotId: params.id,
-        url
-      }
-      if (caption.trim()) body.caption = caption.trim()
-
-      const response = await fetch('/api/moments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      if (!response.ok) throw new Error(t('m.photo.postFailed'))
-      const newMoment = await response.json()
+      const newMoment = await apiJson('/api/moments', { method: 'POST', body: { photoSpotId: params.id, url, ...(caption.trim() ? { caption: caption.trim() } : {}) } })
 
       setSpot(prev => prev
         ? {
@@ -112,7 +103,7 @@ export default function PhotoSpotDetailPage() {
       setCaption('')
     } catch (error) {
       console.error(error)
-      setPostError(error instanceof Error ? error.message : t('m.photo.postFailed'))
+      setPostError(errorText(error))
     } finally {
       setSubmitting(false)
     }
@@ -129,7 +120,7 @@ export default function PhotoSpotDetailPage() {
   if (!spot) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        {loadFailed ? <ErrorState onRetry={fetchSpot} /> : <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>}
+        {loadFailed ? <ErrorState onRetry={fetchSpot} /> : <p style={{ color: 'var(--label-secondary)' }}>{t('m.err.notFound')}</p>}
       </main>
     )
   }
@@ -139,28 +130,7 @@ export default function PhotoSpotDetailPage() {
   return (
     <main className="screen-push-in" style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
       {/* Back button */}
-      <button
-        onClick={() => router.back()}
-        aria-label="Back"
-        style={{
-          position: 'absolute',
-          top: '16px',
-          left: '16px',
-          zIndex: 10,
-          width: '44px',
-          height: '44px',
-          borderRadius: '50%',
-          background: 'rgba(15,14,12,0.5)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white'
-        }}
-      >
-        <Icon name="back" size={14} />
-      </button>
+      <BackButton floating fallback="/explore" />
 
       <div style={{ position: 'relative', height: '340px' }}>
         {/* Swipeable gallery; the cover photo leads */}
@@ -196,7 +166,7 @@ export default function PhotoSpotDetailPage() {
 
         {spot.videos.length > 0 && (
           <>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Videos</h2>
+            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>{t('m.photo.videos')}</h2>
             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', margin: '0 -16px 24px', padding: '0 16px', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
               {spot.videos.map(src => (
                 <video
@@ -213,21 +183,22 @@ export default function PhotoSpotDetailPage() {
           </>
         )}
 
-        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>User Photos</h2>
+        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>{t('m.photo.userPhotos')}</h2>
         {spot.userPhotos.length === 0 ? (
-          <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>Nuh nuh photos yet</p>
+          <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>{t('m.photo.none')}</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {spot.userPhotos.map(photo => (
-              <div key={photo.id} className="polaroid">
-                <img src={photo.url} alt={photo.caption || spot.name} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
+              <div key={photo.id} className="polaroid" style={{ position: 'relative' }}>
+                <Img src={photo.url} alt={photo.caption || spot.name} width={400} height={240} sizes="50vw" style={{ height: '120px' }} />
+                <span style={{ position: 'absolute', top: '6px', right: '6px' }}><ReportButton targetType="MOMENT" targetId={photo.id} tone="light" /></span>
                 {photo.caption && (
                   <p className="polaroid-caption">
                     {photo.caption}
                   </p>
                 )}
                 <p style={{ fontSize: '10px', color: '#666', textAlign: 'center', marginTop: '4px' }}>
-                  @{photo.uploadedBy} • {photo.likes} likes
+                  @{photo.uploadedBy} • {t('m.photo.likes', { n: photo.likes })}
                 </p>
               </div>
             ))}
@@ -245,14 +216,14 @@ export default function PhotoSpotDetailPage() {
       <div className={`bottom-sheet ${showAddSheet ? 'open' : ''}`}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Your Shot</h3>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.photo.addShot')}</h3>
 
           <PhotoPicker file={photo} onChange={setPhoto} />
 
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>Caption (optional)</p>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.photo.caption')}</p>
           <input
             type="text"
-            placeholder="Say something about it..."
+            placeholder={t('m.photo.captionPlaceholder')}
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             style={{

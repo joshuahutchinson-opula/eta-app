@@ -11,6 +11,8 @@ import ErrorState from '@/components/ErrorState'
 import { authHeaders } from '@/lib/api-client'
 import { useLang } from '@/lib/i18n-client'
 import { bookingCode } from '@/lib/pricing'
+import BackButton from '@/components/BackButton'
+import { readOffline, saveOffline } from '@/lib/offline'
 
 interface Receipt {
   id: string
@@ -40,10 +42,13 @@ export default function ReceiptPage() {
       const res = await fetch(`/api/transactions/${id}`, { headers: authHeaders() })
       if (res.status === 404 || res.status === 401) return setState('notFound')
       if (!res.ok) throw new Error()
-      setReceipt(await res.json())
+      const data = await res.json()
+      setReceipt(data)
       setState('ready')
+      saveOffline(`receipt_${id}`, data)
     } catch {
-      setState('error')
+      const cached = readOffline<Receipt>(`receipt_${id}`)
+      if (cached) { setReceipt(cached.data); setState('ready') } else setState('error')
     }
   }, [id])
 
@@ -62,9 +67,7 @@ export default function ReceiptPage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', padding: '16px 16px 40px' }}>
-      <button onClick={() => router.back()} aria-label="Back" style={{ width: '44px', height: '44px', borderRadius: '50%', border: 'none', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--label-primary)', marginBottom: '16px' }}>
-        <Icon name="back" size={16} />
-      </button>
+      <div style={{ marginBottom: '16px' }}><BackButton fallback="/bookings" /></div>
 
       {state === 'loading' ? (
         <div className="skeleton-card" style={{ height: '320px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>

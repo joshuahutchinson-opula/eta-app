@@ -4,19 +4,21 @@
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
-import { findReward } from '@/lib/rewards'
+import { requireUser } from '@/lib/auth-server'
 import { REWARD_TIERS, getTierForPoints } from '@/lib/rewardTiers'
+import { id, parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
 class RedeemError extends Error {}
 
 export async function POST(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to redeem rewards' }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
-  const reward = typeof body.rewardId === 'string' ? findReward(body.rewardId) : undefined
+  const auth = await requireUser(request, { message: 'Log in to redeem rewards' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
+  const parsed = await parseBody(request, z.object({ rewardId: id }))
+  if (!parsed.ok) return parsed.response
+  const reward = await prisma.reward.findFirst({ where: { id: parsed.data.rewardId, active: true } })
   if (!reward) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
 
   try {

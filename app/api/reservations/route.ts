@@ -1,18 +1,25 @@
 // app/api/reservations/route.ts — reservation requests to vendors.
-// GET  → the caller's requests.  POST { vendorId, date, time, partySize, note? } (signed in).
-// The vendor confirms or declines on their side; until then it's REQUESTED.
+// GET  → the caller's requests (with status: REQUESTED = pending,
+//        CONFIRMED = accepted, DECLINED).
+// POST { vendorId, date, time, partySize, note? } (signed in, verified).
+// The vendor answers through PATCH /api/reservations/[id] (vendor app).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 import { jamaicaDateTime } from '@/lib/pricing'
+import { dateOnly, hhmm, id, parseBody, text, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json([])
+  const auth = await requireUser(request, { message: 'Log in to see your reservations' })
+  if (!auth.ok) return auth.response
   try {
-    const rows = await prisma.reservationRequest.findMany({ where: { userId }, orderBy: { date: 'asc' }, include: { vendor: { select: { id: true, name: true } } } })
+    const rows = await prisma.reservationRequest.findMany({
+      where: { userId: auth.user.id },
+      orderBy: { date: 'asc' },
+      include: { vendor: { select: { id: true, name: true, images: true, neighborhood: true, lat: true, lng: true } } }
+    })
     return NextResponse.json(rows)
   } catch (error) {
     console.error('Error fetching reservations:', error)
@@ -20,25 +27,27 @@ export async function GET(request: Request) {
   }
 }
 
+const schema = z.object({
+  vendorId: id,
+  date: dateOnly,
+  time: hhmm,
+  partySize: z.number().int().min(1).max(30).default(2),
+  note: text(280).optional()
+})
+
 export async function POST(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to request a reservation' }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
-  const date = typeof body.date === 'string' ? jamaicaDateTime(body.date, body.time) : null
-  if (typeof body.vendorId !== 'string' || !date || typeof body.time !== 'string') {
-    return NextResponse.json({ error: 'Pick a date and time' }, { status: 400 })
-  }
+  const auth = await requireUser(request, { verified: true, message: 'Log in to request a reservation' })
+  if (!auth.ok) return auth.response
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return NextResponse.json({ error: 'Pick a date and time' }, { status: 400 })
+  const { vendorId, time, partySize, note } = parsed.data
+  const date = jamaicaDateTime(parsed.data.date, time)
+  if (!date || date.getTime() < Date.now()) return NextResponse.json({ error: 'Pick a time that hasn’t passed' }, { status: 400 })
   try {
-    const row = await prisma.reservationRequest.create({
-      data: {
-        vendorId: body.vendorId,
-        userId,
-        date,
-        time: body.time,
-        partySize: Math.max(1, Math.min(30, Math.round(Number(body.partySize) || 2))),
-        note: typeof body.note === 'string' && body.note.trim() ? body.note.trim().slice(0, 280) : null
-      }
-    })
+    const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { acceptsReservations: true } })
+    if (!vendor) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
+    if (!vendor.acceptsReservations) return NextResponse.json({ error: 'This spot doesn’t take reservations' }, { status: 409 })
+    const row = await prisma.reservationRequest.create({ data: { vendorId, userId: auth.user.id, date, time, partySize, note: note || null } })
     return NextResponse.json(row, { status: 201 })
   } catch (error) {
     console.error('Error creating reservation:', error)

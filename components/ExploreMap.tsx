@@ -4,6 +4,8 @@
 import { useEffect } from 'react'
 import { categoryStyle, priceTier } from '@/lib/vendor-style'
 import dynamic from 'next/dynamic'
+import { useLang } from '@/lib/i18n-client'
+import { useLabels } from '@/lib/labels'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
@@ -101,6 +103,8 @@ export default function ExploreMap({
   onGemTap,
   user
 }: ExploreMapProps) {
+  const { t } = useLang()
+  const labels = useLabels()
   // The default "fill the parent" case uses inset:0 against the nearest
   // positioned ancestor instead of height:'100%' - percentage heights on a
   // plain block child of a flex:1 parent don't reliably resolve here (the
@@ -140,13 +144,13 @@ export default function ExploreMap({
                 <div style={{ background: '#1C1C1E', padding: '8px', borderRadius: '8px', color: '#FFFFFF' }}>
                   <p style={{ fontWeight: 600, fontSize: '15px' }}>{v.name}</p>
                   <p style={{ fontSize: '13px', color: categoryStyle(v.category).color, fontWeight: 600 }}>
-                    {categoryStyle(v.category).label}{v.priceRange ? ` · ${'$'.repeat(priceTier(v.priceRange))}` : ''}
+                    {labels.category(v.category)}{v.priceRange ? ` · ${'$'.repeat(priceTier(v.priceRange))}` : ''}
                     <span style={{ color: '#A1A1A1', fontWeight: 400 }}> · {v.neighborhood}</span>
                   </p>
                   <p style={{ fontSize: '13px', color: '#FFFFFF', marginTop: '2px' }}>
                     {v.rating ? <>★ {v.rating.toFixed(1)} <span style={{ color: '#A1A1A1' }}>({v.reviewCount ?? 0})</span></> : <span style={{ color: '#A1A1A1' }}>New on ETA</span>}
                   </p>
-                  <a href={`/vendor/${v.id}`} style={{ display: 'inline-block', marginTop: '6px', fontSize: '13px', fontWeight: 700, color: '#F24230' }}>View →</a>
+                  <a href={`/vendor/${v.id}`} style={{ display: 'inline-block', marginTop: '6px', fontSize: '13px', fontWeight: 700, color: '#F24230' }}>{t('m.common.view')} →</a>
                 </div>
               </Popup>
             )}

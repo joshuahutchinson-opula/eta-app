@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Price from '@/components/Price'
 import { triggerHaptic } from '@/lib/haptics'
 import { useLang } from '@/lib/i18n-client'
+import Img from '@/components/Img'
 
 export interface ExperienceCardData {
   id: string
@@ -31,7 +32,7 @@ export default function ExperienceCard({ exp, width = '260px', imageHeight = '14
     <Link href={`/experiences/${exp.id}`} onClick={() => triggerHaptic('light')} style={{ textDecoration: 'none', flexShrink: 0, width }}>
       <div className="card">
         <div className="card-image" style={{ height: imageHeight }}>
-          <img src={exp.imageUrl} alt={exp.name} />
+          {exp.imageUrl && <Img src={exp.imageUrl} alt={exp.name} width={600} height={400} sizes="(max-width: 600px) 80vw, 400px" />}
           <div className="card-overlay" />
         </div>
         <div className="card-content">

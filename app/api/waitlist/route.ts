@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,8 @@ const schema = z.object({
 // POST /api/waitlist — traveler launch waitlist and vendor applications.
 // Re-submitting the same email is a no-op success, not an error.
 export async function POST(request: Request) {
+  const limited = rateLimit('register', clientIp(request))
+  if (limited) return limited
   const parsed = schema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })

@@ -1,13 +1,13 @@
 // GET — one receipt, for its owner.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to see your receipts' }, { status: 401 })
+  const auth = await requireUser(request, { message: 'Log in to see your receipts' })
+  if (!auth.ok) return auth.response
   try {
     const tx = await prisma.transaction.findUnique({
       where: { id: params.id },
@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         user: { select: { name: true } }
       }
     })
-    if (!tx || tx.userId !== userId) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
+    if (!tx || tx.userId !== auth.user.id) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     return NextResponse.json(tx)
   } catch (error) {
     console.error('Error fetching receipt:', error)
