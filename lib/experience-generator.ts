@@ -17,7 +17,7 @@ import { ICON_FALLBACK, MOOD_PROFILES, type Category, type MoodProfile } from '@
 export type TimeBudget = '2hr' | 'half' | 'full' | 'night'
 
 export interface GeneratorInput {
-  /** Mood ids or names from the survey. */
+  /** Mood ids or names from the planner (usually one). */
   moods: string[]
   time: TimeBudget
   crewSize: number
@@ -26,6 +26,8 @@ export interface GeneratorInput {
   occasion?: string
   city?: CityCode
   transport?: 'drive' | 'walk' | 'handled'
+  /** "Plan around it": every route starts at this place. */
+  anchor?: { type: 'vendor' | 'photospot'; id: string }
 }
 
 export interface GeneratedStop {
@@ -38,6 +40,10 @@ export interface GeneratedStop {
   neighborhood: string | null
   lat: number
   lng: number
+  /** B.O.N member. */
+  isPremium: boolean
+  /** Cook shop, jerk centre or street food (Vendor.localSpot). */
+  localSpot: boolean
   plannedDuration: number
   /** "7:30 pm" — when you'd arrive if the route starts on time. */
   arrival: string
@@ -60,6 +66,8 @@ export interface GeneratedBundle {
   stops: GeneratedStop[]
   /** Whether travel times came from OSRM or the straight-line fallback. */
   routing: 'osrm' | 'estimate' | 'mixed'
+  /** Timed to finish around sunset. */
+  sunset: boolean
 }
 
 const OCCASION_BOOST: Record<string, Partial<Record<Category, number>> & { spots?: number; tier?: number }> = {
@@ -101,6 +109,8 @@ interface Candidate {
   lng: number
   tier: number
   score: number
+  isPremium: boolean
+  localSpot: boolean
 }
 
 function weightedPick<T>(items: T[], weight: (t: T) => number): T | null {
@@ -134,7 +144,7 @@ async function loadCandidates(input: GeneratorInput, profiles: MoodProfile[]) {
   const [vendors, spots] = await Promise.all([
     prisma.vendor.findMany({
       where: { city, visibleInMarketplace: true, visibleOnMap: true, isTransport: false, category: { notIn: ['TRANSPORT', 'ACCOMMODATION'] } },
-      select: { id: true, name: true, category: true, description: true, neighborhood: true, images: true, lat: true, lng: true, priceRange: true, isPremium: true, live: true, reviews: { select: { rating: true } } }
+      select: { id: true, name: true, category: true, description: true, neighborhood: true, images: true, lat: true, lng: true, priceRange: true, isPremium: true, localSpot: true, live: true, reviews: { select: { rating: true } } }
     }),
     // Only spots with real media — the curated set, not placeholder rows.
     prisma.photoSpot.findMany({ where: { city, gallery: { isEmpty: false } }, select: { id: true, name: true, description: true, officialPhoto: true, bestTime: true, lat: true, lng: true } })
@@ -161,7 +171,7 @@ async function loadCandidates(input: GeneratorInput, profiles: MoodProfile[]) {
     if (tierBias > 0) score *= 1 + (tier - 2) * 0.25
     if (tierBias < 0) score *= 1 + (2 - tier) * 0.3
     if (night && (cat === 'BEACH' || cat === 'WELLNESS' || cat === 'ACTIVITY')) score *= 0.2
-    return { type: 'vendor', id: v.id, name: v.name, category: cat, image: v.images[0] ?? null, neighborhood: v.neighborhood, lat: v.lat, lng: v.lng, tier, score }
+    return { type: 'vendor', id: v.id, name: v.name, category: cat, image: v.images[0] ?? null, neighborhood: v.neighborhood, lat: v.lat, lng: v.lng, tier, score, isPremium: v.isPremium, localSpot: v.localSpot }
   })
 
   const spotWeight = profiles.reduce((s, p) => s + p.spots, 0) / Math.max(1, profiles.length) * (occasion.spots ?? 1)
@@ -170,7 +180,7 @@ async function loadCandidates(input: GeneratorInput, profiles: MoodProfile[]) {
     let score = spotWeight
     if (spotTimes.length && spotTimes.includes(s.bestTime)) score *= 1.6
     if (night && !['Sunset', 'Golden Hour'].includes(s.bestTime)) score = 0
-    return { type: 'photospot', id: s.id, name: s.name, category: null, image: s.officialPhoto, neighborhood: null, lat: s.lat, lng: s.lng, tier: 1, score }
+    return { type: 'photospot', id: s.id, name: s.name, category: null, image: s.officialPhoto, neighborhood: null, lat: s.lat, lng: s.lng, tier: 1, score, isPremium: false, localSpot: false }
   })
 
   // Budget: drop places above the tier cap, unless that leaves too few to route.
@@ -182,14 +192,28 @@ async function loadCandidates(input: GeneratorInput, profiles: MoodProfile[]) {
   return pool
 }
 
+/** The "Plan around it" place, even when it's off-mood or wouldn't otherwise be a candidate. */
+async function loadAnchor(input: GeneratorInput, pool: Candidate[]): Promise<Candidate | null> {
+  const a = input.anchor
+  if (!a) return null
+  const inPool = pool.find(c => c.type === a.type && c.id === a.id)
+  if (inPool) return inPool
+  if (a.type === 'vendor') {
+    const v = await prisma.vendor.findUnique({ where: { id: a.id }, select: { id: true, name: true, category: true, neighborhood: true, images: true, lat: true, lng: true, priceRange: true, isPremium: true, localSpot: true } })
+    return v ? { type: 'vendor', id: v.id, name: v.name, category: v.category as Category, image: v.images[0] ?? null, neighborhood: v.neighborhood, lat: v.lat, lng: v.lng, tier: priceTier(v.priceRange), score: 1, isPremium: v.isPremium, localSpot: v.localSpot } : null
+  }
+  const s = await prisma.photoSpot.findUnique({ where: { id: a.id }, select: { id: true, name: true, officialPhoto: true, lat: true, lng: true } })
+  return s ? { type: 'photospot', id: s.id, name: s.name, category: null, image: s.officialPhoto, neighborhood: null, lat: s.lat, lng: s.lng, tier: 1, score: 1, isPremium: false, localSpot: false } : null
+}
+
 /** Grow one route by weighted random choice; `used` damps places earlier options already picked. */
-function assembleRoute(pool: Candidate[], input: GeneratorInput, used: Map<string, number>, usedStarts: Set<string>, repeatPenalty: number): Candidate[] | null {
+function assembleRoute(pool: Candidate[], input: GeneratorInput, used: Map<string, number>, usedStarts: Set<string>, repeatPenalty: number, anchor: Candidate | null): Candidate[] | null {
   const plan = TIME_PLAN[input.time]
   const target = plan.stops[0] + Math.floor(Math.random() * (plan.stops[1] - plan.stops[0] + 1))
   const walk = input.transport === 'walk'
   const damp = (c: Candidate) => Math.pow(0.25, used.get(c.id) ?? 0)
 
-  const start = weightedPick(pool, c => c.score * damp(c) * (usedStarts.has(c.id) ? 0.05 : 1))
+  const start = anchor ?? weightedPick(pool, c => c.score * damp(c) * (usedStarts.has(c.id) ? 0.05 : 1))
   if (!start) return null
   const route = [start]
   const maxSpots = Math.max(1, Math.floor(target / 2))
@@ -258,6 +282,8 @@ async function toBundle(route: Candidate[], input: GeneratorInput, profiles: Moo
       category: c.category,
       image: c.image,
       neighborhood: c.neighborhood,
+      isPremium: c.isPremium,
+      localSpot: c.localSpot,
       lat: c.lat,
       lng: c.lng,
       plannedDuration: durations[i],
@@ -289,11 +315,12 @@ async function toBundle(route: Candidate[], input: GeneratorInput, profiles: Moo
     city: input.city ?? 'NEGRIL',
     totalMinutes,
     stops,
-    routing: sources.size === 0 ? 'estimate' : sources.size > 1 ? 'mixed' : (Array.from(sources)[0] as 'osrm' | 'estimate')
+    routing: sources.size === 0 ? 'estimate' : sources.size > 1 ? 'mixed' : (Array.from(sources)[0] as 'osrm' | 'estimate'),
+    sunset: chasesSunset
   }
 }
 
-/** Three different route options for the survey answers. */
+/** Three different route options for the planner's answers. */
 export async function generateBundles(input: GeneratorInput, count = 3): Promise<GeneratedBundle[]> {
   const moods = input.moods.length
     ? await prisma.mood.findMany({ where: { OR: [{ id: { in: input.moods } }, { name: { in: input.moods } }] }, select: { name: true, icon: true } })
@@ -305,6 +332,7 @@ export async function generateBundles(input: GeneratorInput, count = 3): Promise
   const moodNames = moods.map(m => m.name)
 
   const pool = await loadCandidates(input, active)
+  const anchor = await loadAnchor(input, pool)
   // A food crawl is meant to be all food; everything else mixes categories.
   const repeatPenalty = active.some(p => (p.categories.FOOD ?? 0) >= 4) ? 0.9 : 0.35
   const used = new Map<string, number>()
@@ -312,14 +340,23 @@ export async function generateBundles(input: GeneratorInput, count = 3): Promise
   const routes: Candidate[][] = []
   const seen = new Set<string>()
   for (let attempt = 0; attempt < count * 4 && routes.length < count; attempt++) {
-    const route = assembleRoute(pool, input, used, usedStarts, repeatPenalty)
+    const route = assembleRoute(pool, input, used, usedStarts, repeatPenalty, anchor)
     if (!route) continue
-    const key = route.map(r => r.id).sort().join('|')
+    // Anchored routes share their start, so tell them apart by the rest.
+    const key = route.slice(anchor ? 1 : 0).map(r => r.id).sort().join('|')
     if (seen.has(key)) continue
     seen.add(key)
     routes.push(route)
     usedStarts.add(route[0].id)
     for (const r of route) used.set(r.id, (used.get(r.id) ?? 0) + 1)
   }
-  return Promise.all(routes.map(r => toBundle(r, input, active, moodNames)))
+  const bundles = await Promise.all(routes.map(r => toBundle(r, input, active, moodNames)))
+  // Options sit side by side, so give each its own title while the moods have spares.
+  const spare = active.flatMap(p => p.titles)
+  const taken = new Set<string>()
+  for (const b of bundles) {
+    if (taken.has(b.title)) b.title = spare.find(x => !taken.has(x)) ?? b.title
+    taken.add(b.title)
+  }
+  return bundles
 }

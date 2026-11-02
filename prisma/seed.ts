@@ -4,6 +4,7 @@ import { PHOTO_SPOT_MEDIA } from './photo-spot-media'
 import { PHOTO_SPOTS } from './photo-spots'
 import { EXPERIENCE_ROUTES, writeExperienceRoute } from './experience-routes'
 import { seedExtras } from './seed-extras'
+import { markLocalSpots } from './local-spots'
 import { assertSeedAllowed } from './seed-guard'
 
 const prisma = new PrismaClient()
@@ -2375,6 +2376,7 @@ async function main() {
   })
 
   await seedExtras(prisma)
+  await markLocalSpots(prisma)
 
   console.log('Seed complete!')
   console.log('Demo users:')

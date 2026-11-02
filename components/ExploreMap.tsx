@@ -12,6 +12,8 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false })
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
 const Circle = dynamic(() => import('react-leaflet').then(mod => mod.Circle), { ssr: false })
+const Rectangle = dynamic(() => import('react-leaflet').then(mod => mod.Rectangle), { ssr: false })
+const Tooltip = dynamic(() => import('react-leaflet').then(mod => mod.Tooltip), { ssr: false })
 
 // Leaflet measures its container's size once at mount. If that happens
 // before the surrounding flex/dvh layout has settled (common with a
@@ -51,6 +53,8 @@ export interface MapVendor {
   priceRange?: string
   rating?: number | null
   reviewCount?: number | null
+  /** Opening hours (lib/hours.ts shape). */
+  hours?: unknown
 }
 
 export interface MapPhotoSpot {
@@ -78,6 +82,10 @@ interface ExploreMapProps {
   /** Coarse "something's hidden around here" cells for gems still fogged. */
   fog?: Array<{ lat: number; lng: number; count: number }>
   onGemTap?: (gem: MapGem) => void
+  /** Areas the traveler hasn't explored yet, fogged with a label. */
+  unexplored?: Array<{ bounds: [[number, number], [number, number]]; label: string }>
+  /** The vendor or photo spot whose card is showing — drawn larger. */
+  selectedId?: string | null
   user?: { lat: number; lng: number } | null
   vendors: MapVendor[]
   photoSpots: MapPhotoSpot[]
@@ -101,6 +109,8 @@ export default function ExploreMap({
   gems = [],
   fog = [],
   onGemTap,
+  unexplored = [],
+  selectedId = null,
   user
 }: ExploreMapProps) {
   const { t } = useLang()
@@ -126,16 +136,21 @@ export default function ExploreMap({
           attribution='&copy; OpenStreetMap &copy; CARTO'
         />
         <MapReadyFix />
+        {unexplored.map((c, i) => (
+          <Rectangle key={`unexplored-${i}`} bounds={c.bounds} interactive={false} pathOptions={{ stroke: false, fillColor: '#8E8E93', fillOpacity: 0.32 }}>
+            <Tooltip permanent direction="center" className="fog-label" interactive={false}>{c.label}</Tooltip>
+          </Rectangle>
+        ))}
         {vendors.map(v => (
           <CircleMarker
             key={v.id}
             center={[v.lat, v.lng]}
-            radius={v.isPremium ? 10 : 7}
+            radius={v.id === selectedId ? 13 : v.isPremium ? 10 : 7}
             pathOptions={{
               color: v.isPremium ? '#FFB800' : '#FFFFFF',
               fillColor: categoryStyle(v.category).color,
-              fillOpacity: 0.8,
-              weight: 2
+              fillOpacity: v.id === selectedId ? 1 : 0.8,
+              weight: v.id === selectedId ? 3 : 2
             }}
             eventHandlers={onVendorTap ? { click: () => onVendorTap(v) } : undefined}
           >
@@ -160,12 +175,12 @@ export default function ExploreMap({
           <CircleMarker
             key={s.id}
             center={[s.lat, s.lng]}
-            radius={6}
+            radius={s.id === selectedId ? 11 : 6}
             pathOptions={{
-              color: '#FFB800',
+              color: s.id === selectedId ? '#FFFFFF' : '#FFB800',
               fillColor: '#FFB800',
-              fillOpacity: 0.6,
-              weight: 2
+              fillOpacity: s.id === selectedId ? 1 : 0.6,
+              weight: s.id === selectedId ? 3 : 2
             }}
             eventHandlers={onPhotoSpotTap ? { click: () => onPhotoSpotTap(s) } : undefined}
           >

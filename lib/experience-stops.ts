@@ -13,7 +13,7 @@ export const EXPERIENCE_STOPS_INCLUDE = {
       vendor: {
         select: {
           id: true, name: true, category: true, neighborhood: true, city: true, lat: true, lng: true,
-          images: true, isPremium: true, priceRange: true, instagram: true, website: true,
+          images: true, videos: true, isPremium: true, priceRange: true, instagram: true, website: true,
           reviews: { select: { rating: true } }
         }
       },

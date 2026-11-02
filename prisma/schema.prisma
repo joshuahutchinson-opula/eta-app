@@ -183,6 +183,9 @@ model Vendor {
   open                 Boolean        @default(false)
   live                 Boolean        @default(false)
   isPremium            Boolean        @default(false)
+  // A local spot: cook shop, jerk centre or street food. Drives the
+  // "Most local" badge on generated routes (lib/plan.ts).
+  localSpot            Boolean        @default(false)
   isTransport          Boolean        @default(false)
   visibleInMarketplace Boolean        @default(true)
   visibleOnMap         Boolean        @default(true)
