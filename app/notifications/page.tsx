@@ -11,6 +11,7 @@ import ErrorState from '@/components/ErrorState'
 import { authHeaders } from '@/lib/api-client'
 import { getCurrentUser } from '@/lib/auth-client'
 import { useLang } from '@/lib/i18n-client'
+import BackButton from '@/components/BackButton'
 
 interface Item { id: string; title: string; body: string | null; url: string | null; readAt: string | null; createdAt: string }
 
@@ -52,9 +53,7 @@ export default function NotificationsPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button onClick={() => router.back()} aria-label="Back" style={{ width: '44px', height: '44px', borderRadius: '50%', border: 'none', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--label-primary)' }}>
-          <Icon name="back" size={16} />
-        </button>
+        <BackButton />
         <h1 className="section-title" style={{ flex: 1 }}>{t('m.inbox.title')}</h1>
         <Link href="/profile?settings=1" className="section-link">{t('m.inbox.settings')}</Link>
       </div>

@@ -1,7 +1,7 @@
 // lib/alerts-client.ts
 'use client'
 
-import { getCurrentUser } from '@/lib/auth-client'
+import { authHeaders } from '@/lib/api-client'
 
 export function pushSupported(): boolean {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -57,8 +57,9 @@ export async function alertsEnabled(): Promise<boolean> {
 async function post(sub: PushSubscription, extra: Record<string, unknown>) {
   const res = await fetch('/api/alerts/subscribe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: sub.toJSON(), userId: getCurrentUser()?.id, savedVendorIds: savedVendorIds(), ...extra })
+    // The server links the device to whoever the token says is signed in.
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ subscription: sub.toJSON(), savedVendorIds: savedVendorIds(), ...extra })
   })
   if (!res.ok) throw new Error((await res.json()).error || 'Sumth nah wuk')
   return res.json()

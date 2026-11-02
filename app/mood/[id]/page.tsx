@@ -5,10 +5,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
-import { uploadPhoto } from '@/lib/api-client'
+import { apiJson, uploadPhoto } from '@/lib/api-client'
 import PhotoPicker from '@/components/PhotoPicker'
 import ErrorState from '@/components/ErrorState'
-import { useLang } from '@/lib/i18n-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
+import ReportButton from '@/components/ReportButton'
+import BackButton from '@/components/BackButton'
+import Img from '@/components/Img'
 
 interface Mood {
   id: string
@@ -29,6 +32,7 @@ export default function MoodDetailPage() {
   const [postError, setPostError] = useState<string | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const { t } = useLang()
+  const errorText = useErrorText()
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export default function MoodDetailPage() {
   const handleAddMomentClick = () => {
     const user = getCurrentUser()
     if (!user) {
-      alert('Log in to add your moment')
+      alert(t('m.photo.loginToAddMoment'))
       router.push('/login')
       return
     }
@@ -65,7 +69,7 @@ export default function MoodDetailPage() {
   const submitMoment = async () => {
     const user = getCurrentUser()
     if (!user) {
-      alert('Log in to add your moment')
+      alert(t('m.photo.loginToAddMoment'))
       router.push('/login')
       return
     }
@@ -75,20 +79,7 @@ export default function MoodDetailPage() {
     setPostError(null)
     try {
       const url = await uploadPhoto(photo, 'mood-media')
-      const body = {
-        moodId: params.id,
-        url,
-        type: 'image',
-        uploadedBy: user.name
-      }
-
-      const response = await fetch('/api/moodmedia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      if (!response.ok) throw new Error(t('m.photo.postFailed'))
-      const newMedia = await response.json()
+      const newMedia = await apiJson('/api/moodmedia', { method: 'POST', body: { moodId: params.id, url, type: 'image' } })
 
       setMood(prev => prev
         ? { ...prev, media: [newMedia, ...prev.media] }
@@ -98,7 +89,7 @@ export default function MoodDetailPage() {
       setPhoto(null)
     } catch (error) {
       console.error(error)
-      setPostError(error instanceof Error ? error.message : t('m.photo.postFailed'))
+      setPostError(errorText(error))
     } finally {
       setSubmitting(false)
     }
@@ -115,7 +106,7 @@ export default function MoodDetailPage() {
   if (!mood) {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        {loadFailed ? <ErrorState onRetry={fetchMood} /> : <p style={{ color: 'var(--label-secondary)' }}>Nuttin nuh go suh</p>}
+        {loadFailed ? <ErrorState onRetry={fetchMood} /> : <p style={{ color: 'var(--label-secondary)' }}>{t('m.err.notFound')}</p>}
       </main>
     )
   }
@@ -123,31 +114,10 @@ export default function MoodDetailPage() {
   return (
     <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
       {/* Back button */}
-      <button
-        onClick={() => router.back()}
-        aria-label="Back"
-        style={{
-          position: 'absolute',
-          top: '16px',
-          left: '16px',
-          zIndex: 10,
-          width: '32px',
-          height: '32px',
-          borderRadius: '50%',
-          background: 'rgba(15,14,12,0.5)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white'
-        }}
-      >
-        <Icon name="back" size={14} />
-      </button>
+      <BackButton floating fallback="/" />
 
       <div style={{ position: 'relative', height: '200px' }}>
-        <img src={mood.coverImage} alt={mood.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {mood.coverImage && <Img src={mood.coverImage} alt={mood.name} width={1200} height={800} priority />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.95))' }} />
         <div style={{ position: 'absolute', bottom: '14px', left: '14px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 800 }}>{mood.name}</h1>
@@ -156,14 +126,15 @@ export default function MoodDetailPage() {
       </div>
 
       <div style={{ padding: '16px' }}>
-        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>Photos</h2>
+        <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px' }}>{t('m.photo.photos')}</h2>
         {mood.media.length === 0 ? (
-          <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>Nuh nuh photos yet</p>
+          <p style={{ color: 'var(--label-secondary)', textAlign: 'center', padding: '40px 0' }}>{t('m.photo.none')}</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {mood.media.map(m => (
-              <div key={m.id} style={{ borderRadius: '12px', overflow: 'hidden' }}>
-                <img src={m.url} alt="" style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
+              <div key={m.id} style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
+                <Img src={m.url} alt="" width={400} height={240} sizes="50vw" style={{ height: '120px', display: 'block' }} />
+                <span style={{ position: 'absolute', top: '6px', right: '6px' }}><ReportButton targetType="MOOD_MEDIA" targetId={m.id} tone="light" /></span>
                 <p style={{ fontSize: '10px', color: 'var(--label-secondary)', marginTop: '4px' }}>
                   @{m.uploadedBy}
                 </p>
@@ -183,7 +154,7 @@ export default function MoodDetailPage() {
       <div className={`bottom-sheet ${showAddSheet ? 'open' : ''}`}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Add Your Moment</h3>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.photo.addMoment')}</h3>
 
           <PhotoPicker file={photo} onChange={setPhoto} />
 

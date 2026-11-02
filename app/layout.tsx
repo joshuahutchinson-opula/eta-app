@@ -2,17 +2,14 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import LaunchScreen from '@/components/LaunchScreen'
-import DemoAutoLogin from '@/components/DemoAutoLogin'
+import SessionGuard from '@/components/SessionGuard'
 import { RegionProvider } from '@/components/RegionProvider'
 import HapticFallback from '@/components/HapticFallback'
 
-// Absolute base for og:image and canonical URLs. Railway injects
-// RAILWAY_PUBLIC_DOMAIN; NEXT_PUBLIC_SITE_URL overrides it for a custom domain.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-  ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000')
+import { siteUrl } from '@/lib/site-url'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(siteUrl()),
   title: 'Experience, Travel, Adventure.',
   description: 'See the Real Jamaica.'
 }
@@ -52,7 +49,7 @@ export default function RootLayout({
       </head>
       <body>
         <LaunchScreen />
-        <DemoAutoLogin />
+        <SessionGuard />
         <HapticFallback />
         <main style={{ 
           paddingBottom: '80px',

@@ -5,7 +5,8 @@
 import { useEffect, useState } from 'react'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
-import { useLang } from '@/lib/i18n-client'
+import { apiJson } from '@/lib/api-client'
+import { useLang, useErrorText } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
 
 export interface PostedReview {
@@ -39,18 +40,13 @@ export function StarPicker({ value, onChange, size = 32 }: { value: number; onCh
 export async function postReview(input: { vendorId: string; experienceId?: string; rating: number; comment: string }): Promise<PostedReview> {
   const user = getCurrentUser()
   if (!user) throw new Error('Log in to leave a review')
-  const res = await fetch('/api/reviews', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: user.id, vendorId: input.vendorId, experienceId: input.experienceId, rating: input.rating, comment: input.comment.trim() || null })
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
-  return { ...data, user: { name: user.name, avatarUrl: user.avatarUrl ?? null } }
+  const data = await apiJson('/api/reviews', { method: 'POST', body: { vendorId: input.vendorId, experienceId: input.experienceId, rating: input.rating, comment: input.comment.trim() || undefined } })
+  return { ...data, user: { name: user.name.split(' ')[0], avatarUrl: user.avatarUrl ?? null } }
 }
 
 export default function ReviewSheet({ open, vendorId, vendorName, onClose, onPosted }: { open: boolean; vendorId: string; vendorName: string; onClose: () => void; onPosted: (r: PostedReview) => void }) {
   const { t } = useLang()
+  const errorText = useErrorText()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
@@ -67,7 +63,7 @@ export default function ReviewSheet({ open, vendorId, vendorName, onClose, onPos
       onPosted(r)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setError(errorText(e))
     } finally {
       setBusy(false)
     }

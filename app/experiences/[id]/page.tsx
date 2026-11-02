@@ -10,7 +10,7 @@ import Icon from '@/lib/icons'
 import Price from '@/components/Price'
 import ErrorState from '@/components/ErrorState'
 import BookingSheet, { type BookingDetails } from '@/components/BookingSheet'
-import { useLang } from '@/lib/i18n-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
 import { formatCity } from '@/lib/format'
 import { shareOrCopy } from '@/lib/share'
 import { triggerHaptic } from '@/lib/haptics'
@@ -18,6 +18,13 @@ import { bookTripPaid, createTrip } from '@/lib/trip-client'
 import { cacheTripForOffline } from '@/lib/trip-offline'
 import { readSaved, toggleSaved } from '@/lib/saved'
 import { hapticSaved } from '@/lib/haptics'
+import ReportButton from '@/components/ReportButton'
+import BackButton from '@/components/BackButton'
+import Img from '@/components/Img'
+import SmartVideo from '@/components/SmartVideo'
+import { useLabels } from '@/lib/labels'
+import { absoluteUrl } from '@/lib/site-url'
+import { parseTier, TIER_SUMMARY_KEY } from '@/lib/cancellation'
 
 interface StopView {
   order: number
@@ -45,6 +52,13 @@ interface ExperienceDetail {
   meetingLat: number | null
   meetingLng: number | null
   cancellationPolicy: string | null
+  cancellationTier: string
+  capacityPerSlot: number | null
+  gallery: string[]
+  whatToBring: string[]
+  accessibilityNotes: string | null
+  guideLanguages: string[]
+  reviewCount?: number
   startTimes: string[]
   maxPartySize: number | null
   totalMinutes: number
@@ -52,14 +66,15 @@ interface ExperienceDetail {
   bookedToday: number
   moods: Array<{ id: string; name: string }>
   vendor: { id: string; name: string; image: string | null; neighborhood: string; isPremium: boolean; rating: number | null; reviewCount: number } | null
+  accessibility: string[]
   stops: StopView[]
   reviews: Array<{ id: string; rating: number; comment: string | null; createdAt: string; user: { name: string; avatarUrl: string | null } }>
 }
 
-function durationLabel(minutes: number): string | null {
+function durationLabel(minutes: number, t: (k: 'm.exp.minutes' | 'm.exp.hours', v: Record<string, number>) => string): string | null {
   if (minutes <= 0) return null
-  if (minutes < 90) return `${minutes} min`
-  return `${Math.round(minutes / 30) / 2} hrs`
+  if (minutes < 90) return t('m.exp.minutes', { n: minutes })
+  return t('m.exp.hours', { n: Math.round(minutes / 30) / 2 })
 }
 
 export default function ExperienceDetailPage() {
@@ -68,6 +83,8 @@ export default function ExperienceDetailPage() {
   const searchParams = useSearchParams()
   const crew = (searchParams.get('crew') ?? '').split(',').map(s => s.trim()).filter(Boolean)
   const { t } = useLang()
+  const errorText = useErrorText()
+  const labels = useLabels()
   const [exp, setExp] = useState<ExperienceDetail | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'notFound' | 'error'>('loading')
   const [bookingOpen, setBookingOpen] = useState(false)
@@ -76,6 +93,7 @@ export default function ExperienceDetailPage() {
   const [bookedSlug, setBookedSlug] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [photo, setPhoto] = useState<number | null>(null)
   useEffect(() => { setSaved(readSaved('experiences').includes(id)) }, [id])
 
   const load = useCallback(async () => {
@@ -102,7 +120,7 @@ export default function ExperienceDetailPage() {
       triggerHaptic('medium')
       router.push(`/experiences?trip=${trip.slug}`)
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setActionError(errorText(e))
       setPlanning(false)
     }
   }
@@ -118,17 +136,13 @@ export default function ExperienceDetailPage() {
 
   const share = async () => {
     if (!exp) return
-    if (await shareOrCopy({ title: exp.name, text: `${exp.name} — ${exp.tagline}`, url: window.location.href }) === 'copied') {
+    if (await shareOrCopy({ title: exp.name, text: `${exp.name} — ${exp.tagline}`, url: absoluteUrl(`/experiences/${exp.id}`) }) === 'copied') {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     }
   }
 
-  const backButton = (
-    <button onClick={() => router.back()} aria-label="Back" style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: '16px', zIndex: 20, width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-      <Icon name="back" size={18} />
-    </button>
-  )
+  const backButton = <BackButton floating fallback="/experiences/browse" />
 
   if (state === 'loading') {
     return (
@@ -157,7 +171,7 @@ export default function ExperienceDetailPage() {
     )
   }
 
-  const duration = durationLabel(exp.totalMinutes)
+  const duration = durationLabel(exp.totalMinutes, t)
   const hasMeetingMap = exp.meetingLat !== null && exp.meetingLng !== null
   const mapSrc = hasMeetingMap
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${[exp.meetingLng! - 0.006, exp.meetingLat! - 0.004, exp.meetingLng! + 0.006, exp.meetingLat! + 0.004].join(',')}&layer=mapnik&marker=${exp.meetingLat},${exp.meetingLng}`
@@ -172,9 +186,9 @@ export default function ExperienceDetailPage() {
 
       <div style={{ height: '46vh', minHeight: '280px', position: 'relative', overflow: 'hidden' }}>
         {exp.videoUrl ? (
-          <video src={exp.videoUrl} poster={exp.imageUrl} autoPlay muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <SmartVideo src={exp.videoUrl} poster={exp.imageUrl} alt={exp.name} />
         ) : (
-          <img src={exp.imageUrl} alt={exp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <Img src={exp.imageUrl} alt={exp.name} width={1080} height={900} priority />
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.35) 0%, transparent 30%, rgba(15,14,12,0.55) 75%, #0F0E0C 100%)' }} />
         <div style={{ position: 'absolute', bottom: '28px', left: '16px', right: '16px' }}>
@@ -194,6 +208,26 @@ export default function ExperienceDetailPage() {
 
       <div style={{ background: 'var(--system-bg-elevated)', borderRadius: '20px 20px 0 0', marginTop: '-20px', position: 'relative', zIndex: 2, padding: '20px 16px 24px', minHeight: '50vh' }}>
         <div className="sheet-grabber" />
+
+        {exp.gallery.length > 0 && (
+          <section style={{ marginBottom: '24px' }} aria-label={t('m.exp.gallery')}>
+            <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.exp.gallery')}</span></div></div>
+            <div className="horizontal-scroll" style={{ padding: '0 0 4px', gap: '8px', scrollSnapType: 'x mandatory' }}>
+              {[exp.imageUrl, ...exp.gallery].map((src, i) => (
+                <button key={src} onClick={() => setPhoto(i)} aria-label={t('m.exp.photoN', { n: i + 1 })} style={{ flexShrink: 0, width: '72%', height: '200px', borderRadius: '16px', overflow: 'hidden', border: 'none', padding: 0, cursor: 'zoom-in', scrollSnapAlign: 'start' }}>
+                  <Img src={src} alt="" width={720} height={400} sizes="72vw" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {(exp.guideLanguages.length > 0 || exp.capacityPerSlot) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+            {exp.guideLanguages.length > 0 && <span className="chip" style={{ cursor: 'default' }}><Icon name="globe" size={14} /> {t('m.exp.languages', { list: exp.guideLanguages.join(', ') })}</span>}
+            {exp.capacityPerSlot && <span className="chip" style={{ cursor: 'default' }}><Icon name="users" size={14} /> {t('m.exp.groupSize', { n: exp.capacityPerSlot })}</span>}
+          </div>
+        )}
 
         {exp.stops.length > 0 && (
           <section style={{ marginBottom: '28px' }}>
@@ -234,6 +268,34 @@ export default function ExperienceDetailPage() {
           </section>
         )}
 
+        {exp.whatToBring.length > 0 && (
+          <section style={{ marginBottom: '28px' }}>
+            <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.exp.whatToBring')}</span></div></div>
+            <ul className="card" style={{ listStyle: 'none', padding: '4px 16px', cursor: 'default' }}>
+              {exp.whatToBring.map((item, i) => (
+                <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < exp.whatToBring.length - 1 ? '0.5px solid var(--separator)' : 'none', fontSize: '15px', color: 'var(--label-primary)' }}>
+                  <Icon name="bookmark" size={16} style={{ color: 'var(--rum-text)', flexShrink: 0, marginTop: '2px' }} />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {(exp.accessibility.length > 0 || exp.accessibilityNotes) && (
+          <section style={{ marginBottom: '28px' }}>
+            <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.exp.accessibility')}</span></div></div>
+            <div className="card" style={{ padding: '12px 16px', cursor: 'default' }}>
+              {exp.accessibility.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: exp.accessibilityNotes ? '8px' : 0 }}>
+                  {exp.accessibility.map(k => <span key={k} className="chip" style={{ cursor: 'default', minHeight: '28px', fontSize: '13px' }}><Icon name="check" size={12} /> {labels.access(k)}</span>)}
+                </div>
+              )}
+              {exp.accessibilityNotes && <p style={{ fontSize: '14px', color: 'var(--label-primary)', lineHeight: 1.45 }}>{exp.accessibilityNotes}</p>}
+            </div>
+          </section>
+        )}
+
         <section style={{ marginBottom: '28px' }}>
           <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.exp.meetingPoint')}</span></div></div>
           <div className="card" style={{ overflow: 'hidden', cursor: 'default' }}>
@@ -256,7 +318,7 @@ export default function ExperienceDetailPage() {
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>
                   {exp.vendor.name}
-                  {exp.vendor.isPremium && <span className="chip" style={{ minHeight: '22px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer' }}><Icon name="crown" size={10} /> B.O.N</span>}
+                  {exp.vendor.isPremium && <span className="chip" style={{ minHeight: '22px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer' }}><Icon name="crown" size={10} /> {t('common.premium')}</span>}
                 </span>
                 <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>
                   {exp.vendor.neighborhood}
@@ -269,19 +331,23 @@ export default function ExperienceDetailPage() {
         )}
 
         <section style={{ marginBottom: '28px' }}>
-          <div className="section-header"><div className="section-heading"><span className="section-title">{t('vendor.reviews')}</span></div></div>
+          <div className="section-header">
+            <div className="section-heading"><span className="section-title">{t('vendor.reviews')}</span></div>
+            {(exp.reviewCount ?? 0) > exp.reviews.length && <Link href={`/experiences/${exp.id}/reviews`} className="section-link">{t('m.exp.allReviews', { n: exp.reviewCount ?? 0 })}</Link>}
+          </div>
           {exp.reviews.length === 0 ? (
             <p style={{ fontSize: '14px', color: 'var(--label-secondary)' }}>{t('common.noReviews')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {exp.reviews.slice(0, 6).map(r => (
+              {exp.reviews.map(r => (
                 <div key={r.id} className="card" style={{ padding: '12px', cursor: 'default' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                     {r.user.avatarUrl ? <img src={r.user.avatarUrl} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} /> : <Icon name="user" size={18} style={{ color: 'var(--label-tertiary)' }} />}
                     <span style={{ flex: 1, fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{r.user.name}</span>
-                    <span aria-label={`${r.rating} out of 5`} style={{ color: 'var(--gold)', fontSize: '13px' }}>{'★'.repeat(r.rating)}<span style={{ color: 'var(--label-tertiary)' }}>{'★'.repeat(5 - r.rating)}</span></span>
+                    <span aria-label={t('m.review.stars', { n: r.rating })} style={{ color: 'var(--gold)', fontSize: '13px' }}>{'★'.repeat(r.rating)}<span style={{ color: 'var(--label-tertiary)' }}>{'★'.repeat(5 - r.rating)}</span></span>
                   </div>
                   {r.comment && <p style={{ fontSize: '14px', color: 'var(--label-secondary)', lineHeight: 1.4 }}>{r.comment}</p>}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px', marginBottom: '-10px' }}><ReportButton targetType="REVIEW" targetId={r.id} /></div>
                 </div>
               ))}
             </div>
@@ -290,7 +356,11 @@ export default function ExperienceDetailPage() {
 
         <section>
           <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.exp.cancellation')}</span></div></div>
-          <p style={{ fontSize: '15px', lineHeight: 1.5, color: exp.cancellationPolicy ? 'var(--label-primary)' : 'var(--label-secondary)' }}>{exp.cancellationPolicy ?? t('m.common.notListed')}</p>
+          <div className="card" style={{ padding: '12px 16px', cursor: 'default' }}>
+            <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: 1.45, color: 'var(--label-primary)' }}>{t(TIER_SUMMARY_KEY[parseTier(exp.cancellationTier)])}</p>
+            {exp.cancellationPolicy && <p style={{ fontSize: '14px', lineHeight: 1.45, color: 'var(--label-secondary)', marginTop: '4px' }}>{t('m.cancel.vendorNote', { note: exp.cancellationPolicy })}</p>}
+            <Link href="/policies/cancellation" className="section-link" style={{ display: 'inline-flex', minHeight: '36px', marginTop: '4px' }}>{t('m.cancel.fullPolicy')}</Link>
+          </div>
         </section>
       </div>
 
@@ -311,6 +381,13 @@ export default function ExperienceDetailPage() {
         </div>
       </div>
 
+      {photo !== null && (
+        <div role="dialog" aria-modal="true" aria-label={t('m.exp.gallery')} onClick={() => setPhoto(null)} style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Img src={[exp.imageUrl, ...exp.gallery][photo]} alt="" width={1600} height={1200} style={{ objectFit: 'contain', width: '100%', height: 'auto', maxHeight: '90vh' }} />
+          <button aria-label={t('m.common.close')} onClick={() => setPhoto(null)} className="back-button" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', right: '16px' }}><Icon name="close" size={16} /></button>
+        </div>
+      )}
+
       <BookingSheet
         open={bookingOpen}
         onClose={() => setBookingOpen(false)}
@@ -318,6 +395,9 @@ export default function ExperienceDetailPage() {
         unitPrice={exp.price}
         startTimes={exp.startTimes}
         maxPartySize={exp.maxPartySize}
+        experienceId={exp.id}
+        cancellationTier={exp.cancellationTier}
+        cancellationNote={exp.cancellationPolicy}
         defaultPartySize={1 + crew.length}
         onConfirm={book}
         onDone={() => { setBookingOpen(false); router.push(bookedSlug ? `/experiences?trip=${bookedSlug}` : '/bookings') }}

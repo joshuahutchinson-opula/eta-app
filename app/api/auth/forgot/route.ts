@@ -1,32 +1,33 @@
-// POST { email } — start a password reset. Creates a one-hour token (only its
-// hash is stored) and "sends" the reset link. Email isn't wired up yet, so the
-// link is written to the server log; outside production it's also returned so
-// the flow can be tested. The response is the same whether or not the email
-// has an account.
-import crypto from 'crypto'
+// POST { email } — start a password reset: a one-hour, single-use link is
+// emailed (lib/email.ts). The response is the same whether or not the email
+// has an account. When email isn't configured (local dev), the link is also
+// returned outside production so the flow can still be tested.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { siteOrigin } from '@/lib/oauth'
+import { sendPasswordReset } from '@/lib/auth-tokens'
+import { emailConfigured } from '@/lib/email'
+import { absoluteUrl } from '@/lib/site-url'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
+import { parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
+const schema = z.object({ email: z.string().trim().toLowerCase().email('Enter your email').max(254) })
+
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}))
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  if (!email) return NextResponse.json({ error: 'Enter your email' }, { status: 400 })
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return parsed.response
+  const { email } = parsed.data
+  const limited = rateLimit('forgot', clientIp(request)) ?? rateLimit('forgot', email)
+  if (limited) return limited
   try {
-    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, email: true } })
-    let resetUrl: string | undefined
+    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null }, select: { id: true, email: true } })
+    let devLink: string | undefined
     if (user) {
-      const token = crypto.randomBytes(32).toString('base64url')
-      await prisma.passwordResetToken.create({
-        data: { userId: user.id, tokenHash: crypto.createHash('sha256').update(token).digest('hex'), expiresAt: new Date(Date.now() + 3600000) }
-      })
-      resetUrl = `${siteOrigin(request)}/reset-password?token=${token}`
-      // Stub for the email: swap this log for a real send when email is set up.
-      console.log(`[password reset] ${user.email}: ${resetUrl}`)
+      const token = await sendPasswordReset(user)
+      if (!emailConfigured() && process.env.NODE_ENV !== 'production') devLink = absoluteUrl(`/reset-password?token=${token}`)
     }
-    return NextResponse.json({ ok: true, ...(process.env.NODE_ENV !== 'production' && resetUrl ? { resetUrl } : {}) })
+    return NextResponse.json({ ok: true, ...(devLink ? { resetUrl: devLink } : {}) })
   } catch (error) {
     console.error('Forgot password failed:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

@@ -1,9 +1,17 @@
-// app/stories/page.tsx
+// app/stories/page.tsx — full-screen stories for the selected region.
+// Photos show for 5 s, videos for their length (up to 30 s). Each story
+// viewed is marked seen on the account, which greys its ring on Home.
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
+import ReportButton from '@/components/ReportButton'
+import { useRegion } from '@/components/RegionProvider'
+import { useLang } from '@/lib/i18n-client'
+import { authHeaders } from '@/lib/api-client'
+import { getCurrentUser } from '@/lib/auth-client'
+import { useLowData } from '@/lib/low-data'
 import { triggerHaptic } from '@/lib/haptics'
 
 interface Story {
@@ -11,6 +19,8 @@ interface Story {
   content: string
   type: string
   imageUrl: string
+  videoUrl?: string | null
+  seen?: boolean
   vendorId?: string | null
   vendor: {
     name: string
@@ -31,9 +41,16 @@ interface StoryGroup {
 }
 
 const ITEM_DURATION_MS = 5000
+const MAX_VIDEO_MS = 30000
 
 export default function StoriesPage() {
   const router = useRouter()
+  const { t } = useLang()
+  const { city, town, ready } = useRegion()
+  const { lowData } = useLowData()
+  const [durationMs, setDurationMs] = useState(ITEM_DURATION_MS)
+  const [muted, setMuted] = useState(true)
+  const seenRef = useRef(new Set<string>())
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [groupIndex, setGroupIndex] = useState(0)
@@ -47,8 +64,9 @@ export default function StoriesPage() {
   const isDraggingRef = useRef(false)
 
   useEffect(() => {
-    fetchStories()
-  }, [])
+    if (ready) fetchStories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, city])
 
   const [loadFailed, setLoadFailed] = useState(false)
 
@@ -56,7 +74,7 @@ export default function StoriesPage() {
     setLoading(true)
     setLoadFailed(false)
     try {
-      const response = await fetch('/api/stories')
+      const response = await fetch(`/api/stories?city=${city}`, { headers: authHeaders() })
       if (!response.ok) throw new Error('stories')
       const data = await response.json()
       setStories(Array.isArray(data) ? data : [])
@@ -96,6 +114,15 @@ export default function StoriesPage() {
 
   const currentGroup = groups[groupIndex]
   const currentItem = currentGroup?.items[itemIndex]
+  const playVideo = Boolean(currentItem?.videoUrl) && !lowData
+
+  // Mark each story seen once, for the ring on Home.
+  useEffect(() => {
+    setDurationMs(ITEM_DURATION_MS)
+    if (!currentItem || currentItem.seen || seenRef.current.has(currentItem.id) || !getCurrentUser()) return
+    seenRef.current.add(currentItem.id)
+    fetch(`/api/stories/${currentItem.id}/view`, { method: 'POST', headers: authHeaders() }).catch(() => {})
+  }, [currentItem])
 
   const exit = () => {
     setExiting(true)
@@ -135,10 +162,10 @@ export default function StoriesPage() {
   // Auto-advance the current item's progress fill, pausable on hold.
   useEffect(() => {
     if (loading || !currentItem || paused || exiting) return
-    const timer = setTimeout(advance, ITEM_DURATION_MS)
+    const timer = setTimeout(advance, durationMs)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupIndex, itemIndex, paused, loading, exiting])
+  }, [groupIndex, itemIndex, paused, loading, exiting, durationMs])
 
   const handlePointerDown = (clientX: number, clientY: number) => {
     dragStartX.current = clientX
@@ -201,9 +228,9 @@ export default function StoriesPage() {
   if (groups.length === 0) {
     return (
       <main style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', background: '#000000' }}>
-        <p style={{ color: 'rgba(255,255,255,0.7)' }}>{loadFailed ? 'Sumth nah wuk — the stories didn’t load.' : 'Nuh nuh stories'}</p>
-        {loadFailed && <button onClick={fetchStories} className="btn btn-secondary">Try again</button>}
-        <button onClick={() => router.push('/')} className="btn btn-primary">Back Home</button>
+        <p style={{ color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 24px' }}>{loadFailed ? t('m.stories.failed') : t('m.stories.none', { town: town.name })}</p>
+        {loadFailed && <button onClick={fetchStories} className="btn btn-secondary">{t('m.error.retry')}</button>}
+        <button onClick={() => router.push('/')} className="btn btn-primary">{t('m.stories.backHome')}</button>
       </main>
     )
   }
@@ -241,13 +268,26 @@ export default function StoriesPage() {
           transition: dragX === 0 ? 'transform 0.25s var(--spring-standard, ease-out)' : 'none'
         }}
       >
+        {playVideo && (
+          <video
+            key={currentItem.id}
+            src={currentItem.videoUrl!}
+            poster={currentItem.imageUrl}
+            autoPlay
+            muted={muted}
+            playsInline
+            ref={el => { if (el) { if (paused) el.pause(); else el.play().catch(() => {}) } }}
+            onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) setDurationMs(Math.min(MAX_VIDEO_MS, Math.round(d * 1000))) }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.55) 0%, transparent 22%, transparent 65%, rgba(15,14,12,0.75) 100%)' }} />
       </div>
 
       {/* Tap zones (sit above content, below header/footer UI) */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
-        <button aria-label="Previous story" style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('left')} />
-        <button aria-label="Next story" style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('right')} />
+        <button aria-label={t('m.stories.prev')} style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('left')} />
+        <button aria-label={t('m.stories.next')} style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('right')} />
       </div>
 
       {/* Progress bars - one segment per item in the current group */}
@@ -261,7 +301,7 @@ export default function StoriesPage() {
                 style={{
                   height: '100%',
                   background: 'white',
-                  animation: `storyFill ${ITEM_DURATION_MS}ms linear forwards`,
+                  animation: `storyFill ${durationMs}ms linear forwards`,
                   animationPlayState: paused ? 'paused' : 'running'
                 }}
               />
@@ -283,11 +323,20 @@ export default function StoriesPage() {
         <span style={{ fontWeight: 700, fontSize: '14px', color: 'white' }}>{currentGroup.name}</span>
         {currentGroup.isPremium && (
           <span style={{ fontSize: '9px', background: 'var(--gold)', color: '#0F0E0C', fontWeight: 800, padding: '2px 6px', borderRadius: '999px' }}>
-            PREMIUM
+            {t('m.stories.premium')}
           </span>
         )}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+          {playVideo && (
+            <button aria-label={muted ? t('m.stories.unmute') : t('m.stories.mute')} onClick={e => { e.stopPropagation(); setMuted(m => !m) }} style={{ width: '44px', height: '44px', background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="audio" size={16} />
+            </button>
+          )}
+          <span onClick={() => setPaused(true)}><ReportButton targetType="STORY" targetId={currentItem.id} tone="light" /></span>
+        </span>
         <button
-          style={{ marginLeft: 'auto', width: '36px', height: '36px', background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label={t('m.stories.close')}
+          style={{ width: '44px', height: '44px', background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => { e.stopPropagation(); triggerHaptic('light'); exit() }}
         >
           <Icon name="close" size={18} />
@@ -296,7 +345,7 @@ export default function StoriesPage() {
 
       {paused && (
         <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 24px)', left: '50%', transform: 'translateX(-50%)', marginTop: '48px', background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '999px', zIndex: 10 }}>
-          Paused
+          {t('m.stories.paused')}
         </div>
       )}
 

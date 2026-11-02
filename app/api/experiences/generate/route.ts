@@ -4,22 +4,25 @@
 import { NextResponse } from 'next/server'
 import { parseCity } from '@/lib/regions'
 import { generateBundles, type GeneratorInput, type TimeBudget } from '@/lib/experience-generator'
+import { parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
 const TIMES: TimeBudget[] = ['2hr', 'half', 'full', 'night']
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}))
-  const input: GeneratorInput = {
-    moods: Array.isArray(body.moods) ? body.moods.filter((m: unknown) => typeof m === 'string').slice(0, 5) : [],
-    time: TIMES.includes(body.time) ? body.time : 'half',
-    crewSize: Math.min(20, Math.max(1, Math.round(Number(body.crewSize) || 1))),
-    budget: [1, 2, 3, 4].includes(Number(body.budget)) ? Number(body.budget) : undefined,
-    occasion: typeof body.occasion === 'string' ? body.occasion.slice(0, 40) : undefined,
-    city: parseCity(body.city),
-    transport: ['drive', 'walk', 'handled'].includes(body.transport) ? body.transport : undefined
-  }
+  const parsed = await parseBody(request, z.object({
+    moods: z.array(z.string().max(60)).max(5).default([]),
+    time: z.enum(TIMES as [TimeBudget, ...TimeBudget[]]).catch('half').default('half'),
+    crewSize: z.number().int().min(1).max(20).catch(1).default(1),
+    budget: z.number().int().min(1).max(4).optional().catch(undefined),
+    occasion: z.string().max(40).optional(),
+    city: z.string().max(32).optional(),
+    transport: z.enum(['drive', 'walk', 'handled']).optional().catch(undefined)
+  }))
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
+  const input: GeneratorInput = { ...body, city: parseCity(body.city) }
   try {
     const bundles = await generateBundles(input)
     return NextResponse.json({ bundles })

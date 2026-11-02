@@ -15,6 +15,11 @@ import { useLang } from '@/lib/i18n-client'
 import { jamaicaToday, nightsBetween, priceBreakdown } from '@/lib/pricing'
 import { hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { formatCity } from '@/lib/format'
+import { useLabels } from '@/lib/labels'
+import BackButton from '@/components/BackButton'
+import { useErrorText } from '@/lib/i18n-client'
+import { ApiError } from '@/lib/errors'
+import Img from '@/components/Img'
 
 interface Accommodation {
   id: string
@@ -39,6 +44,8 @@ export default function AccommodationDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { t, lang } = useLang()
+  const labels = useLabels()
+  const errorText = useErrorText()
   const [accom, setAccom] = useState<Accommodation | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'notFound' | 'error'>('loading')
   const [checkIn, setCheckIn] = useState(jamaicaToday(7))
@@ -72,14 +79,14 @@ export default function AccommodationDetailPage() {
     let cancelled = false
     setAvailability({ state: 'checking' })
     fetch(`/api/accommodations/${accom.id}/availability?checkIn=${checkIn}&checkOut=${checkOut}`)
-      .then(r => r.json().then(d => ({ ok: r.ok, d })))
-      .then(({ ok, d }) => {
+      .then(r => r.json().then(d => ({ ok: r.ok, status: r.status, d })))
+      .then(({ ok, status, d }) => {
         if (cancelled) return
-        setAvailability(ok ? { state: 'done', available: d.available, unavailable: d.unavailable ?? [] } : { state: 'error', message: d.error ?? 'Sumth nah wuk' })
+        setAvailability(ok ? { state: 'done', available: d.available, unavailable: d.unavailable ?? [] } : { state: 'error', message: errorText(new ApiError(d.error ?? '', status, d.code)) })
       })
       .catch(() => { if (!cancelled) setAvailability({ state: 'error', message: t('m.error.body') }) })
     return () => { cancelled = true }
-  }, [accom, checkIn, checkOut, nights, t])
+  }, [accom, checkIn, checkOut, nights, t, errorText])
 
   const book = async () => {
     if (!accom) return
@@ -93,23 +100,19 @@ export default function AccommodationDetailPage() {
         body: JSON.stringify({ checkIn, checkOut, guests })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+      if (!res.ok) throw new ApiError(data.error || '', res.status, data.code)
       const u = getCurrentUser()
       if (u && typeof data.walletBalance === 'number') setCurrentUser({ ...u, walletBalance: data.walletBalance })
       hapticBookingConfirmed()
       setBooked({ transactionId: data.transactionId })
     } catch (e) {
-      setPayError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setPayError(errorText(e))
     } finally {
       setPaying(false)
     }
   }
 
-  const backButton = (
-    <button onClick={() => router.back()} aria-label="Back" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', left: '16px', zIndex: 10, width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(15,14,12,0.5)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-      <Icon name="back" size={16} />
-    </button>
-  )
+  const backButton = <BackButton floating fallback="/marketplace" />
 
   if (state === 'loading') {
     return (
@@ -122,7 +125,7 @@ export default function AccommodationDetailPage() {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative' }}>
         {backButton}
-        {state === 'error' ? <ErrorState onRetry={load} /> : <div className="empty-state"><p style={{ fontSize: '17px', fontWeight: 600 }}>Nuttin nuh go suh</p></div>}
+        {state === 'error' ? <ErrorState onRetry={load} /> : <div className="empty-state"><p style={{ fontSize: '17px', fontWeight: 600 }}>{t('m.err.notFound')}</p></div>}
       </main>
     )
   }
@@ -136,11 +139,11 @@ export default function AccommodationDetailPage() {
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', position: 'relative', paddingBottom: '40px' }}>
       {backButton}
       <div style={{ position: 'relative', height: '280px' }}>
-        <img src={accom.media?.[0]?.url || ''} alt={accom.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {accom.media?.[0]?.url && <Img src={accom.media[0].url} alt={accom.name} width={1200} height={800} priority />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(15,14,12,0.9))' }} />
         <div style={{ position: 'absolute', bottom: '14px', left: '16px', right: '16px', color: 'white' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 800 }}>{accom.name}</h1>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>★ {accom.googleStars} · {TYPE_LABEL[accom.type] ?? accom.type} · {formatCity(accom.city)}</p>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>★ {accom.googleStars} · {labels.stayType(accom.type)} · {formatCity(accom.city)}</p>
         </div>
       </div>
 
@@ -158,7 +161,7 @@ export default function AccommodationDetailPage() {
           <>
             <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '12px', color: 'var(--label-primary)' }}>{t('m.stay.roomView')}</h2>
             <div className="horizontal-scroll" style={{ marginBottom: '12px' }}>
-              {accom.roomViews.map((v, i) => <img key={i} src={v} alt={`Room view ${i + 1}`} style={{ width: '200px', height: '140px', objectFit: 'cover', borderRadius: '12px', flexShrink: 0 }} />)}
+              {accom.roomViews.map((v, i) => <Img key={i} src={v} alt={`Room view ${i + 1}`} width={400} height={280} sizes="200px" style={{ width: '200px', height: '140px', borderRadius: '12px', flexShrink: 0 }} />)}
             </div>
           </>
         )}

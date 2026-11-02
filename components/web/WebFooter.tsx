@@ -27,10 +27,14 @@ export default function WebFooter({ lang }: { lang: Lang }) {
               <Link href="/web/for-vendors">{t(lang, 'nav.forVendors')}</Link>
               <Link href="/web/for-vendors#apply">{t(lang, 'footer.applyToList')}</Link>
               <Link href="/web/for-vendors#vetting">{t(lang, 'footer.howVetting')}</Link>
+              <Link href="/vendor-agreement">{t(lang, 'm.legal.vendorAgreement')}</Link>
             </div>
             <div className="w-footer-col">
               <h4>{t(lang, 'footer.company')}</h4>
               <Link href="/web/best">{t(lang, 'footer.bestOf')}</Link>
+              <Link href="/privacy">{t(lang, 'm.legal.privacy')}</Link>
+              <Link href="/terms">{t(lang, 'm.legal.terms')}</Link>
+              <Link href="/policies/cancellation">{t(lang, 'm.legal.cancellation')}</Link>
               <span className="w-faint" style={{ fontSize: 15 }}>Negril, Jamaica</span>
             </div>
           </div>

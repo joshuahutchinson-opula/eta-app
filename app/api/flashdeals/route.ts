@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyFlashDeal } from '@/lib/alerts'
+import { canActForVendor, requireUser } from '@/lib/auth-server'
+import { id, parseBody, text, z } from '@/lib/validate'
+import { listParams } from '@/lib/list-params'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// GET ?city= | ?region=  ?limit= — active deals.
+export async function GET(request: Request) {
+  const { cities, limit } = listParams(request.url)
   try {
     const flashDeals = await prisma.flashDeal.findMany({
       where: {
-        expires: { gt: new Date() }
+        expires: { gt: new Date() },
+        ...(cities ? { vendor: { city: { in: cities } } } : {})
       },
+      take: limit,
       include: {
         vendor: {
           select: {
@@ -34,17 +41,26 @@ export async function GET() {
   }
 }
 
-// POST { vendorId, deal, expires } — a vendor drops a flash deal; nearby
-// subscribers and anyone who saved the vendor get a push (B4).
+// POST { vendorId, deal, expires } — a vendor (via the vendor app) or an
+// admin drops a flash deal; nearby subscribers and anyone who saved the
+// vendor get a push (B4).
+const schema = z.object({
+  vendorId: id,
+  deal: text(140).min(1),
+  expires: z.string().datetime({ offset: true })
+})
+
 export async function POST(request: Request) {
+  const auth = await requireUser(request)
+  if (!auth.ok) return auth.response
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return parsed.response
   try {
-    const body = await request.json().catch(() => ({}))
-    const expires = typeof body.expires === 'string' ? new Date(body.expires) : null
-    if (typeof body.vendorId !== 'string' || typeof body.deal !== 'string' || !body.deal.trim() || !expires || isNaN(expires.getTime()) || expires.getTime() <= Date.now()) {
-      return NextResponse.json({ error: 'vendorId, deal and a future expires are required' }, { status: 400 })
-    }
+    const expires = new Date(parsed.data.expires)
+    if (expires.getTime() <= Date.now()) return NextResponse.json({ error: 'expires must be in the future' }, { status: 400 })
+    if (!(await canActForVendor(auth.user, parsed.data.vendorId))) return NextResponse.json({ error: 'Only the vendor or an ETA admin can do that' }, { status: 403 })
     const flashDeal = await prisma.flashDeal.create({
-      data: { vendorId: body.vendorId, deal: body.deal.trim().slice(0, 140), expires }
+      data: { vendorId: parsed.data.vendorId, deal: parsed.data.deal, expires }
     })
     await notifyFlashDeal(flashDeal.id).catch(err => console.error('Deal alert failed:', err))
     return NextResponse.json(flashDeal)

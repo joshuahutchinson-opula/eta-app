@@ -6,7 +6,16 @@ import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
 import { hapticSaved } from '@/lib/haptics'
-import { useLang, usePatois } from '@/lib/i18n-client'
+import { useErrorText, useLang, usePatois } from '@/lib/i18n-client'
+import { useLabels } from '@/lib/labels'
+import BackButtonShared from '@/components/BackButton'
+import VendorMenu, { type MenuItemView } from '@/components/VendorMenu'
+import PopularTimes from '@/components/PopularTimes'
+import Img from '@/components/Img'
+import SmartVideo from '@/components/SmartVideo'
+import { readSaved, toggleSaved as toggleSavedId } from '@/lib/saved'
+import { directionsUrl } from '@/lib/calendar'
+import type { PopularTimes as PopularTimesData } from '@/lib/popular-times'
 import AddToTripSheet from '@/components/AddToTripSheet'
 import { alertsEnabled, enableAlerts, syncAlerts } from '@/lib/alerts-client'
 import { accessibilityLabel } from '@/lib/accessibility'
@@ -86,6 +95,8 @@ interface VendorDetail {
   whatsapp?: string | null
   acceptsReservations?: boolean
   menu: any
+  menuItems: MenuItemView[]
+  popularTimes: PopularTimesData | null
   rating?: number
   reviewCount?: number
   stories: StoryItem[]
@@ -95,17 +106,22 @@ interface VendorDetail {
 }
 
 import { formatCity } from '@/lib/format'
+import { absoluteUrl } from '@/lib/site-url'
+import ReportButton from '@/components/ReportButton'
+import { responseError } from '@/lib/errors'
 
-function formatCountdown(expires: string): string {
+type T = ReturnType<typeof useLang>['t']
+
+function formatCountdown(expires: string, t: T): string {
   const diffMs = new Date(expires).getTime() - Date.now()
-  if (diffMs <= 0) return 'Ended'
+  if (diffMs <= 0) return t('m.vendor.ended')
   const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 60) return `Ends in ${diffMin}m`
-  return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
+  if (diffMin < 60) return t('m.vendor.endsInMin', { m: diffMin })
+  return t('m.vendor.endsInHours', { h: Math.floor(diffMin / 60), m: diffMin % 60 })
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatDate(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function renderMenuItems(items: any[]) {
@@ -140,13 +156,14 @@ function renderMenuItems(items: any[]) {
 }
 
 function MenuSection({ menu }: { menu: any }) {
+  const { t } = useLang()
   if (Array.isArray(menu)) {
     if (menu.length === 0) return null
     return (
       <div style={{ marginBottom: '32px' }}>
         <div className="section-header">
           <div className="section-heading">
-            <span className="section-title">Menu</span>
+            <span className="section-title">{t('m.vendor.menu')}</span>
           </div>
         </div>
         <div className="card" style={{ padding: '0 16px' }}>
@@ -163,7 +180,7 @@ function MenuSection({ menu }: { menu: any }) {
       <div style={{ marginBottom: '32px' }}>
         <div className="section-header">
           <div className="section-heading">
-            <span className="section-title">Menu</span>
+            <span className="section-title">{t('m.vendor.menu')}</span>
           </div>
         </div>
         {entries.map(([category, value], idx) => (
@@ -185,7 +202,10 @@ function MenuSection({ menu }: { menu: any }) {
 
 export default function VendorDetailPage() {
   const patois = usePatois()
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const errorText = useErrorText()
+  const labels = useLabels()
+  const locale = lang === 'en' ? 'en-US' : lang
   const params = useParams()
   const router = useRouter()
   const vendorId = params.id as string
@@ -214,12 +234,7 @@ export default function VendorDetailPage() {
   useEffect(() => {
     fetchVendor()
     alertsEnabled().then(setAlertsOn).catch(() => setAlertsOn(false))
-    try {
-      const savedIds = JSON.parse(localStorage.getItem('savedVendors') || '[]')
-      if (Array.isArray(savedIds)) setSaved(savedIds.includes(vendorId))
-    } catch {
-      // ignore malformed localStorage
-    }
+    setSaved(readSaved('vendors').includes(vendorId))
   }, [vendorId])
 
   const fetchVendor = async () => {
@@ -246,7 +261,7 @@ export default function VendorDetailPage() {
 
   const share = async () => {
     if (!vendor) return
-    const result = await shareOrCopy({ title: vendor.name, text: `${vendor.name} on ETA`, url: window.location.origin + `/vendor/${vendor.id}` })
+    const result = await shareOrCopy({ title: vendor.name, text: `${vendor.name} on ETA`, url: absoluteUrl(`/vendor/${vendor.id}`) })
     if (result === 'copied') { setShareMsg(t('m.events.linkCopied')); setTimeout(() => setShareMsg(null), 1800) }
   }
 
@@ -256,12 +271,12 @@ export default function VendorDetailPage() {
     setClaimError(null)
     try {
       const res = await fetch(`/api/flashdeals/${dealId}/claim`, { method: 'POST', headers: authHeaders() })
+      if (!res.ok) throw await responseError(res)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
       hapticSaved()
       setVoucher({ code: data.code, deal: data.deal, expires: data.expires })
     } catch (e) {
-      setClaimError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setClaimError(errorText(e))
     } finally {
       setClaiming(null)
     }
@@ -273,19 +288,18 @@ export default function VendorDetailPage() {
     setResvState({ busy: true, error: null, sent: false })
     try {
       const res = await fetch('/api/reservations', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ vendorId: vendor.id, ...resv }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
+      if (!res.ok) throw await responseError(res)
       hapticSaved()
       setResvState({ busy: false, error: null, sent: true })
     } catch (e) {
-      setResvState({ busy: false, error: e instanceof Error ? e.message : 'Sumth nah wuk', sent: false })
+      setResvState({ busy: false, error: errorText(e), sent: false })
     }
   }
 
   // Same category in the same city first, topped up from the same neighborhood.
   const fetchRelated = async (v: VendorDetail) => {
     try {
-      const all: Array<VendorCardVendor & { city: string }> = await (await fetch('/api/vendors')).json()
+      const all: Array<VendorCardVendor & { city: string }> = await (await fetch(`/api/vendors?city=${v.city}&limit=40`)).json()
       if (!Array.isArray(all)) return
       const others = all.filter(o => o.id !== v.id && o.city === v.city)
       const same = others.filter(o => o.category === v.category)
@@ -299,18 +313,7 @@ export default function VendorDetailPage() {
   const toggleSave = () => {
     if (!vendor) return
     hapticSaved()
-    let savedIds: string[] = []
-    try {
-      savedIds = JSON.parse(localStorage.getItem('savedVendors') || '[]')
-      if (!Array.isArray(savedIds)) savedIds = []
-    } catch {
-      savedIds = []
-    }
-    const newSaved = savedIds.includes(vendor.id)
-      ? savedIds.filter(id => id !== vendor.id)
-      : [...savedIds, vendor.id]
-    localStorage.setItem('savedVendors', JSON.stringify(newSaved))
-    setSaved(newSaved.includes(vendor.id))
+    setSaved(toggleSavedId('vendors', vendor.id))
     syncAlerts()
   }
 
@@ -320,43 +323,19 @@ export default function VendorDetailPage() {
     try {
       await enableAlerts({ liveAlerts: true, dealAlerts: true })
       setAlertsOn(true)
-      setAlertMsg('Alerts on — we’ll ping you when it goes live.')
+      setAlertMsg(t('m.vendor.alertsOn'))
     } catch (e) {
-      setAlertMsg(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setAlertMsg(errorText(e))
     }
   }
 
   const handleDirections = () => {
     if (!vendor) return
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${vendor.lat},${vendor.lng}`, '_blank')
+    const url = directionsUrl({ lat: vendor.lat, lng: vendor.lng, name: vendor.name })
+    if (url) window.open(url, '_blank')
   }
 
-  const BackButton = (
-    <button
-      onClick={() => router.back()}
-      style={{
-        position: 'fixed',
-        top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-        left: '16px',
-        zIndex: 20,
-        width: '36px',
-        height: '36px',
-        borderRadius: '50%',
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#0F0E0C',
-        boxShadow: 'var(--shadow-card)'
-      }}
-    >
-      <Icon name="back" size={16} />
-    </button>
-  )
+  const BackButton = <BackButtonShared floating fallback="/marketplace" />
 
   if (loading) {
     return (
@@ -399,9 +378,9 @@ export default function VendorDetailPage() {
         <div className="empty-state">
           <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
           <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{patois.emptySearch}</p>
-          <p>Dis vendor nuh deh yah anymore.</p>
+          <p>{t('m.vendor.gone')}</p>
           <button className="btn btn-primary" onClick={() => router.push('/vendors')} style={{ marginTop: '8px' }}>
-            Back to Vendors
+            {t('m.vendor.backToVendors')}
           </button>
         </div>
       </main>
@@ -429,10 +408,10 @@ export default function VendorDetailPage() {
   const bbox = [vendor.lng - 0.006, vendor.lat - 0.004, vendor.lng + 0.006, vendor.lat + 0.004].join(',')
   const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${vendor.lat},${vendor.lng}`
   const goodToKnow = [
-    vendor.tipsJar && { icon: 'gift', text: 'Tips jar — tip the crew straight from the app' },
-    vendor.payItForward && { icon: 'heart', text: 'Pay it forward — buy the next person a round' },
+    vendor.tipsJar && { icon: 'gift', text: t('m.vendor.tipsJar') },
+    vendor.payItForward && { icon: 'heart', text: t('m.vendor.payItForward') },
     vendor.isPremium && { icon: 'crown', text: t('m.bon.member') },
-    vendor.live && { icon: 'users', text: `${vendor.whoThere} ETA travelers here right now` }
+    vendor.live && { icon: 'users', text: t('m.vendor.travelersHere', { n: vendor.whoThere }) }
   ].filter(Boolean) as Array<{ icon: string; text: string }>
 
   return (
@@ -445,26 +424,12 @@ export default function VendorDetailPage() {
           onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
           style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
         >
-          {media.map((m, i) => m.type === 'video' ? (
-            <video
-              key={m.src}
-              autoPlay={i === 0}
-              muted
-              loop
-              playsInline
-              preload={i === 0 ? 'auto' : 'none'}
-              poster={vendor.images[0] || undefined}
-              src={m.src}
-              style={{ flex: '0 0 100%', width: '100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'start' }}
-            />
-          ) : (
-            <img
-              key={m.src}
-              src={m.src}
-              alt={`${vendor.name} — photo ${i - vendor.videos.length + 1}`}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              style={{ flex: '0 0 100%', width: '100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'start' }}
-            />
+          {media.map((m, i) => (
+            <div key={m.src} style={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start' }}>
+              {m.type === 'video'
+                ? <SmartVideo src={m.src} poster={vendor.images[0]} alt={vendor.name} active={slide === i} />
+                : <Img src={m.src} alt={vendor.name} width={1080} height={900} priority={i === 0} />}
+            </div>
           ))}
         </div>
         <div className="featured-hero-overlay" style={{ pointerEvents: 'none' }} />
@@ -472,7 +437,7 @@ export default function VendorDetailPage() {
         {vendor.isPremium && (
           <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px', left: 'auto', right: '12px', top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
             <Icon name="crown" size={11} />
-            B.O.N
+            {t('common.premium')}
           </div>
         )}
         {media.length > 1 && (
@@ -483,7 +448,7 @@ export default function VendorDetailPage() {
         {vendor.live && (
           <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '999px', background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '12px', fontWeight: 700, pointerEvents: 'none' }}>
             <span className="live-dot" />
-            <span className="num-font">{vendor.whoThere}</span> here now
+            <span className="num-font">{vendor.whoThere}</span> {t('m.home.hereNow')}
           </div>
         )}
       </div>
@@ -491,7 +456,7 @@ export default function VendorDetailPage() {
       <div style={{ padding: '20px 16px' }}>
         {/* Name / category */}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '999px', background: `${cat.color}1F`, color: cat.color, fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
-          <Icon name={cat.icon} size={12} /> {cat.label}
+          <Icon name={cat.icon} size={12} /> {labels.category(vendor.category)}
         </span>
         <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '4px' }}>
           {vendor.name}
@@ -507,7 +472,7 @@ export default function VendorDetailPage() {
               {vendor.rating ? <><span style={{ color: 'var(--gold)' }}>★</span> {vendor.rating.toFixed(1)}</> : '—'}
             </p>
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>
-              {vendor.reviewCount ? `${vendor.reviewCount} ${vendor.reviewCount === 1 ? 'review' : 'reviews'}` : 'New on ETA'}
+              {vendor.reviewCount ? `${vendor.reviewCount} ${vendor.reviewCount === 1 ? t('m.common.review1') : t('m.common.reviewsN')}` : t('m.common.newOnEta')}
             </p>
           </div>
           <div style={{ textAlign: 'center', padding: '0 6px', borderLeft: '0.5px solid var(--separator)', borderRight: '0.5px solid var(--separator)' }}>
@@ -515,13 +480,13 @@ export default function VendorDetailPage() {
               <span style={{ color: cat.color }}>{'$'.repeat(tier)}</span>
               <span style={{ color: 'var(--label-tertiary)', opacity: 0.5 }}>{'$'.repeat(4 - tier)}</span>
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{cat.priceNoun || 'price'}</p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{labels.priceNoun(vendor.category) || t('m.priceNoun.OTHER')}</p>
           </div>
           <div style={{ textAlign: 'center', padding: '0 6px' }}>
             <p style={{ fontSize: '17px', fontWeight: 700, color: isOpen ? 'var(--success)' : 'var(--label-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '28px' }}>
               <span className={isOpen ? 'open-dot' : 'closed-dot'} /> {isOpen ? t('common.open') : t('common.closed')}
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{hoursDetail ?? (vendor.live ? `${vendor.whoThere} here now` : 'right now')}</p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{hoursDetail ?? (vendor.live ? `${vendor.whoThere} ${t('m.home.hereNow')}` : t('m.vendor.rightNow'))}</p>
           </div>
         </div>
 
@@ -554,23 +519,25 @@ export default function VendorDetailPage() {
           </div>
         )}
 
+        <PopularTimes data={vendor.popularTimes} />
+
         {vendor.lat && vendor.lng ? <CheckInButton target={{ kind: 'vendor', id: vendor.id, lat: vendor.lat, lng: vendor.lng }} /> : null}
 
         {saved && (!alertsOn || alertMsg) && (
           <div className="card" style={{ padding: '12px 14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default' }}>
             <Icon name="bell" size={18} style={{ color: 'var(--rum-text)', flexShrink: 0 }} />
             <p style={{ flex: 1, fontSize: '14px', color: 'var(--label-primary)' }}>
-              {alertMsg ?? `Get a heads-up when ${vendor.name} goes live or drops a flash deal.`}
+              {alertMsg ?? t('m.vendor.alertPrompt', { name: vendor.name })}
             </p>
             {!alertsOn && (
-              <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>Turn on</button>
+              <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>{t('m.vendor.turnOn')}</button>
             )}
           </div>
         )}
 
         {/* About */}
         <div style={{ marginBottom: '28px' }}>
-          <div className="section-header"><div className="section-heading"><span className="section-title">About</span></div></div>
+          <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.about')}</span></div></div>
           <p style={{ fontSize: '15px', lineHeight: 1.55, color: 'var(--label-primary)' }}>
             {vendor.description}
           </p>
@@ -579,7 +546,7 @@ export default function VendorDetailPage() {
         {/* Good to know */}
         {(goodToKnow.length > 0 || (vendor.accessibility && vendor.accessibility.length > 0) || vendor.instagram || vendor.website) && (
           <div style={{ marginBottom: '28px' }}>
-            <div className="section-header"><div className="section-heading"><span className="section-title">Good to know</span></div></div>
+            <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.goodToKnow')}</span></div></div>
             <div className="card" style={{ padding: '4px 16px', cursor: 'default' }}>
               {goodToKnow.map((g, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }}>
@@ -588,11 +555,11 @@ export default function VendorDetailPage() {
                 </div>
               ))}
               {vendor.accessibility && vendor.accessibility.length > 0 && (
-                <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }} aria-label="Accessibility">
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Accessibility (confirmed by the vendor)</p>
+                <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }} aria-label={t('m.exp.accessibility')}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.vendor.accessConfirmed')}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {vendor.accessibility.map(k => (
-                      <span key={k} className="chip" style={{ cursor: 'default', minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>♿ {accessibilityLabel(k)}</span>
+                      <span key={k} className="chip" style={{ cursor: 'default', minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>♿ {labels.access(k)}</span>
                     ))}
                   </div>
                 </div>
@@ -607,7 +574,7 @@ export default function VendorDetailPage() {
               {vendor.website && (
                 <a href={vendor.website} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', color: 'var(--label-primary)', textDecoration: 'none' }}>
                   <Icon name="globe" size={18} style={{ color: cat.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: '15px' }}>Website</span>
+                  <span style={{ flex: 1, fontSize: '15px' }}>{t('m.vendor.website')}</span>
                   <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
                 </a>
               )}
@@ -615,30 +582,30 @@ export default function VendorDetailPage() {
           </div>
         )}
 
-        {/* Menu (defensive) */}
-        <MenuSection menu={vendor.menu} />
+        {/* Menu: structured items when the vendor has them, else the older free-form menu */}
+        {vendor.menuItems?.length ? <VendorMenu items={vendor.menuItems} /> : <MenuSection menu={vendor.menu} />}
 
         {/* Flash deals */}
         {vendor.flashDeals.length > 0 && (
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">Limited Time</span>
-                <span className="section-title">Flash Deals</span>
+                <span className="section-eyebrow">{t('m.market.limited')}</span>
+                <span className="section-title">{t('m.market.flashDeals')}</span>
               </div>
             </div>
             <div className="horizontal-scroll">
               {vendor.flashDeals.map(fd => (
                 <div key={fd.id} className="card" style={{ width: '200px', cursor: 'default' }}>
                   <div className="card-image" style={{ height: '110px' }}>
-                    {vendor.images[0] && <img src={vendor.images[0]} alt={vendor.name} />}
+                    {vendor.images[0] && <Img src={vendor.images[0]} alt={vendor.name} width={400} height={220} sizes="200px" />}
                     <div className="card-overlay" />
                   </div>
                   <div className="card-content">
                     <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{fd.deal}</p>
                     <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Icon name="clock" size={12} />
-                      {formatCountdown(fd.expires)}
+                      {formatCountdown(fd.expires, t)}
                     </p>
                     <button className="btn btn-primary" onClick={() => claimDeal(fd.id)} disabled={claiming === fd.id} style={{ width: '100%', minHeight: '36px', fontSize: '14px', marginTop: '8px' }}>
                       {claiming === fd.id ? '…' : t('m.vendor.claim')}
@@ -655,8 +622,8 @@ export default function VendorDetailPage() {
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">From This Vendor</span>
-                <span className="section-title">Experiences</span>
+                <span className="section-eyebrow">{t('m.vendor.fromVendor')}</span>
+                <span className="section-title">{t('m.home.experiences')}</span>
               </div>
               <Link href="/experiences/browse" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
@@ -665,7 +632,7 @@ export default function VendorDetailPage() {
                 <Link key={exp.id} href={`/experiences/${exp.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div className="card" style={{ width: '180px' }}>
                     <div className="card-image" style={{ height: '110px' }}>
-                      {exp.imageUrl && <img src={exp.imageUrl} alt={exp.name} />}
+                      {exp.imageUrl && <Img src={exp.imageUrl} alt={exp.name} width={360} height={220} sizes="180px" />}
                       <div className="card-overlay" />
                     </div>
                     <div className="card-content">
@@ -684,7 +651,7 @@ export default function VendorDetailPage() {
           <div style={{ marginBottom: '32px' }}>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-title">Recent Stories</span>
+                <span className="section-title">{t('m.vendor.recentStories')}</span>
               </div>
             </div>
             <div className="horizontal-scroll">
@@ -701,16 +668,16 @@ export default function VendorDetailPage() {
 
         {/* Location */}
         <div style={{ marginBottom: '32px' }}>
-          <div className="section-header"><div className="section-heading"><span className="section-title">Location</span></div></div>
+          <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.location')}</span></div></div>
           <div className="card" style={{ overflow: 'hidden', cursor: 'default' }}>
             <div style={{ position: 'relative', height: '180px' }}>
-              <iframe src={mapSrc} title={`Map showing ${vendor.name}`} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none' }} />
+              <iframe src={mapSrc} title={t('m.vendor.mapOf', { name: vendor.name })} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none' }} />
             </div>
             <button onClick={handleDirections} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
               <Icon name="mapPin" size={18} style={{ color: cat.color, flexShrink: 0 }} />
               <span style={{ flex: 1 }}>
                 <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{vendor.neighborhood}</span>
-                <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCity(vendor.city)} · Get directions</span>
+                <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCity(vendor.city)} · {t('m.vendor.getDirections')}</span>
               </span>
               <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
             </button>
@@ -738,7 +705,7 @@ export default function VendorDetailPage() {
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
                   <p className="num-font" style={{ fontSize: '36px', fontWeight: 700, color: 'var(--label-primary)', lineHeight: 1 }}>{vendor.rating?.toFixed(1)}</p>
                   <p style={{ color: 'var(--gold)', fontSize: '13px', marginTop: '4px' }}>{'★'.repeat(Math.round(vendor.rating ?? 0))}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>{vendor.reviews.length} {vendor.reviews.length === 1 ? 'review' : 'reviews'}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>{vendor.reviews.length} {vendor.reviews.length === 1 ? t('m.common.review1') : t('m.common.reviewsN')}</p>
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {ratingCounts.map(({ n, count }) => (
@@ -770,11 +737,12 @@ export default function VendorDetailPage() {
                           <span style={{ color: 'var(--label-tertiary)' }}>{'★'.repeat(Math.max(0, 5 - r.rating))}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: '12px', color: 'var(--label-tertiary)', flexShrink: 0 }}>{formatDate(r.createdAt)}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--label-tertiary)', flexShrink: 0 }}>{formatDate(r.createdAt, locale)}</span>
                     </div>
                     {r.comment && (
                       <p style={{ fontSize: '14px', color: 'var(--label-secondary)', lineHeight: 1.4 }}>{r.comment}</p>
                     )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px', marginBottom: '-10px' }}><ReportButton targetType="REVIEW" targetId={r.id} /></div>
                   </div>
                 ))}
               </div>
@@ -787,8 +755,8 @@ export default function VendorDetailPage() {
           <div>
             <div className="section-header">
               <div className="section-heading">
-                <span className="section-eyebrow">More {cat.label.toLowerCase()} nearby</span>
-                <span className="section-title">You might also like</span>
+                <span className="section-eyebrow">{t('m.vendor.moreNearby', { category: labels.category(vendor.category).toLowerCase() })}</span>
+                <span className="section-title">{t('m.vendor.alsoLike')}</span>
               </div>
             </div>
             <div className="grid-2">
@@ -817,6 +785,8 @@ export default function VendorDetailPage() {
         <button
           className="heart-btn"
           onClick={toggleSave}
+          aria-pressed={saved}
+          aria-label={saved ? t('m.saved.unsave') : t('m.saved.save')}
           style={{ color: saved ? 'var(--rum)' : 'var(--label-secondary)' }}
         >
           <Icon name="heart" size={20} className={saved ? 'filled' : ''} />
@@ -824,17 +794,17 @@ export default function VendorDetailPage() {
         {fromExperiences && (
           <button className="btn btn-secondary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => setShowAddToTrip(true)}>
             <Icon name="plus" size={16} />
-            Add to trip
+            {t('m.addTrip.title')}
           </button>
         )}
-        <button className="btn btn-secondary" style={{ flex: showPayButton && fromExperiences ? undefined : 1, padding: showPayButton && fromExperiences ? '0 14px' : undefined }} onClick={handleDirections} aria-label="Get directions">
-          <Icon name="mapPin" size={16} />
-          {showPayButton && fromExperiences ? null : 'Directions'}
+        <button className="btn btn-secondary" style={{ flex: showPayButton && fromExperiences ? undefined : 1, padding: showPayButton && fromExperiences ? '0 14px' : undefined }} onClick={handleDirections} aria-label={t('m.vendor.getDirections')}>
+          <Icon name="navigate" size={16} />
+          {showPayButton && fromExperiences ? null : t('m.nav.directions')}
         </button>
         {showPayButton && (
           <button className="btn btn-primary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => router.push('/pay')}>
             <Icon name="card" size={16} />
-            Pay Here
+            {t('m.vendor.payHere')}
           </button>
         )}
       </div>
@@ -902,7 +872,7 @@ export default function VendorDetailPage() {
           <div style={{ padding: '0 20px 24px', textAlign: 'center' }}>
             <p className="section-eyebrow">{t('m.vendor.voucher')}</p>
             <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', margin: '2px 0 4px' }}>{voucher.deal}</h3>
-            <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{vendor.name} · {formatCountdown(voucher.expires)}</p>
+            <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '16px' }}>{vendor.name} · {formatCountdown(voucher.expires, t)}</p>
             <QRCode value={voucher.code} size={200} />
             <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--label-primary)', marginTop: '12px' }}>{voucher.code}</p>
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', margin: '4px 0 16px' }}>{t('m.vendor.voucherShow')}</p>

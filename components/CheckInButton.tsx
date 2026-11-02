@@ -10,11 +10,12 @@ import { getCurrentUser, setCurrentUser } from '@/lib/auth-client'
 import { useWatchedLocation } from '@/lib/geo'
 import { haversineKm } from '@/lib/routing'
 import { CHECKIN_RADIUS_M } from '@/lib/checkins'
-import { useLang } from '@/lib/i18n-client'
+import { useLang, useErrorText } from '@/lib/i18n-client'
 import { hapticRewardRedeemed } from '@/lib/haptics'
 
 export default function CheckInButton({ target }: { target: { kind: 'vendor' | 'photospot'; id: string; lat: number; lng: number } }) {
   const { t } = useLang()
+  const errorText = useErrorText()
   const [watching, setWatching] = useState(false)
   const pos = useWatchedLocation(watching)
   const [busy, setBusy] = useState(false)
@@ -41,7 +42,7 @@ export default function CheckInButton({ target }: { target: { kind: 'vendor' | '
       hapticRewardRedeemed()
       setMessage({ ok: true, text: data.firstDiscovery ? t('m.checkin.firstTime', { points: data.pointsAwarded }) : t('m.checkin.done', { points: data.pointsAwarded }) })
     } catch (e) {
-      setMessage({ ok: false, text: e instanceof Error ? e.message : 'Sumth nah wuk' })
+      setMessage({ ok: false, text: errorText(e) })
     } finally {
       setBusy(false)
     }

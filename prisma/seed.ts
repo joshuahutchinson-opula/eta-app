@@ -4,6 +4,7 @@ import { PHOTO_SPOT_MEDIA } from './photo-spot-media'
 import { PHOTO_SPOTS } from './photo-spots'
 import { EXPERIENCE_ROUTES, writeExperienceRoute } from './experience-routes'
 import { seedExtras } from './seed-extras'
+import { assertSeedAllowed } from './seed-guard'
 
 const prisma = new PrismaClient()
 
@@ -17,7 +18,28 @@ function withMedia<T extends { name: string }>(spots: T[]) {
 }
 
 async function main() {
+  assertSeedAllowed('prisma/seed.ts')
   // Clear all data in dependency order
+  await prisma.ticket.deleteMany()
+  await prisma.eventInterest.deleteMany()
+  await prisma.storyView.deleteMany()
+  await prisma.report.deleteMany()
+  await prisma.savedListItem.deleteMany()
+  await prisma.savedList.deleteMany()
+  await prisma.saved.deleteMany()
+  await prisma.tripMessage.deleteMany()
+  await prisma.tripInvite.deleteMany()
+  await prisma.challengeCompletion.deleteMany()
+  await prisma.challenge.deleteMany()
+  await prisma.rewardVendor.deleteMany()
+  await prisma.reward.deleteMany()
+  await prisma.menuItem.deleteMany()
+  await prisma.experienceSlot.deleteMany()
+  await prisma.vendorAgreementAcceptance.deleteMany()
+  await prisma.safetyShare.deleteMany()
+  await prisma.safetyContact.deleteMany()
+  await prisma.searchLog.deleteMany()
+  await prisma.emailVerificationToken.deleteMany()
   await prisma.flashDealClaim.deleteMany()
   await prisma.redemption.deleteMany()
   await prisma.reservationRequest.deleteMany()

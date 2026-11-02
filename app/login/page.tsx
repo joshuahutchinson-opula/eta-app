@@ -5,32 +5,41 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
-import { useLang, usePatois } from '@/lib/i18n-client'
+import LinkedText, { safeNext } from '@/components/LinkedText'
+import { useErrorText, useLang, usePatois } from '@/lib/i18n-client'
 import { signIn } from '@/lib/auth-client'
+import { responseError } from '@/lib/errors'
 
 export default function LoginPage() {
   const patois = usePatois()
   const { t } = useLang()
+  const errorText = useErrorText()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [next, setNext] = useState<string | null>(null)
   // Social sign-in buttons only appear for providers configured on the server.
   const [providers, setProviders] = useState<{ google: boolean; apple: boolean }>({ google: false, apple: false })
 
   useEffect(() => {
     fetch('/api/auth/providers').then(r => (r.ok ? r.json() : null)).then(p => { if (p) setProviders(p) }).catch(() => {})
 
-    // Back from Google/Apple: /login?oauth=<session token> or ?error=…
     const q = new URLSearchParams(window.location.search)
-    const oauth = q.get('oauth')
+    const target = safeNext(q.get('next'))
+    setNext(target)
+    if (q.get('expired')) setNotice(t('m.login.expired'))
     if (q.get('error')) setError(t('m.login.socialFailed'))
+    // Back from Google/Apple: the session token arrives in the fragment (#oauth=…).
+    const oauth = new URLSearchParams(window.location.hash.slice(1)).get('oauth')
     if (oauth) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
       setLoading(true)
       fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: oauth }) })
         .then(r => (r.ok ? r.json() : Promise.reject()))
-        .then(data => { signIn(oauth, data.user); router.replace('/') })
+        .then(data => { signIn(oauth, data.user); router.replace(target ?? '/') })
         .catch(() => { setError(t('m.login.socialFailed')); setLoading(false) })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,30 +47,23 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setError(patois.errorGeneric)
+      setError(t('m.err.invalid'))
       return
     }
     try {
       setLoading(true)
       setError(null)
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       })
-
+      if (!response.ok) throw await responseError(response)
       const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || patois.errorGeneric)
-        return
-      }
-
       signIn(data.token, data.user)
-      router.push('/')
+      router.push(next ?? '/')
     } catch (err) {
-      setError(patois.errorNetwork)
+      setError(errorText(err))
     } finally {
       setLoading(false)
     }
@@ -77,6 +79,8 @@ export default function LoginPage() {
     </a>
   )
 
+  const legal = { terms: { href: '/terms', label: t('m.legal.terms') }, privacy: { href: '/privacy', label: t('m.legal.privacy') } }
+
   return (
     <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', background: 'var(--system-bg)' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px', maxWidth: '400px', margin: '0 auto', width: '100%' }}>
@@ -87,6 +91,11 @@ export default function LoginPage() {
           {t('m.login.subtitle')}
         </p>
 
+        {notice && (
+          <div className="card" role="status" style={{ padding: '12px', marginBottom: '16px', cursor: 'default' }}>
+            <p style={{ fontSize: '13px', color: 'var(--label-primary)' }}>{notice}</p>
+          </div>
+        )}
         {error && (
           <div className="card" role="alert" style={{ padding: '12px', marginBottom: '16px', cursor: 'default' }}>
             <p style={{ fontSize: '13px', color: 'var(--error)' }}>{error}</p>
@@ -97,6 +106,9 @@ export default function LoginPage() {
           <>
             {providers.apple && socialButton('apple', t('m.login.apple'))}
             {providers.google && socialButton('google', t('m.login.google'))}
+            <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--label-secondary)', margin: '0 0 6px' }}>
+              <LinkedText text={t('m.login.socialTerms')} links={legal} />
+            </p>
             <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--label-secondary)', margin: '6px 0 16px' }}>{t('m.login.or')}</p>
           </>
         )}
@@ -115,7 +127,7 @@ export default function LoginPage() {
         </label>
 
         <label className="card" style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: '8px', marginBottom: '8px', cursor: 'text' }}>
-          <Icon name="settings" size={18} />
+          <Icon name="lock" size={18} />
           <input
             type="password"
             autoComplete="current-password"
@@ -138,9 +150,12 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--label-secondary)' }}>
           {t('m.login.noAccount')}{' '}
-          <Link href="/register" style={{ color: 'var(--rum-text)', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href={next ? `/register?next=${encodeURIComponent(next)}` : '/register'} style={{ color: 'var(--rum-text)', fontWeight: 600, textDecoration: 'none' }}>
             {t('m.login.register')}
           </Link>
+        </p>
+        <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '12px', color: 'var(--label-tertiary)' }}>
+          <Link href="/terms" style={{ color: 'inherit' }}>{t('m.legal.terms')}</Link> · <Link href="/privacy" style={{ color: 'inherit' }}>{t('m.legal.privacy')}</Link>
         </p>
       </div>
     </main>

@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { canCollaborate, hasEditKey, loadTrip, recalcShares, toTripDTO } from '@/lib/trips'
+import { canCollaborate, isCrew, loadTrip, recalcShares, toTripDTO, tripAccess } from '@/lib/trips'
+import { id, parseBody, text, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
-const STATUSES = ['pending', 'enroute', 'arrived']
-
-// POST { name } — a crew member joins from the shared link (or the owner adds them).
+// POST { name } — the owner adds someone to the crew by name (they can claim
+// that spot later through an invite link). Invitees join via /join.
 export async function POST(request: Request, { params }: { params: { slug: string } }) {
+  const parsed = await parseBody(request, z.object({ name: text(40).min(1, 'Add a name'), editKey: z.string().max(64).optional() }))
+  if (!parsed.ok) return parsed.response
   try {
-    const body = await request.json().catch(() => ({}))
-    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 40) : ''
-    if (!name) return NextResponse.json({ error: 'Add a name' }, { status: 400 })
     const trip = await prisma.trip.findUnique({ where: { slug: params.slug }, include: { members: true } })
     if (!trip) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
-    if (!canCollaborate(trip, request, body)) return NextResponse.json({ error: 'This trip can’t be changed' }, { status: 403 })
-
+    const access = await tripAccess(trip, request, parsed.data)
+    if (access.role !== 'owner' || !canCollaborate(trip, access)) return NextResponse.json({ error: 'Only the trip owner can add people' }, { status: 403 })
+    const name = parsed.data.name.trim()
     let member = trip.members.find(m => m.name.toLowerCase() === name.toLowerCase())
     if (!member) {
       if (trip.members.length >= 16) return NextResponse.json({ error: 'That crew is full' }, { status: 409 })
@@ -23,34 +23,31 @@ export async function POST(request: Request, { params }: { params: { slug: strin
       await recalcShares(trip.id)
     }
     const full = await loadTrip(params.slug)
-    return NextResponse.json({ ...toTripDTO(full!), memberId: member.id })
+    return NextResponse.json({ ...toTripDTO(full!, access), canEdit: true, memberId: member.id })
   } catch (error) {
     console.error('Error adding member:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }
 }
 
-// PATCH { memberId, status?, paid? } — a member updates their own status;
-// marking payments is the owner's job.
+// PATCH { memberId, status } — a member updates their own status (the owner
+// can update anyone's). Payments aren't toggled here any more: each member
+// pays their own share through /pay-share.
+const STATUSES = ['pending', 'enroute', 'arrived'] as const
+
 export async function PATCH(request: Request, { params }: { params: { slug: string } }) {
+  const parsed = await parseBody(request, z.object({ memberId: id, status: z.enum(STATUSES), editKey: z.string().max(64).optional() }))
+  if (!parsed.ok) return parsed.response
   try {
-    const body = await request.json().catch(() => ({}))
     const trip = await prisma.trip.findUnique({ where: { slug: params.slug }, include: { members: { select: { id: true } } } })
     if (!trip) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
-    if (typeof body.memberId !== 'string' || !trip.members.some(m => m.id === body.memberId)) {
-      return NextResponse.json({ error: 'Unknown crew member' }, { status: 400 })
-    }
-    const isOwner = hasEditKey(trip, request, body)
-    if (!isOwner && !canCollaborate(trip, request, body)) return NextResponse.json({ error: 'This trip can’t be changed' }, { status: 403 })
-    const data: { status?: string; paid?: boolean } = {}
-    if (typeof body.status === 'string' && STATUSES.includes(body.status)) data.status = body.status
-    if (typeof body.paid === 'boolean') {
-      if (!isOwner) return NextResponse.json({ error: 'Only the trip owner can mark payments' }, { status: 403 })
-      data.paid = body.paid
-    }
-    await prisma.tripMember.update({ where: { id: body.memberId }, data })
+    const access = await tripAccess(trip, request, parsed.data)
+    if (!isCrew(access)) return NextResponse.json({ error: 'This trip can’t be changed' }, { status: 403 })
+    if (!trip.members.some(m => m.id === parsed.data.memberId)) return NextResponse.json({ error: 'Unknown crew member' }, { status: 400 })
+    if (access.role !== 'owner' && access.member?.id !== parsed.data.memberId) return NextResponse.json({ error: 'You can only update your own status' }, { status: 403 })
+    await prisma.tripMember.update({ where: { id: parsed.data.memberId }, data: { status: parsed.data.status } })
     const full = await loadTrip(params.slug)
-    return NextResponse.json({ ...toTripDTO(full!), canEdit: isOwner })
+    return NextResponse.json({ ...toTripDTO(full!, access), canEdit: access.role === 'owner' })
   } catch (error) {
     console.error('Error updating member:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

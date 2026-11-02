@@ -6,19 +6,26 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 import {
   GEM_DISCOVERY_POINTS, GEM_SUBMITTER_BONUS, MAX_GPS_ACCURACY_M, REVEAL_RADIUS_M, VERIFY_THRESHOLD,
   distanceM, parseCoord
 } from '@/lib/hidden-gems'
 
+import { parseBody, z } from '@/lib/validate'
+
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to confirm a find' }, { status: 401 })
+const schema = z.object({ lat: z.number().finite(), lng: z.number().finite(), accuracy: z.number().finite().min(0).optional() })
 
-  const body = await request.json().catch(() => ({}))
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const auth = await requireUser(request, { message: 'Log in to confirm a find' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
+
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return NextResponse.json({ error: 'We need your live location to confirm' }, { status: 400 })
+  const body = parsed.data
   const lat = parseCoord(body.lat, -90, 90)
   const lng = parseCoord(body.lng, -180, 180)
   const accuracy = Number(body.accuracy)

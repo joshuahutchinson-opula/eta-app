@@ -9,8 +9,10 @@ import Icon from '@/lib/icons'
 import { authHeaders } from '@/lib/api-client'
 import { getCurrentUser, setCurrentUser } from '@/lib/auth-client'
 import { GEM_CATEGORIES, GEM_CATEGORY_LABELS, type GemCategoryKey } from '@/lib/hidden-gems'
-import { useLang } from '@/lib/i18n-client'
+import { useLang, useErrorText } from '@/lib/i18n-client'
 import { hapticRewardRedeemed } from '@/lib/haptics'
+import ReportButton from '@/components/ReportButton'
+import { useLabels } from '@/lib/labels'
 
 export interface GemDetail {
   id: string
@@ -60,6 +62,8 @@ const sheetInput: React.CSSProperties = { width: '100%', padding: '12px', border
 
 export function GemDetailSheet({ gem, pos, onClose, onChanged }: { gem: GemDetail | null; pos: Pos; onClose: () => void; onChanged: () => void }) {
   const { t } = useLang()
+  const errorText = useErrorText()
+  const labels = useLabels()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -80,7 +84,7 @@ export function GemDetailSheet({ gem, pos, onClose, onChanged }: { gem: GemDetai
       setMsg({ ok: true, text: data.verifiedNow ? t('m.gems.verifiedNow', { points: data.pointsAwarded }) : t('m.gems.confirmed', { points: data.pointsAwarded }) })
       onChanged()
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Sumth nah wuk' })
+      setMsg({ ok: false, text: errorText(e) })
     } finally {
       setBusy(false)
     }
@@ -94,7 +98,10 @@ export function GemDetailSheet({ gem, pos, onClose, onChanged }: { gem: GemDetai
         {gem && (
           <div style={{ padding: '0 20px 24px' }}>
             {gem.photos[0] && <img src={gem.photos[0]} alt="" style={{ width: '100%', height: '170px', objectFit: 'cover', borderRadius: 'var(--radius-lg)', marginBottom: '12px' }} />}
-            <p className="section-eyebrow">{t('m.gems.title')} · {GEM_CATEGORY_LABELS[gem.category]}</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <p className="section-eyebrow">{t('m.gems.title')} · {labels.gem(gem.category)}</p>
+              {!gem.isMine && <ReportButton targetType="HIDDEN_GEM" targetId={gem.id} />}
+            </div>
             <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', margin: '2px 0 6px' }}>{gem.name}</h3>
             <p style={{ fontSize: '15px', color: 'var(--label-secondary)', lineHeight: 1.45, marginBottom: '10px' }}>{gem.description}</p>
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '16px' }}>
@@ -121,6 +128,7 @@ export function GemDetailSheet({ gem, pos, onClose, onChanged }: { gem: GemDetai
 
 export function AddGemSheet({ open, pos, onClose, onAdded }: { open: boolean; pos: Pos; onClose: () => void; onAdded: () => void }) {
   const { t } = useLang()
+  const errorText = useErrorText()
   const [name, setName] = useState('')
   const [category, setCategory] = useState<GemCategoryKey>('VIEWPOINT')
   const [description, setDescription] = useState('')
@@ -150,7 +158,7 @@ export function AddGemSheet({ open, pos, onClose, onAdded }: { open: boolean; po
       onAdded()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setError(errorText(e))
     } finally {
       setBusy(false)
     }

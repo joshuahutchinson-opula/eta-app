@@ -8,8 +8,9 @@ export async function GET() {
     const moods = await prisma.mood.findMany({
       orderBy: { createdAt: 'asc' },
       include: {
-        experiences: true,
-        media: true
+        // Screens only need which experiences a mood covers, not the whole records.
+        experiences: { select: { id: true, city: true } },
+        media: { where: { hidden: false }, take: 6, orderBy: { createdAt: 'desc' } }
       }
     })
 

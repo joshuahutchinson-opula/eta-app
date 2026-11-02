@@ -1,5 +1,6 @@
-// components/TripMap.tsx — the active trip's stops and the traveler's live
-// position on a real map. Done stops are dimmed, the next one is gold.
+// components/TripMap.tsx — the active trip's stops, the traveler's live
+// position and (opt-in) the rest of the crew's on a real map. Done stops are
+// dimmed, the next one is gold, crew members are green.
 'use client'
 
 import { useEffect } from 'react'
@@ -39,14 +40,21 @@ export interface TripMapStop {
   lng: number | null
 }
 
-export default function TripMap({ stops, currentIndex, user, fallbackCenter }: {
+export default function TripMap({ stops, currentIndex, user, fallbackCenter, crew = [], youLabel = 'You' }: {
   stops: TripMapStop[]
   currentIndex: number
   user: { lat: number; lng: number } | null
   fallbackCenter: [number, number]
+  /** Crew members sharing their live location (never includes the viewer). */
+  crew?: Array<{ name: string; lat: number; lng: number }>
+  youLabel?: string
 }) {
   const placed = stops.map((s, i) => ({ ...s, i })).filter((s): s is TripMapStop & { i: number; lat: number; lng: number } => s.lat !== null && s.lng !== null)
-  const points: Array<[number, number]> = [...placed.map(s => [s.lat, s.lng] as [number, number]), ...(user ? [[user.lat, user.lng] as [number, number]] : [])]
+  const points: Array<[number, number]> = [
+    ...placed.map(s => [s.lat, s.lng] as [number, number]),
+    ...(user ? [[user.lat, user.lng] as [number, number]] : []),
+    ...crew.map(c => [c.lat, c.lng] as [number, number])
+  ]
 
   return (
     <MapContainer center={points[0] ?? fallbackCenter} zoom={14} zoomControl={false} style={{ position: 'absolute', inset: 0, background: '#0A1628' }}>
@@ -72,9 +80,14 @@ export default function TripMap({ stops, currentIndex, user, fallbackCenter }: {
       ))}
       {user && (
         <CircleMarker center={[user.lat, user.lng]} radius={8} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#007AFF', fillOpacity: 1 }}>
-          <Tooltip direction="top" offset={[0, -8]}>You</Tooltip>
+          <Tooltip direction="top" offset={[0, -8]}>{youLabel}</Tooltip>
         </CircleMarker>
       )}
+      {crew.map(c => (
+        <CircleMarker key={`crew-${c.name}`} center={[c.lat, c.lng]} radius={8} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#34C759', fillOpacity: 1 }}>
+          <Tooltip direction="top" offset={[0, -8]} permanent>{c.name}</Tooltip>
+        </CircleMarker>
+      ))}
     </MapContainer>
   )
 }

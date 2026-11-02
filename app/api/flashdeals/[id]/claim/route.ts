@@ -3,13 +3,14 @@
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to claim this deal' }, { status: 401 })
+  const auth = await requireUser(request, { message: 'Log in to claim this deal' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
   try {
     const deal = await prisma.flashDeal.findUnique({ where: { id: params.id }, include: { vendor: { select: { name: true } } } })
     if (!deal) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })

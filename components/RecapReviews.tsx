@@ -5,12 +5,13 @@
 import { useEffect, useState } from 'react'
 import { StarPicker, postReview } from '@/components/ReviewSheet'
 import { getCurrentUser } from '@/lib/auth-client'
-import { useLang } from '@/lib/i18n-client'
+import { useLang, useErrorText } from '@/lib/i18n-client'
 
 interface Target { vendorId: string; name: string; image: string | null; experienceId: string | null }
 
 function StopReview({ target }: { target: Target }) {
   const { t } = useLang()
+  const errorText = useErrorText()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
@@ -22,7 +23,7 @@ function StopReview({ target }: { target: Target }) {
       await postReview({ vendorId: target.vendorId, experienceId: target.experienceId ?? undefined, rating, comment })
       setState('done')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setError(errorText(e))
       setState('error')
     }
   }

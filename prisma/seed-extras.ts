@@ -7,6 +7,8 @@
 // numbers, prices and promoters are plausible, not confirmed with vendors.
 
 import { City, type PrismaClient } from '@prisma/client'
+import { MOCK_VENDOR_NAMES } from './seed-guard'
+import { seedLaunchData } from './seed-launch'
 
 const HOUR = 3600000
 const DAY = 24 * HOUR
@@ -323,8 +325,12 @@ export async function seedProfileAndInbox(prisma: PrismaClient) {
 
 export async function seedExtras(prisma: PrismaClient) {
   await seedEvents(prisma)
+  // Every seeded event is a placeholder; so are the vendors in MOCK_VENDOR_NAMES.
+  await prisma.event.updateMany({ data: { isMock: true } })
   await seedBookingData(prisma)
   await seedDiscovery(prisma)
   await seedVendorEssentials(prisma)
   await seedProfileAndInbox(prisma)
+  await prisma.vendor.updateMany({ where: { name: { in: MOCK_VENDOR_NAMES } }, data: { isMock: true } })
+  await seedLaunchData(prisma)
 }

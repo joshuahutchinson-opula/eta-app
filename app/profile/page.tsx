@@ -7,19 +7,29 @@ import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
 import { getAuthToken, getCurrentUser, logout, setCurrentUser, type CurrentUser } from '@/lib/auth-client'
-import { useLang } from '@/lib/i18n-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
+import { useLabels } from '@/lib/labels'
+import { useLowData } from '@/lib/low-data'
+import { authHeaders as authHeadersFor } from '@/lib/api-client'
 import { getTierForPoints } from '@/lib/rewardTiers'
 import { alertsEnabled, disableAlerts, enableAlerts, pushSupported, refreshAlertLocation, syncAlerts } from '@/lib/alerts-client'
-import { apiJson, uploadPhoto } from '@/lib/api-client'
-import { useCurrency, USD_TO_JMD } from '@/lib/currency'
+import { apiJson, authHeaders, uploadPhoto } from '@/lib/api-client'
+import { useCurrency } from '@/lib/currency'
 import { LANGS, LANG_NAMES } from '@/lib/i18n'
 import Price from '@/components/Price'
+import VerifyEmailBanner from '@/components/VerifyEmailBanner'
+import { absoluteUrl } from '@/lib/site-url'
 
-function formatMemberSince(createdAt?: string | null): string | null {
-  if (!createdAt) return null
-  const d = new Date(createdAt)
-  if (isNaN(d.getTime())) return null
-  return `Member since ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+const NOTIFY_TYPES = ['bookings', 'events', 'deals', 'live', 'crew'] as const
+type NotifyType = (typeof NOTIFY_TYPES)[number]
+const NOTIFY_FIELD = { bookings: 'notifyBookings', events: 'notifyEvents', deals: 'notifyDeals', live: 'notifyLive', crew: 'notifyCrew' } as const
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span aria-hidden style={{ width: '48px', height: '28px', borderRadius: '999px', background: on ? 'var(--rum)' : 'var(--separator)', position: 'relative', flexShrink: 0, transition: 'background 0.2s ease' }}>
+      <span style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'white', position: 'absolute', top: '3px', left: on ? '23px' : '3px', transition: 'left 0.2s ease' }} />
+    </span>
+  )
 }
 
 export default function ProfilePage() {
@@ -40,6 +50,16 @@ export default function ProfilePage() {
   const { currency, setCurrency } = useCurrency()
   const [showSettingsSheet, setShowSettingsSheet] = useState(false)
   const { lang, setLang, t } = useLang()
+  const errorText = useErrorText()
+  const labels = useLabels()
+  const { lowData, setLowData } = useLowData()
+  const [emergency, setEmergency] = useState({ name: '', phone: '' })
+  const [emergencyMsg, setEmergencyMsg] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteText, setDeleteText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [rate, setRate] = useState<number | null>(null)
   const [referral, setReferral] = useState<{ code: string; pointsPerReferral: number; invited: number; rewarded: number; pointsEarned: number } | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
 
@@ -50,18 +70,19 @@ export default function ProfilePage() {
     // refresh the cached user instead of trusting the copy from login.
     const token = getAuthToken()
     if (token) {
-      fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) })
-        .then(r => (r.ok ? r.json() : null))
+      apiJson<{ user: CurrentUser }>('/api/users/me')
         .then(data => {
           if (data?.user) {
             setCurrentUser(data.user)
             setUser(data.user)
+            setEmergency({ name: data.user.emergencyContactName ?? '', phone: data.user.emergencyContactPhone ?? '' })
           }
         })
         .catch(() => {})
+      fetch('/api/exchange-rate').then(r => (r.ok ? r.json() : null)).then(d => d?.rate && setRate(d.rate)).catch(() => {})
     }
     if (current) {
-      fetch(`/api/referrals?userId=${current.id}`)
+      fetch('/api/referrals', { headers: authHeaders() })
         .then(r => (r.ok ? r.json() : null))
         .then(data => { if (data?.code) setReferral(data) })
         .catch(() => {})
@@ -114,7 +135,7 @@ export default function ProfilePage() {
         setNotifications(true)
       }
     } catch (e) {
-      setAlertsError(e instanceof Error ? e.message : 'Sumth nah wuk')
+      setAlertsError(errorText(e))
     } finally {
       setAlertsBusy(false)
     }
@@ -143,7 +164,7 @@ export default function ProfilePage() {
         setCurrentUser(updated)
         setUser(updated)
       } catch (err) {
-        setPhotoError(err instanceof Error ? err.message : 'Sumth nah wuk')
+        setPhotoError(errorText(err))
       } finally {
         setPhotoBusy(false)
       }
@@ -167,7 +188,7 @@ export default function ProfilePage() {
       setUser(updated)
       setEditOpen(false)
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Sumth nah wuk')
+      setSaveError(errorText(err))
     } finally {
       setSaving(false)
     }
@@ -175,7 +196,7 @@ export default function ProfilePage() {
 
   const shareInvite = async () => {
     if (!referral) return
-    const url = `${window.location.origin}/register?ref=${encodeURIComponent(referral.code)}`
+    const url = absoluteUrl(`/register?ref=${encodeURIComponent(referral.code)}`)
     const text = t('m.invite.shareText', { code: referral.code, points: referral.pointsPerReferral })
     if (navigator.share) {
       navigator.share({ title: 'ETA', text, url }).catch(() => {})
@@ -186,8 +207,74 @@ export default function ProfilePage() {
     setTimeout(() => setInviteCopied(false), 1800)
   }
 
-  const handleLogout = () => {
-    logout()
+  // Per-type notification preferences live on the account; the device's own
+  // live/deal flags follow the matching ones so pushes respect them too.
+  const toggleNotify = async (type: NotifyType) => {
+    if (!user) return
+    const field = NOTIFY_FIELD[type]
+    const next = !(user[field] ?? true)
+    setUser({ ...user, [field]: next })
+    try {
+      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: { [field]: next } })
+      setCurrentUser(updated)
+      setUser(updated)
+      if (type === 'live' || type === 'deals') {
+        const prefs = { liveAlerts: updated.notifyLive !== false, dealAlerts: updated.notifyDeals !== false }
+        setAlertPrefs(prefs)
+        localStorage.setItem('alertPrefs', JSON.stringify(prefs))
+        syncAlerts(prefs)
+      }
+    } catch (e) {
+      setUser(user)
+      setAlertsError(errorText(e))
+    }
+  }
+
+  const saveEmergency = async () => {
+    setEmergencyMsg(null)
+    try {
+      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: { emergencyContactName: emergency.name, emergencyContactPhone: emergency.phone } })
+      setCurrentUser(updated)
+      setUser(updated)
+      setEmergencyMsg(t('m.profile.saved2'))
+    } catch (e) {
+      setEmergencyMsg(errorText(e))
+    }
+  }
+
+  const downloadData = async () => {
+    try {
+      const res = await fetch('/api/users/me/export', { headers: authHeadersFor() })
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `eta-my-data-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (e) {
+      setAlertsError(errorText(e))
+    }
+  }
+
+  const deleteAccount = async () => {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await apiJson('/api/users/me', { method: 'DELETE', body: { confirm: 'DELETE' } })
+      await logout()
+      router.push('/login')
+    } catch (e) {
+      setDeleteError(errorText(e))
+      setDeleting(false)
+    }
+  }
+
+  const [loggingOut, setLoggingOut] = useState(false)
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    await logout()
     router.push('/login')
   }
 
@@ -197,6 +284,7 @@ export default function ProfilePage() {
     { label: t('m.inbox.title'), icon: 'bell', href: '/notifications' },
     { label: t('m.profile.wallet'), icon: 'sparkle', href: '/wallet' },
     { label: t('m.profile.rewards'), icon: 'gift', href: '/rewards' },
+    { label: t('m.profile.passport'), icon: 'mapPin', href: '/passport' },
     { label: t('m.safety.title'), icon: 'route', href: '/safety' },
     { label: t('m.profile.settings'), icon: 'settings', onClick: () => setShowSettingsSheet(true) }
   ]
@@ -227,11 +315,14 @@ export default function ProfilePage() {
     )
   }
 
-  const memberSince = formatMemberSince(user.createdAt)
+  const memberSince = user.createdAt && !isNaN(Date.parse(user.createdAt))
+    ? t('m.profile.memberSince', { date: new Date(user.createdAt).toLocaleDateString(lang === 'en' ? 'en-US' : lang, { month: 'long', year: 'numeric' }) })
+    : null
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
       <div style={{ padding: '16px' }}>
+        <div style={{ marginBottom: '16px' }}><VerifyEmailBanner padded={false} /></div>
         <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
           <button
             onClick={handleProfilePicUpload}
@@ -276,7 +367,7 @@ export default function ProfilePage() {
           )}
           <span className="chip" style={{ cursor: 'default', marginTop: '10px' }}>
             <Icon name={getTierForPoints(user.points).icon as any} size={14} style={{ color: 'var(--rum-text)' }} />
-            {getTierForPoints(user.points).label}
+            {labels.tier(getTierForPoints(user.points).key)}
           </span>
         </div>
 
@@ -350,14 +441,14 @@ export default function ProfilePage() {
           )
         })}
 
-        <button className="btn btn-secondary" style={{ width: '100%', marginTop: '16px' }} onClick={handleLogout}>
-          {t('m.profile.logout')}
+        <button className="btn btn-secondary" style={{ width: '100%', marginTop: '16px' }} onClick={handleLogout} disabled={loggingOut}>
+          {loggingOut ? t('m.profile.logoutBusy') : t('m.profile.logout')}
         </button>
       </div>
 
       {/* Settings Sheet */}
       <div className={`bottom-sheet-overlay ${showSettingsSheet ? 'open' : ''}`} onClick={() => setShowSettingsSheet(false)} />
-      <div className={`bottom-sheet ${showSettingsSheet ? 'open' : ''}`}>
+      <div className={`bottom-sheet ${showSettingsSheet ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.profile.settings')} style={{ maxHeight: '88vh', overflowY: 'auto' }}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.profile.settings')}</h3>
@@ -394,7 +485,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
-            <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.rate', { rate: USD_TO_JMD })}</p>
+            <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.rate', { rate: rate ?? '—' })}</p>
           </div>
 
           <button
@@ -439,78 +530,94 @@ export default function ProfilePage() {
             </div>
           </button>
 
-          <button
-            className="card"
-            role="switch"
-            aria-checked={notifications}
-            disabled={alertsBusy}
-            style={{
-              width: '100%',
-              border: 'none',
-              fontFamily: 'inherit',
-              textAlign: 'left',
-              padding: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              marginBottom: '12px'
-            }}
-            onClick={toggleNotifications}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Icon name="bell" size={20} style={{ color: 'var(--label-secondary)' }} />
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+              <Icon name="bell" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.profile.notifTitle')}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '2px 0 8px 32px' }}>{t('m.profile.notifSub')}</p>
+            {NOTIFY_TYPES.map(type => {
+              const on = user[NOTIFY_FIELD[type]] !== false
+              return (
+                <button key={type} role="switch" aria-checked={on} onClick={() => toggleNotify(type)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', background: 'none', border: 'none', borderTop: '0.5px solid var(--separator)', fontFamily: 'inherit', cursor: 'pointer', minHeight: '44px' }}>
+                  <span style={{ fontSize: '15px', color: 'var(--label-primary)', textAlign: 'left' }}>{t(`m.profile.notif.${type}` as 'm.profile.notif.crew')}</span>
+                  <Switch on={on} />
+                </button>
+              )
+            })}
+            <button role="switch" aria-checked={notifications} disabled={alertsBusy} onClick={toggleNotifications} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', background: 'none', border: 'none', borderTop: '0.5px solid var(--separator)', fontFamily: 'inherit', cursor: 'pointer', minHeight: '44px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', textAlign: 'left' }}>{alertsBusy ? t('m.profile.pushSetting') : t('m.profile.push')}</span>
+              <Switch on={notifications} />
+            </button>
+            {!pushSupported() && !notifications && <p style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>{t('m.profile.pushIphone')}</p>}
+            {alertsError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)' }}>{alertsError}</p>}
+          </div>
+
+          <button className="card" role="switch" aria-checked={lowData} onClick={() => setLowData(!lowData)} style={{ width: '100%', border: 'none', fontFamily: 'inherit', textAlign: 'left', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', cursor: 'pointer', marginBottom: '12px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Icon name="video" size={20} style={{ color: 'var(--label-secondary)' }} />
               <span>
-                <span style={{ display: 'block', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>Live alerts</span>
-                <span style={{ display: 'block', fontSize: '12px', color: 'var(--label-secondary)' }}>
-                  {alertsBusy ? 'Setting up…' : 'Saved spots going live, flash deals nearby'}
-                </span>
+                <span style={{ display: 'block', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.lowData')}</span>
+                <span style={{ display: 'block', fontSize: '12px', color: 'var(--label-secondary)' }}>{t('m.profile.lowDataSub')}</span>
               </span>
-            </div>
-            <div style={{
-              width: '48px',
-              height: '28px',
-              borderRadius: '999px',
-              background: notifications ? 'var(--rum)' : 'var(--separator)',
-              position: 'relative',
-              transition: 'background 0.2s ease'
-            }}>
-              <div style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                background: 'white',
-                position: 'absolute',
-                top: '3px',
-                left: notifications ? '23px' : '3px',
-                transition: 'left 0.2s ease'
-              }} />
-            </div>
+            </span>
+            <Switch on={lowData} />
           </button>
 
-          {alertsError && (
-            <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', margin: '-4px 4px 12px' }}>{alertsError}</p>
-          )}
-          {!pushSupported() && !notifications && (
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '-4px 4px 12px' }}>
-              On iPhone, add ETA to your Home Screen to get alerts.
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+              <Icon name="shield" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.profile.emergencyTitle')}
             </p>
-          )}
-          {notifications && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-              <button className={`chip ${alertPrefs.liveAlerts ? 'active' : ''}`} onClick={() => toggleAlertPref('liveAlerts')}>
-                <Icon name="heart" size={14} /> Saved spot goes live
-              </button>
-              <button className={`chip ${alertPrefs.dealAlerts ? 'active' : ''}`} onClick={() => toggleAlertPref('dealAlerts')}>
-                <Icon name="flame" size={14} /> Flash deals nearby
-              </button>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '2px 0 8px 32px' }}>{t('m.profile.emergencySub')}</p>
+            <input value={emergency.name} maxLength={60} onChange={e => setEmergency({ ...emergency, name: e.target.value })} placeholder={t('m.profile.emergencyName')} aria-label={t('m.profile.emergencyName')} autoComplete="off" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '8px' }} />
+            <input value={emergency.phone} maxLength={24} type="tel" onChange={e => setEmergency({ ...emergency, phone: e.target.value })} placeholder={t('m.profile.emergencyPhone')} aria-label={t('m.profile.emergencyPhone')} autoComplete="off" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '8px' }} />
+            <button className="btn btn-secondary" onClick={saveEmergency} style={{ width: '100%' }}>{t('m.profile.save')}</button>
+            {emergencyMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-primary)', marginTop: '6px' }}>{emergencyMsg}</p>}
+          </div>
+
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '8px' }}>
+              <Icon name="lock" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.profile.yourData')}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <button className="chip" onClick={downloadData}><Icon name="download" size={14} /> {t('m.profile.download')}</button>
+              <button className="chip" onClick={() => { setDeleteText(''); setDeleteError(null); setDeleteOpen(true) }} style={{ color: 'var(--error)' }}><Icon name="trash" size={14} /> {t('m.profile.delete')}</button>
             </div>
-          )}
+          </div>
+
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '8px' }}>
+              <Icon name="shield" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.legal.section')}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <Link href="/privacy" className="chip" style={{ textDecoration: 'none' }}>{t('m.legal.privacy')}</Link>
+              <Link href="/terms" className="chip" style={{ textDecoration: 'none' }}>{t('m.legal.terms')}</Link>
+              <Link href="/policies/cancellation" className="chip" style={{ textDecoration: 'none' }}>{t('m.legal.cancellation')}</Link>
+            </div>
+          </div>
 
           <button className="btn btn-tertiary" style={{ width: '100%' }} onClick={() => setShowSettingsSheet(false)}>
             {t('m.profile.done')}
           </button>
         </div>
+      </div>
+
+      {/* Delete account */}
+      <div className={`bottom-sheet-overlay ${deleteOpen ? 'open' : ''}`} onClick={() => !deleting && setDeleteOpen(false)} style={{ zIndex: 650 }} />
+      <div className={`bottom-sheet ${deleteOpen ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.profile.deleteTitle')} style={{ zIndex: 651 }}>
+        <div className="sheet-grabber" />
+        {deleteOpen && (
+          <div style={{ padding: '0 20px 24px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--error)', marginBottom: '8px' }}>{t('m.profile.deleteTitle')}</h3>
+            <p style={{ fontSize: '14px', color: 'var(--label-primary)', lineHeight: 1.45, marginBottom: '14px' }}>{t('m.profile.deleteBody')}</p>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }} htmlFor="delete-confirm">{t('m.profile.deleteType')}</label>
+            <input id="delete-confirm" value={deleteText} onChange={e => setDeleteText(e.target.value)} autoCapitalize="characters" autoComplete="off" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '12px' }} />
+            {deleteError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{deleteError}</p>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-tertiary" onClick={() => setDeleteOpen(false)} disabled={deleting} style={{ flex: 1 }}>{t('m.book.cancel')}</button>
+              <button className="btn btn-primary" onClick={deleteAccount} disabled={deleting || deleteText.trim().toUpperCase() !== 'DELETE'} style={{ flex: 2, background: 'var(--error)' }}>{deleting ? '…' : t('m.profile.deleteConfirm')}</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit profile */}

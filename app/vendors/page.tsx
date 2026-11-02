@@ -15,6 +15,9 @@ import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
 import { isCityCode } from '@/lib/regions'
 import ErrorState from '@/components/ErrorState'
+import { useLabels } from '@/lib/labels'
+import { usePatois } from '@/lib/i18n-client'
+import Img from '@/components/Img'
 
 interface Vendor {
   id: string
@@ -81,9 +84,11 @@ function VendorsContent() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const { city, town, setCity } = useRegion()
+  const { city, town, setCity, ready } = useRegion()
   const [loadFailed, setLoadFailed] = useState(false)
   const { t } = useLang()
+  const patois = usePatois()
+  const labels = useLabels()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedPriceTier, setSelectedPriceTier] = useState<string | null>(null)
   const [premiumOnly, setPremiumOnly] = useState(false)
@@ -93,9 +98,9 @@ function VendorsContent() {
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION)
 
-  useEffect(() => {
-    fetchVendors()
+  useEffect(() => { if (ready) fetchVendors() }, [ready, city])
 
+  useEffect(() => {
     const saved = localStorage.getItem('savedVendors')
     if (saved) setSavedVendors(JSON.parse(saved))
 
@@ -118,7 +123,7 @@ function VendorsContent() {
   const fetchVendors = async () => {
     setLoadFailed(false)
     try {
-      const res = await fetch('/api/vendors')
+      const res = await fetch(`/api/vendors?city=${city}`)
       if (!res.ok) throw new Error('vendors')
       const data = await res.json()
       setVendors(Array.isArray(data) ? data : [])
@@ -205,7 +210,7 @@ function VendorsContent() {
             <Icon name="search" size={16} style={{ color: 'var(--label-secondary)', flexShrink: 0 }} />
             <input
               type="text"
-              placeholder="Search vendors..."
+              placeholder={t('m.vendors.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
@@ -256,8 +261,8 @@ function VendorsContent() {
         ) : filteredVendors.length === 0 ? (
           <div className="empty-state">
             <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
-            <p style={{ fontSize: '17px', fontWeight: 600 }}>Nuttin nuh go suh</p>
-            <p>Try a different search or filter</p>
+            <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch}</p>
+            <p>{t('m.vendors.tryDifferent')}</p>
           </div>
         ) : (
           <div className="grid-2">
@@ -267,9 +272,9 @@ function VendorsContent() {
                 onPress={() => router.push(`/vendor/${v.id}`)}
                 preview={
                   <div>
-                    <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '60px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }} />
+                    {v.images[0] && <Img src={v.images[0]} alt={v.name} width={240} height={120} sizes="40vw" style={{ height: '60px', borderRadius: '8px', marginBottom: '6px' }} />}
                     <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-primary)' }}>{v.name}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{formatCategory(v.category)} · {v.neighborhood}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>{labels.category(v.category)} · {v.neighborhood}</p>
                   </div>
                 }
               >
@@ -290,13 +295,13 @@ function VendorsContent() {
       <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
         <div className="sheet-grabber" />
         <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>Filter & Sort</h3>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.market.filterTitle')}</h3>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Category</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.vendors.category')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {CATEGORIES.map(cat => (
               <button
-                key={cat.name}
+                key={labels.category(cat.name === 'Activities' ? 'ACTIVITIES' : cat.name)}
                 onClick={() => setSelectedCategory(selectedCategory === cat.name ? null : cat.name)}
                 className={`chip ${selectedCategory === cat.name ? 'active' : ''}`}
               >
@@ -306,7 +311,7 @@ function VendorsContent() {
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Price</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.vendors.price')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {PRICE_TIERS.map(tier => (
               <button
@@ -319,8 +324,8 @@ function VendorsContent() {
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>Accessibility</p>
-          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>Only vendors who&apos;ve confirmed a feature show up.</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>{t('m.market.accessibility')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>{t('m.market.accessNote')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {ACCESSIBILITY_OPTIONS.map(opt => (
               <button
@@ -329,16 +334,16 @@ function VendorsContent() {
                 className={`chip ${selectedAccess.includes(opt.key) ? 'active' : ''}`}
                 aria-pressed={selectedAccess.includes(opt.key)}
               >
-                {opt.label}
+                {labels.access(opt.key)}
               </button>
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Sort By</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.sortBy')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             {SORT_OPTIONS.map(option => (
               <button
-                key={option}
+                key={t(`m.sort.${option}` as 'm.sort.Price')}
                 onClick={() => setSortBy(option)}
                 className={`chip ${sortBy === option ? 'active' : ''}`}
               >
@@ -347,7 +352,7 @@ function VendorsContent() {
             ))}
           </div>
 
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>Show</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.show')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
             <button
               onClick={() => setPremiumOnly(!premiumOnly)}
@@ -370,11 +375,11 @@ function VendorsContent() {
                   setSelectedAccess([])
                 }}
               >
-                Clear all
+                {t('m.common.clearAll')}
               </button>
             )}
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowFilterSheet(false)}>
-              Done
+              {t('m.common.done')}
             </button>
           </div>
         </div>

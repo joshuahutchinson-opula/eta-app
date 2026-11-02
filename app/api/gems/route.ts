@@ -4,14 +4,25 @@
 // POST multipart   → submit a new gem (signed in; at least one photo).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser, userIdFromRequest } from '@/lib/auth-server'
+import { rateLimit } from '@/lib/rate-limit'
 import { isAcceptableImage, uploadImage } from '@/lib/cloudinary-upload'
 import {
   GEM_CATEGORIES, MAX_SUBMISSIONS_PER_DAY, REVEAL_RADIUS_M, VERIFY_THRESHOLD,
   distanceM, fogCell, parseCoord, type GemCategoryKey
 } from '@/lib/hidden-gems'
 
+import { z } from '@/lib/validate'
+
 export const dynamic = 'force-dynamic'
+
+const fieldsSchema = z.object({
+  name: z.string().trim().min(3, 'Give it a name').max(80),
+  description: z.string().trim().min(10, 'Tell people what it is (a sentence or two)').max(1000),
+  category: z.enum(GEM_CATEGORIES, { errorMap: () => ({ message: 'Pick a category' }) }),
+  lat: z.coerce.number().finite().min(-90).max(90),
+  lng: z.coerce.number().finite().min(-180).max(180)
+})
 
 export interface GemView {
   id: string
@@ -39,7 +50,7 @@ export async function GET(request: Request) {
 
   try {
     const gems = await prisma.hiddenGem.findMany({
-      where: { status: { not: 'REJECTED' } },
+      where: { status: { not: 'REJECTED' }, hidden: false },
       include: userId ? { confirmations: { where: { userId }, select: { id: true } } } : undefined
     })
 
@@ -71,8 +82,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to add a hidden gem' }, { status: 401 })
+  const auth = await requireUser(request, { verified: true, message: 'Log in to add a hidden gem' })
+  if (!auth.ok) return auth.response
+  const userId = auth.user.id
+  const limited = rateLimit('upload', userId)
+  if (limited) return limited
 
   let form: FormData
   try {
@@ -81,17 +95,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Send the gem as a form with photos' }, { status: 400 })
   }
 
-  const name = String(form.get('name') ?? '').trim().slice(0, 80)
-  const description = String(form.get('description') ?? '').trim().slice(0, 1000)
-  const category = String(form.get('category') ?? '') as GemCategoryKey
-  const lat = parseCoord(form.get('lat'), -90, 90)
-  const lng = parseCoord(form.get('lng'), -180, 180)
+  const fields = fieldsSchema.safeParse({ name: form.get('name') ?? '', description: form.get('description') ?? '', category: form.get('category') ?? '', lat: form.get('lat') ?? '', lng: form.get('lng') ?? '' })
+  if (!fields.success) {
+    const issue = fields.error.issues[0]
+    const message = issue?.path[0] === 'lat' || issue?.path[0] === 'lng' ? 'Drop a pin or use your location' : issue?.message ?? 'Check the details'
+    return NextResponse.json({ error: message, code: 'INVALID_BODY' }, { status: 400 })
+  }
+  const { name, description, category, lat, lng } = fields.data
   const photos = form.getAll('photos').filter((p): p is File => typeof p === 'object' && p !== null && 'arrayBuffer' in p).slice(0, 4)
 
-  if (name.length < 3) return NextResponse.json({ error: 'Give it a name' }, { status: 400 })
-  if (description.length < 10) return NextResponse.json({ error: 'Tell people what it is (a sentence or two)' }, { status: 400 })
-  if (!GEM_CATEGORIES.includes(category)) return NextResponse.json({ error: 'Pick a category' }, { status: 400 })
-  if (lat === null || lng === null) return NextResponse.json({ error: 'Drop a pin or use your location' }, { status: 400 })
   if (photos.length === 0) return NextResponse.json({ error: 'Add at least one photo' }, { status: 400 })
   if (!photos.every(isAcceptableImage)) return NextResponse.json({ error: 'Photos must be JPEG, PNG, WebP or HEIC, 8 MB or less' }, { status: 400 })
 

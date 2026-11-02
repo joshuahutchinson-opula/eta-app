@@ -5,6 +5,7 @@ import { useState } from 'react'
 import Icon from '@/lib/icons'
 import { usePatois } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
+import { absoluteUrl } from '@/lib/site-url'
 
 /** Shares the recap card image when the device supports file sharing, otherwise the link. */
 export default function RecapShare({ slug, name }: { slug: string; name: string }) {
@@ -13,7 +14,7 @@ export default function RecapShare({ slug, name }: { slug: string; name: string 
 
   const share = async () => {
     triggerHaptic('light')
-    const url = `${window.location.origin}/trip/${slug}/recap`
+    const url = absoluteUrl(`/trip/${slug}/recap`)
     try {
       const res = await fetch(`/api/trips/${slug}/recap-image`)
       const blob = await res.blob()

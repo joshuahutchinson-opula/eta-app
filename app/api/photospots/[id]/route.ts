@@ -12,6 +12,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         userPhotos: {
+          where: { hidden: false },
           include: {
             user: {
               select: {
@@ -21,8 +22,7 @@ export async function GET(
             }
           },
           orderBy: { likes: 'desc' }
-        },
-        discoveries: true
+        }
       }
     })
 
@@ -33,7 +33,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(photoSpot)
+    return NextResponse.json({ ...photoSpot, userPhotos: photoSpot.userPhotos.map(p => ({ ...p, user: { name: p.user.name.split(' ')[0], avatarUrl: p.user.avatarUrl } })) })
   } catch (error) {
     console.error('Error fetching photo spot:', error)
     return NextResponse.json(

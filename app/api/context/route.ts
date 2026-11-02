@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getWeather } from '@/lib/weather'
 import { parseCity } from '@/lib/regions'
 import { getBounceSuggestion } from '@/lib/context-engine'
+import { parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,8 +57,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}))
-    return NextResponse.json(await buildContext(body))
+    const parsed = await parseBody(request, z.object({
+      city: z.string().max(32).optional(),
+      hour: z.number().int().min(0).max(23).optional(),
+      currentVendorCategory: z.string().max(32).nullable().optional(),
+      justBoughtFood: z.boolean().optional(),
+      atVendorForHours: z.number().min(0).max(24).optional()
+    }))
+    if (!parsed.ok) return parsed.response
+    return NextResponse.json(await buildContext(parsed.data))
   } catch (error) {
     console.error('Error in context engine:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

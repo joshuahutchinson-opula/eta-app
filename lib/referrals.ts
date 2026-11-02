@@ -8,7 +8,8 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 
-export const REFERRAL_POINTS = 250
+export { REFERRAL_POINTS } from '@/lib/points'
+import { REFERRAL_POINTS } from '@/lib/points'
 
 function makeCode(name: string): string {
   const base = name.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6) || 'ETA'
