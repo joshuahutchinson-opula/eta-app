@@ -1370,3 +1370,28 @@ textarea::placeholder {
 .story-ring.unseen { background: linear-gradient(135deg, var(--gold), var(--rum)); }
 .story-ring.unseen.premium { background: linear-gradient(135deg, var(--gold), var(--rum) 55%, var(--rum-dark)); }
 .story-ring.seen { background: var(--separator); }
+
+/* ============ EXPERIENCES ============ */
+/* Results and Discover: one card per swipe, no scrollbar. */
+.snap-carousel { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
+.snap-carousel::-webkit-scrollbar { display: none; }
+
+/* Numbered stop pins on route maps (components/RouteMap.tsx). */
+.route-map-pin { background: none; border: none; }
+.route-map-pin span {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--rum); color: #FFFFFF; border: 2px solid #FFFFFF;
+  font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* "Unexplored · +50 pts" on the Discover fog. */
+.leaflet-tooltip.fog-label {
+  background: rgba(28, 28, 30, 0.72); color: #FFFFFF; border: none; border-radius: 999px;
+  padding: 3px 8px; font-size: 11px; font-weight: 600; box-shadow: none; white-space: nowrap;
+}
+.leaflet-tooltip.fog-label::before { display: none; }
+
+/* Planner vibe tiles: the ring is the selection, so focus gets its own outline. */
+.planner-mood:focus-visible { outline: 2px solid var(--label-primary); outline-offset: 4px; }

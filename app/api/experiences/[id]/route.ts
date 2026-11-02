@@ -41,7 +41,8 @@ export async function GET(
     const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null)
     return NextResponse.json({
       ...rest,
-      vendor: host ? { id: host.id, name: host.name, image: host.images[0] ?? null, neighborhood: host.neighborhood, isPremium: host.isPremium, rating: avg(hostRatings), reviewCount: hostRatings.length } : null,
+      // The host's first vendor video doubles as their intro.
+      vendor: host ? { id: host.id, name: host.name, image: host.images[0] ?? null, video: host.videos[0] ?? null, neighborhood: host.neighborhood, isPremium: host.isPremium, rating: avg(hostRatings), reviewCount: hostRatings.length } : null,
       stops: stopViews(stops),
       totalMinutes: routeMinutes(stops),
       // The latest few inline; /experiences/[id]/reviews lists them all.
