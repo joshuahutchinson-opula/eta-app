@@ -1376,22 +1376,46 @@ textarea::placeholder {
 .snap-carousel { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
 .snap-carousel::-webkit-scrollbar { display: none; }
 
-/* Numbered stop pins on route maps (components/RouteMap.tsx). */
-.route-map-pin { background: none; border: none; }
-.route-map-pin span {
+/* ---------- Maps (components/map/EtaMap) ---------- */
+.eta-pin { position: relative; width: var(--pin-size, 18px); height: var(--pin-size, 18px); }
+.eta-pin-dot {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--pin-color, #B82010); border: 2.5px solid var(--pin-ring, #FFFFFF);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--rum); color: #FFFFFF; border: 2px solid #FFFFFF;
-  font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  color: #FFFFFF; font: 700 11px/1 'Space Mono', monospace;
 }
-
-/* "Unexplored · +50 pts" on the Discover fog. */
-.leaflet-tooltip.fog-label {
-  background: rgba(28, 28, 30, 0.72); color: #FFFFFF; border: none; border-radius: 999px;
-  padding: 3px 8px; font-size: 11px; font-weight: 600; box-shadow: none; white-space: nowrap;
+.eta-pin-tappable { cursor: pointer; }
+.eta-pin-tappable::after { content: ''; position: absolute; inset: -12px; }
+.eta-pin-selected .eta-pin-dot { box-shadow: 0 0 0 4px rgba(184, 32, 16, 0.25), 0 3px 10px rgba(0, 0, 0, 0.4); }
+.eta-pin-dim { opacity: 0.45; }
+.eta-pin-dashed .eta-pin-dot { border-style: dashed; }
+.eta-pin-label {
+  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+  white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis;
+  padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--system-bg-elevated); color: var(--label-primary); box-shadow: var(--shadow-card);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s ease;
 }
-.leaflet-tooltip.fog-label::before { display: none; }
+.eta-pin-label:empty { display: none; }
+.eta-pin:hover .eta-pin-label, .eta-pin-selected .eta-pin-label, .eta-pin-always .eta-pin-label { opacity: 1; }
+.eta-user { width: 18px; height: 18px; border-radius: 50%; background: #0A84FF; border: 3px solid #FFFFFF; box-shadow: 0 0 0 6px rgba(10, 132, 255, 0.2); }
+.eta-puck { width: 40px; height: 40px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35)); }
+.eta-map-controls { position: absolute; right: 16px; z-index: 6; display: flex; flex-direction: column; gap: 10px; }
+.eta-map-btn {
+  position: relative; width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--system-bg-elevated); color: var(--label-primary); box-shadow: var(--shadow-elevated);
+  display: flex; align-items: center; justify-content: center;
+}
+.eta-map-btn-primary { background: #0A84FF; color: #FFFFFF; }
+.eta-map-btn-tag {
+  position: absolute; bottom: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
+  background: var(--label-primary); color: var(--system-bg); font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.eta-map-toast { position: absolute; left: 16px; right: 80px; top: calc(env(safe-area-inset-top, 0px) + 120px); z-index: 6; padding: 10px 12px; border-radius: 12px; background: var(--system-bg-elevated); color: var(--label-primary); box-shadow: var(--shadow-elevated); font-size: 13px; }
+.eta-map-compass { position: absolute; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 120px); z-index: 7; padding: 14px; border-radius: 16px; background: var(--system-bg-elevated); box-shadow: var(--shadow-elevated); }
+.mapboxgl-ctrl-attrib { font-size: 10px; }
 
 /* Planner vibe tiles: the ring is the selection, so focus gets its own outline. */
 .planner-mood:focus-visible { outline: 2px solid var(--label-primary); outline-offset: 4px; }

@@ -1,7 +1,8 @@
 // app/vendor/[id]/page.tsx — a vendor, slimmed down: photos, the key facts
 // and Book / Directions up top, then one tap row per topic (about, menu,
 // hours, reviews, location, deals, experiences, stories, good to know) that
-// opens its own sheet. Checking in is scanning the vendor's QR card.
+// opens its own sheet. Checking in (and paying) is Scan & Pay on the
+// vendor's QR card.
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -24,7 +25,7 @@ import { alertsEnabled, enableAlerts, syncAlerts } from '@/lib/alerts-client'
 import { categoryStyle, priceTier } from '@/lib/vendor-style'
 import VendorCard, { type VendorCardVendor } from '@/components/VendorCard'
 import Price from '@/components/Price'
-import QrScanSheet from '@/components/QrScanSheet'
+import dynamic from 'next/dynamic'
 import FairPriceBadge from '@/components/FairPriceBadge'
 import ReviewSheet from '@/components/ReviewSheet'
 import QRCode from '@/components/QRCode'
@@ -39,6 +40,8 @@ import { absoluteUrl } from '@/lib/site-url'
 import ReportButton from '@/components/ReportButton'
 import { responseError } from '@/lib/errors'
 import type { DictKey } from '@/lib/i18n'
+
+const EtaMap = dynamic(() => import('@/components/map/EtaMap'), { ssr: false })
 
 interface ReviewItem {
   id: string
@@ -196,7 +199,6 @@ export default function VendorDetailPage() {
   const [related, setRelated] = useState<VendorCardVendor[]>([])
   const [loadFailed, setLoadFailed] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
-  const [scanOpen, setScanOpen] = useState(false)
   const [sheet, setSheet] = useState<SheetKey | null>(null)
   const [shareMsg, setShareMsg] = useState<string | null>(null)
   const [voucher, setVoucher] = useState<{ code: string; deal: string; expires: string } | null>(null)
@@ -371,8 +373,6 @@ export default function VendorDetailPage() {
     ...vendor.images.map(src => ({ type: 'image' as const, src }))
   ]
   const ratingCounts = [5, 4, 3, 2, 1].map(n => ({ n, count: vendor.reviews.filter(r => r.rating === n).length }))
-  const bbox = [vendor.lng - 0.006, vendor.lat - 0.004, vendor.lng + 0.006, vendor.lat + 0.004].join(',')
-  const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${vendor.lat},${vendor.lng}`
   const goodToKnow = [
     vendor.fairPrice && { icon: 'check', text: t('m.fair.note') },
     vendor.tipsJar && { icon: 'gift', text: t('m.vendor.tipsJar') },
@@ -495,7 +495,7 @@ export default function VendorDetailPage() {
 
         {/* Quick actions */}
         <div className="horizontal-scroll" style={{ gap: '8px', padding: '0 0 4px', marginBottom: '16px' }}>
-          <button className="chip" onClick={() => setScanOpen(true)} style={{ flexShrink: 0, background: 'var(--rum-tint)', color: 'var(--rum-text)', fontWeight: 700 }}><Icon name="qr" size={14} /> {t('m.scan.button')}</button>
+          <Link href="/pay" className="chip" style={{ flexShrink: 0, background: 'var(--rum-tint)', color: 'var(--rum-text)', fontWeight: 700, textDecoration: 'none' }}><Icon name="qr" size={14} /> {t('m.scan.payButton')}</Link>
           <button className="chip" onClick={toggleSave} aria-pressed={saved} style={{ flexShrink: 0, color: saved ? 'var(--rum)' : undefined }}><Icon name="heart" size={14} className={saved ? 'filled' : ''} /> {saved ? t('m.saved.unsave') : t('m.saved.save')}</button>
           {fromExperiences && <button className="chip" onClick={() => setShowAddToTrip(true)} style={{ flexShrink: 0 }}><Icon name="plus" size={14} /> {t('m.addTrip.title')}</button>}
           {vendor.phone && book?.label !== 'm.vendor.call' && <a href={`tel:${vendor.phone.replace(/[^+\d]/g, '')}`} className="chip" style={{ flexShrink: 0, textDecoration: 'none' }}><Icon name="phone" size={14} /> {t('m.vendor.call')}</a>}
@@ -626,8 +626,8 @@ export default function VendorDetailPage() {
 
             {sheet === 'location' && (
               <div className="card" style={{ overflow: 'hidden', cursor: 'default' }}>
-                <div style={{ position: 'relative', height: '220px' }}>
-                  <iframe src={mapSrc} title={t('m.vendor.mapOf', { name: vendor.name })} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'relative', height: '240px' }}>
+                  <EtaMap center={{ lat: vendor.lat, lng: vendor.lng }} zoom={15} markers={[{ id: vendor.id, lat: vendor.lat, lng: vendor.lng, color: cat.color, size: 22, label: vendor.name, labelAlways: true }]} label={t('m.vendor.mapOf', { name: vendor.name })} />
                 </div>
                 <button onClick={handleDirections} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
                   <Icon name="mapPin" size={18} style={{ color: cat.color, flexShrink: 0 }} />
@@ -714,7 +714,6 @@ export default function VendorDetailPage() {
         )}
       </div>
 
-      <QrScanSheet open={scanOpen} onClose={() => setScanOpen(false)} vendorName={vendor.name} />
 
       <ReviewSheet
         open={reviewOpen}

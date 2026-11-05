@@ -319,7 +319,7 @@ export default function BookingSheet({ open, onClose, title, unitPrice, priceIsE
                   {!signedIn ? (
                     <Link href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/')}`} className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.profile.login')}</Link>
                   ) : short ? (
-                    <Link href="/rewards?tab=wallet" className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.book.topUp')}</Link>
+                    <Link href="/pay" className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.book.topUp')}</Link>
                   ) : (
                     <button className="btn btn-primary" onClick={pay} disabled={paying || !verified} style={{ flex: 2 }}>
                       {paying ? '…' : <>{t('m.book.pay')} <Price usd={due} compact /></>}

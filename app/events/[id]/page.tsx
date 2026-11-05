@@ -25,6 +25,9 @@ import { directionsUrl } from '@/lib/calendar'
 import { hapticSaved, triggerHaptic } from '@/lib/haptics'
 import { useEventFormat, type EventItem } from '@/lib/events'
 import { MAX_TICKETS } from '@/lib/ticket-limits'
+import dynamic from 'next/dynamic'
+
+const EtaMap = dynamic(() => import('@/components/map/EtaMap'), { ssr: false })
 
 export default function EventDetailPage() {
   const { id } = useParams() as { id: string }
@@ -113,9 +116,6 @@ export default function EventDetailPage() {
   }
 
   const hasCoords = event.lat !== null && event.lng !== null
-  const mapSrc = hasCoords
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${[event.lng! - 0.006, event.lat! - 0.004, event.lng! + 0.006, event.lat! + 0.004].join(',')}&layer=mapnik&marker=${event.lat},${event.lng}`
-    : null
   const directions = directionsUrl({ lat: event.lat, lng: event.lng, name: event.venueName })
   const unit = event.isFree ? 0 : event.price
   const inApp = Boolean(event.inAppTickets) && unit !== null
@@ -193,9 +193,9 @@ export default function EventDetailPage() {
           <p style={{ fontSize: '15px', lineHeight: 1.55, color: 'var(--label-primary)', whiteSpace: 'pre-line' }}>{event.description}</p>
         </div>
 
-        {mapSrc && (
-          <div className="card" style={{ overflow: 'hidden', cursor: 'default', marginBottom: '16px' }}>
-            <iframe src={mapSrc} title={event.venueName} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '180px', border: 0, pointerEvents: 'none' }} />
+        {hasCoords && (
+          <div className="card" style={{ position: 'relative', overflow: 'hidden', cursor: 'default', marginBottom: '16px', height: '200px' }}>
+            <EtaMap center={{ lat: event.lat!, lng: event.lng! }} zoom={15} markers={[{ id: event.id, lat: event.lat!, lng: event.lng!, size: 22, label: event.venueName, labelAlways: true }]} label={event.venueName} />
           </div>
         )}
 

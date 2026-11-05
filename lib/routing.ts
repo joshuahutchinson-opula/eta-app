@@ -86,3 +86,59 @@ export async function legBetween(a: LatLng, b: LatLng, opts: { mode?: TransportM
   }
   return { mode, minutes: estimateMinutes(km, mode), km, source: 'estimate' }
 }
+
+export type RoadMode = 'driving' | 'walking'
+
+const shapeCache = new Map<string, Array<[number, number]>>()
+
+/** One leg's road geometry from OSRM as [lng, lat] pairs; null when it can't be routed (water, timeouts). */
+async function legShape(a: LatLng, b: LatLng, mode: RoadMode): Promise<Array<[number, number]> | null> {
+  const url = mode === 'walking' ? FOOT_URL : DRIVING_URL
+  const key = `${mode}|${a.lat.toFixed(5)},${a.lng.toFixed(5)}|${b.lat.toFixed(5)},${b.lng.toFixed(5)}`
+  const hit = shapeCache.get(key)
+  if (hit) return hit
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(`${url}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'eta-app (route map)' }
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const route = data?.routes?.[0]
+    if (data?.code !== 'Ok' || !route?.geometry?.coordinates?.length) return null
+    // Same sanity check as travel times: a wildly long detour means a bad snap.
+    if (route.distance / 1000 > haversineKm(a, b) * 4 + 1) return null
+    const coords = route.geometry.coordinates as Array<[number, number]>
+    if (shapeCache.size > 2000) shapeCache.clear()
+    shapeCache.set(key, coords)
+    return coords
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * A route along real roads through the given stops, leg by leg (walking for
+ * short hops when mode is "walking", else driving). Legs OSRM can't route
+ * (boat crossings, outages) are drawn straight so the line never breaks.
+ */
+export async function roadGeometry(points: LatLng[], mode: RoadMode = 'driving'): Promise<{ coordinates: Array<[number, number]>; snapped: boolean }> {
+  if (points.length < 2) return { coordinates: points.map(p => [p.lng, p.lat]), snapped: false }
+  const legs = await Promise.all(points.slice(1).map((b, i) => {
+    const a = points[i]
+    const legMode: RoadMode = mode === 'walking' && haversineKm(a, b) > MAX_WALK_KM ? 'driving' : mode
+    return legShape(a, b, legMode)
+  }))
+  const coordinates: Array<[number, number]> = []
+  legs.forEach((leg, i) => {
+    const a = points[i]
+    const b = points[i + 1]
+    const part = leg ?? [[a.lng, a.lat], [b.lng, b.lat]]
+    coordinates.push(...(coordinates.length ? part.slice(1) : part))
+  })
+  return { coordinates, snapped: legs.some(Boolean) }
+}

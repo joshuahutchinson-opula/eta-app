@@ -426,7 +426,7 @@ export default function ProfilePage() {
             <p className="num-font" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--rum)' }}>{user.points.toLocaleString()}</p>
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.points')}</p>
           </Link>
-          <Link href="/rewards?tab=wallet" className="card" style={{ padding: '16px', textAlign: 'center', textDecoration: 'none' }}>
+          <Link href="/pay" className="card" style={{ padding: '16px', textAlign: 'center', textDecoration: 'none' }}>
             <Price usd={user.walletBalance} style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }} />
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.wallet')}</p>
           </Link>

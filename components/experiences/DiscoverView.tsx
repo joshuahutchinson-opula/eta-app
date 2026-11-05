@@ -1,32 +1,39 @@
-// components/experiences/DiscoverView.tsx — Discover: a full-screen map of the
-// region with the traveler's unexplored areas fogged, one place card at a time
-// (swipe for the next nearest), and category filters behind a button.
+// components/experiences/DiscoverView.tsx — Discover: a live, Waze-style map
+// of the region (follows you heading-up; components/map/EtaMap) under a fog
+// of war that clears where you've been and at places you've discovered, one
+// place card at a time (swipe for the next nearest), and category filters
+// behind a button. Hidden gems stay under the fog until you're close.
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
 import Img from '@/components/Img'
 import Dock from '@/components/Dock'
-import ExploreMap, { type MapPhotoSpot, type MapVendor } from '@/components/ExploreMap'
+import EtaMap, { type MapMarker, type MapPoint } from '@/components/map/EtaMap'
 import { AddGemSheet, GemDetailSheet, useHiddenGems, type GemDetail } from '@/components/HiddenGems'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
 import { useLabels } from '@/lib/labels'
 import { triggerHaptic } from '@/lib/haptics'
-import { useWatchedLocation, formatDistance } from '@/lib/geo'
+import { formatDistance } from '@/lib/geo'
 import { haversineKm, MAX_WALK_KM } from '@/lib/routing'
 import { directionsUrl } from '@/lib/calendar'
 import { formatTime, openState, parseHours } from '@/lib/hours'
 import { DISCOVERY_POINTS } from '@/lib/checkins'
 import { apiJson } from '@/lib/api-client'
 import { getCurrentUser } from '@/lib/auth-client'
+import { categoryStyle } from '@/lib/vendor-style'
+import { markExplored, readExplored } from '@/lib/explored'
+import type { MapPhotoSpot, MapVendor } from '@/lib/map-types'
 import type { PlanAnchor } from '@/lib/plan'
 import PlanDiscoverSwitch, { type TabMode } from './PlanDiscoverSwitch'
 
 const CATEGORIES = ['FOOD', 'DRINKS', 'ACTIVITY', 'WELLNESS', 'BEACH']
-// Fog grid: about 1.1 km a side.
-const CELL = 0.01
+// How much ground the fog covers around the town, in degrees.
+const FOG_SPAN = { lat: 0.18, lng: 0.22 }
+// The place card sits over the bottom of the map.
+const CARD_INSET = 200
 
 interface Place {
   key: string
@@ -52,8 +59,15 @@ export default function DiscoverView({ vendors, photoSpots, mode, onModeChange, 
   const { t } = useLang()
   const labels = useLabels()
   const { city, town } = useRegion()
-  const pos = useWatchedLocation(true)
+  const [pos, setPos] = useState<(MapPoint & { accuracy: number }) | null>(null)
+  const [explored, setExplored] = useState<MapPoint[]>([])
   const gems = useHiddenGems(pos, true)
+  useEffect(() => { setExplored(readExplored()) }, [])
+  // Each fix clears the fog where you are; re-sorting waits for ~100 m of movement.
+  const onPosition = useCallback((p: MapPoint & { accuracy: number }) => {
+    setPos(prev => (prev && haversineKm(prev, p) < 0.05 ? prev : p))
+    if (p.accuracy <= 150 && markExplored(p)) setExplored(readExplored())
+  }, [])
   const [selectedGem, setSelectedGem] = useState<GemDetail | null>(null)
   const [addingGem, setAddingGem] = useState(false)
   const [category, setCategory] = useState<string | null>(null)
@@ -90,29 +104,32 @@ export default function DiscoverView({ vendors, photoSpots, mode, onModeChange, 
 
   useEffect(() => { setIndex(0); track.current?.scrollTo({ left: 0 }) }, [category, city])
 
-  const explored = found ? allPlaces.filter(p => found.has(p.key)).length : 0
-  const pct = allPlaces.length ? Math.round((explored / allPlaces.length) * 100) : 0
-
-  // Grid cells with places in them but none of your discoveries.
-  const unexplored = useMemo(() => {
-    if (!found) return []
-    const cells = new Map<string, { i: number; j: number; seen: boolean; pts: number }>()
-    for (const p of allPlaces) {
-      const i = Math.floor(p.lat / CELL)
-      const j = Math.floor(p.lng / CELL)
-      const k = `${i}:${j}`
-      const c = cells.get(k) ?? { i, j, seen: false, pts: 0 }
-      c.seen = c.seen || found.has(p.key)
-      c.pts = Math.max(c.pts, DISCOVERY_POINTS[p.type])
-      cells.set(k, c)
-    }
-    return Array.from(cells.values()).filter(c => !c.seen).map(c => ({
-      bounds: [[c.i * CELL, c.j * CELL], [(c.i + 1) * CELL, (c.j + 1) * CELL]] as [[number, number], [number, number]],
-      label: t('m.xd.unexplored', { n: c.pts })
-    }))
-  }, [allPlaces, found, t])
+  const discovered = found ? allPlaces.filter(p => found.has(p.key)).length : 0
+  const pct = allPlaces.length ? Math.round((discovered / allPlaces.length) * 100) : 0
 
   const current = places[Math.min(index, Math.max(0, places.length - 1))]
+
+  // Fog of war: lifted where you've walked and at every place you've discovered.
+  const fog = useMemo(() => ({
+    bounds: { west: town.lng - FOG_SPAN.lng, east: town.lng + FOG_SPAN.lng, south: town.lat - FOG_SPAN.lat, north: town.lat + FOG_SPAN.lat },
+    explored: [...explored, ...allPlaces.filter(p => found?.has(p.key)), ...(pos ? [pos] : [])],
+    radiusM: 400
+  }), [town.lat, town.lng, explored, allPlaces, found, pos])
+
+  const markers: MapMarker[] = useMemo(() => [
+    ...regionVendors.filter(v => !category || v.category === category).map(v => ({
+      id: `v-${v.id}`, lat: v.lat, lng: v.lng, color: categoryStyle(v.category).color, ring: v.isPremium ? '#FFB800' : '#FFFFFF',
+      size: v.isPremium ? 20 : 16, label: v.name, selected: current?.id === v.id, onClick: () => show(v.id)
+    })),
+    ...(category ? [] : regionSpots).map(s => ({
+      id: `s-${s.id}`, lat: s.lat, lng: s.lng, color: '#FFB800', size: 14, label: s.name, selected: current?.id === s.id, onClick: () => show(s.id)
+    })),
+    ...gems.gems.map(g => ({
+      id: `g-${g.id}`, lat: g.lat, lng: g.lng, color: g.status === 'VERIFIED' ? '#AF52DE' : '#D1A3EC', size: 18, dashed: g.status === 'PENDING', label: g.name,
+      onClick: () => { triggerHaptic('light'); setSelectedGem(g) }
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [regionVendors, regionSpots, category, current?.id, gems.gems])
   const onScroll = () => {
     const el = track.current
     if (!el || !el.clientWidth) return
@@ -144,19 +161,17 @@ export default function DiscoverView({ vendors, photoSpots, mode, onModeChange, 
 
   return (
     <main style={{ position: 'fixed', inset: 0, background: 'var(--system-bg)', overflow: 'hidden' }}>
-      <ExploreMap
+      <EtaMap
         key={city}
-        vendors={regionVendors.filter(v => !category || v.category === category)}
-        photoSpots={category ? [] : regionSpots}
-        center={[town.lat, town.lng]}
-        onVendorTap={v => show(v.id)}
-        onPhotoSpotTap={s => show(s.id)}
-        gems={gems.gems}
-        fog={gems.fog}
-        unexplored={unexplored}
-        selectedId={current?.id ?? null}
-        user={pos}
-        onGemTap={g => { triggerHaptic('light'); setSelectedGem(gems.gems.find(x => x.id === g.id) ?? null) }}
+        live
+        center={{ lat: town.lat, lng: town.lng }}
+        zoom={14}
+        fitTo={[{ lat: town.lat, lng: town.lng }]}
+        markers={markers}
+        fog={fog}
+        onPosition={onPosition}
+        bottomInset={current ? CARD_INSET : 0}
+        label={t('m.xd.nearby')}
       />
 
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 500, padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 16px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', pointerEvents: 'none' }}>

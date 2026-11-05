@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { type MapVendor, type MapPhotoSpot } from '@/components/ExploreMap'
+import { type MapVendor, type MapPhotoSpot } from '@/lib/map-types'
 import { hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { getCurrentUser } from '@/lib/auth-client'
 import { authHeaders } from '@/lib/api-client'
@@ -902,6 +902,8 @@ export default function ExperiencesPage() {
             crew={crewOnMap}
             youLabel={t('m.exp.you')}
             fallbackCenter={[regionTown.lat, regionTown.lng]}
+            live
+            bottomInset={300}
           />
         </div>
 

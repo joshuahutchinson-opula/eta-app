@@ -38,7 +38,7 @@ const SHORTCUTS: Array<{ key: DictKey; icon: string; href: string }> = [
   { key: 'm.search.cat.nightlife', icon: 'party', href: '/events?when=tonight' },
   { key: 'm.search.cat.wellness', icon: 'spa', href: '/vendors?category=WELLNESS' },
   { key: 'm.search.cat.events', icon: 'calendar', href: '/events' },
-  { key: 'm.search.cat.photo', icon: 'camera', href: '/explore' }
+  { key: 'm.search.cat.photo', icon: 'camera', href: '/experiences?mode=discover' }
 ]
 
 function readRecent(): string[] {

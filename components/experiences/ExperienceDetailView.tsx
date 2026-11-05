@@ -21,6 +21,7 @@ import { parseTier, TIER_SUMMARY_KEY } from '@/lib/cancellation'
 import { shortDuration } from '@/lib/plan'
 
 const RouteMap = dynamic(() => import('@/components/RouteMap'), { ssr: false })
+const EtaMap = dynamic(() => import('@/components/map/EtaMap'), { ssr: false })
 
 export interface DetailStop {
   id: string
@@ -127,9 +128,7 @@ export default function ExperienceDetailView({ data, fallbackCenter, onBack, bac
   )
   const sheetTitle = (text: string) => <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '12px' }}>{text}</h2>
   const subTitle = (text: string) => <h3 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--label-secondary)', margin: '16px 0 4px' }}>{text}</h3>
-  const mapSrc = data.meeting?.lat != null && data.meeting.lng != null
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${[data.meeting.lng - 0.006, data.meeting.lat - 0.004, data.meeting.lng + 0.006, data.meeting.lat + 0.004].join(',')}&layer=mapnik&marker=${data.meeting.lat},${data.meeting.lng}`
-    : null
+  const meetAt = data.meeting?.lat != null && data.meeting.lng != null ? { lat: data.meeting.lat, lng: data.meeting.lng } : null
 
   return (
     <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
@@ -279,7 +278,11 @@ export default function ExperienceDetailView({ data, fallbackCenter, onBack, bac
                 <>
                   {subTitle(t('m.exp.meetingPoint'))}
                   <div className="card" style={{ overflow: 'hidden', cursor: 'default', marginTop: '6px' }}>
-                    {mapSrc && <iframe src={mapSrc} title={t('m.exp.meetingPoint')} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '160px', border: 0, pointerEvents: 'none', display: 'block' }} />}
+                    {meetAt && (
+                      <div style={{ position: 'relative', height: '180px' }}>
+                        <EtaMap center={meetAt} zoom={15} markers={[{ id: 'meet', ...meetAt, size: 22, label: t('m.exp.meetingPoint'), labelAlways: true }]} label={t('m.exp.meetingPoint')} />
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
                       <Icon name="mapPin" size={18} style={{ color: 'var(--rum-text)', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: '15px', color: data.meeting.text ? 'var(--label-primary)' : 'var(--label-secondary)' }}>{data.meeting.text ?? t('m.common.notListed')}</span>

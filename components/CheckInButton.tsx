@@ -1,5 +1,5 @@
 // components/CheckInButton.tsx — "Check in" on photo spot pages (vendors are
-// checked in by scanning their QR card, components/QrScanSheet). Tracks your
+// checked in with Scan & Pay on their QR card, app/pay). Tracks your
 // position; the button unlocks once you're within range and the server (not
 // the device) awards the points.
 'use client'

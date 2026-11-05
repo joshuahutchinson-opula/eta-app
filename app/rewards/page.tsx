@@ -1,12 +1,12 @@
 // app/rewards/page.tsx — the Rewards hub (opened from Home's points pill):
-// one place for points, vouchers, discoveries and the wallet.
+// one place for points, vouchers and discoveries. The wallet lives on
+// Scan & Pay (app/pay).
 //   Points       this month's challenges, the rewards available in the
 //                selected region (some unlock with a QR visit), your tier,
 //                the opt-in leaderboard.
 //   Vouchers     everything redeemed or handed out (welcome perks), with
 //                expiry countdowns and a Used state; partner codes.
 //   Discoveries  the passport map of everywhere you've been, counts, badges.
-//   Wallet       balance, payment history and saved cards.
 // Points never expire, between trips too. ?tab= opens a tab directly.
 'use client'
 
@@ -52,29 +52,10 @@ interface Passport {
   bestStreak: number
   badges: Badge[]
 }
-interface Transaction {
-  id: string
-  amount: number
-  type: 'PAYMENT' | 'REWARD' | 'TOPUP' | 'TRANSFER' | 'REFUND'
-  status: 'PENDING' | 'COMPLETED' | 'FAILED'
-  createdAt: string
-  vendor?: { name: string } | null
-  description?: string | null
-}
-interface PaymentCard { id: string; brand: string; last4: string; label: string }
-
-const TABS = ['points', 'vouchers', 'discoveries', 'wallet'] as const
+const TABS = ['points', 'vouchers', 'discoveries'] as const
 type Tab = (typeof TABS)[number]
 
 const BADGE_ICON: Record<string, string> = { firstCheckin: 'check', beaches5: 'wave', food10: 'food', firstGem: 'sparkle', photo5: 'camera', streak7: 'flame', places25: 'mapPin', towns3: 'route' }
-const CARDS_STORAGE_KEY = 'etaWalletCards'
-const DEFAULT_CARDS: PaymentCard[] = [
-  { id: 'card-1', brand: 'Visa', last4: '4242', label: 'Default' },
-  { id: 'card-2', brand: 'Mastercard', last4: '8888', label: 'Backup' }
-]
-const isCredit = (type: Transaction['type']) => type === 'REWARD' || type === 'TOPUP' || type === 'REFUND'
-const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 14px', marginBottom: '16px', fontSize: '17px', color: 'var(--label-primary)', background: 'var(--system-bg-secondary)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }
-
 export default function RewardsHub() {
   const patois = usePatois()
   const { t, lang } = useLang()
@@ -90,11 +71,6 @@ export default function RewardsHub() {
   const [board, setBoard] = useState<BoardRow[]>([])
   const [passport, setPassport] = useState<Passport | null>(null)
   const [passportFailed, setPassportFailed] = useState(false)
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null)
-  const [txFailed, setTxFailed] = useState(false)
-  const [cards, setCards] = useState<PaymentCard[]>([])
-  const [cardSheet, setCardSheet] = useState(false)
-  const [newCard, setNewCard] = useState({ brand: '', last4: '', label: '' })
   const [selected, setSelected] = useState<RewardItem | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [voucher, setVoucher] = useState<Redemption | null>(null)
@@ -117,11 +93,6 @@ export default function RewardsHub() {
     setPassportFailed(false)
     try { setPassport(await apiJson<Passport>('/api/passport')) } catch { setPassportFailed(true) }
   }, [])
-  const loadTransactions = useCallback(async () => {
-    setTxFailed(false)
-    try { const d = await apiJson<Transaction[]>('/api/transactions'); setTransactions(Array.isArray(d) ? d : []) } catch { setTxFailed(true) }
-  }, [])
-
   useEffect(() => {
     const current = getCurrentUser()
     setUser(current)
@@ -132,11 +103,6 @@ export default function RewardsHub() {
       loadRedemptions()
       loadBoard()
     }
-    try {
-      const raw = localStorage.getItem(CARDS_STORAGE_KEY)
-      if (raw) setCards(JSON.parse(raw))
-      else { setCards(DEFAULT_CARDS); localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(DEFAULT_CARDS)) }
-    } catch { setCards(DEFAULT_CARDS) }
     setMounted(true)
     const timer = setInterval(() => setNow(Date.now()), 60000)
     return () => clearInterval(timer)
@@ -149,12 +115,10 @@ export default function RewardsHub() {
     if (getCurrentUser()) apiJson<{ challenges: Challenge[] }>(`/api/challenges?city=${city}`).then(d => setChallenges(d.challenges)).catch(() => {})
   }, [city, ready])
 
-  // Discoveries and wallet load the first time their tab opens.
+  // Discoveries load the first time their tab opens.
   useEffect(() => {
-    if (!user) return
-    if (tab === 'discoveries' && !passport) loadPassport()
-    if (tab === 'wallet' && !transactions) loadTransactions()
-  }, [tab, user, passport, transactions, loadPassport, loadTransactions])
+    if (user && tab === 'discoveries' && !passport) loadPassport()
+  }, [tab, user, passport, loadPassport])
 
   const pickTab = (next: Tab) => {
     triggerHaptic('selection')
@@ -212,20 +176,6 @@ export default function RewardsHub() {
     }
   }
 
-  const saveCards = (updated: PaymentCard[]) => {
-    setCards(updated)
-    try { localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated)) } catch {}
-  }
-  const addCard = () => {
-    const brand = newCard.brand.trim()
-    if (!brand || !/^\d{4}$/.test(newCard.last4)) return
-    saveCards([...cards, { id: `card-${Date.now()}`, brand, last4: newCard.last4, label: newCard.label.trim() || t('m.hub.card') }])
-    hapticSaved()
-    setCardSheet(false)
-    setShowSuccess(true)
-    setNewCard({ brand: '', last4: '', label: '' })
-  }
-
   // "3 days" / "5 h 20 min" until a voucher expires.
   const expiresIn = (iso: string | null) => {
     if (!iso) return null
@@ -281,7 +231,7 @@ export default function RewardsHub() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
           <span className="chip" style={{ cursor: 'default' }}><Icon name={currentTier.icon} size={14} style={{ color: 'var(--rum-text)' }} />{labels.tier(currentTier.key)}</span>
           {user.streak > 0 && <span className="chip" style={{ cursor: 'default' }}><Icon name="flame" size={14} style={{ color: 'var(--warning)' }} />{t('m.rewards.dayStreak', { n: user.streak })}</span>}
-          <button className="chip" onClick={() => pickTab('wallet')}><Icon name="wallet" size={14} style={{ color: 'var(--label-secondary)' }} /><Price usd={user.walletBalance} /></button>
+          <Link href="/pay" className="chip" style={{ textDecoration: 'none' }}><Icon name="wallet" size={14} style={{ color: 'var(--label-secondary)' }} /><Price usd={user.walletBalance} /></Link>
         </div>
         <div style={{ marginBottom: '6px' }}>
           <div style={{ height: '6px', borderRadius: '3px', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
@@ -482,53 +432,6 @@ export default function RewardsHub() {
           )
         )}
 
-        {tab === 'wallet' && (
-          <>
-            <div className="card" style={{ padding: '18px 16px', marginBottom: '20px', cursor: 'default' }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.hub.balance')}</p>
-              <Price usd={user.walletBalance} style={{ fontSize: '30px', fontWeight: 700, color: 'var(--label-primary)' }} />
-            </div>
-
-            {heading(t('m.hub.payWith'), t('m.hub.cards'))}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-              {cards.map(card => (
-                <div key={card.id} className="card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'default' }}>
-                  <span style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--rum-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="card" size={18} style={{ color: 'var(--rum-text)' }} /></span>
-                  <span style={{ flex: 1 }}>
-                    <span style={{ display: 'block', fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)' }}>{card.brand} <span className="num-font">•••• {card.last4}</span></span>
-                    <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{card.label}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button className="btn btn-secondary" style={{ width: '100%', marginBottom: '28px' }} onClick={() => setCardSheet(true)}><Icon name="plus" size={16} /> {t('m.hub.addCard')}</button>
-
-            {heading(t('m.hub.activity'), t('m.hub.history'))}
-            {txFailed ? <ErrorState compact onRetry={loadTransactions} /> : transactions === null ? (
-              <div className="skeleton-card" style={{ height: '120px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
-            ) : transactions.length === 0 ? (
-              <div className="empty-state"><Icon name="receipt" size={28} style={{ color: 'var(--label-tertiary)' }} /><p>{t('m.hub.noTransactions')}</p></div>
-            ) : (
-              <div className="card" style={{ padding: '4px 16px' }}>
-                {transactions.map((tx, i) => (
-                  <Link key={tx.id} href={`/receipt/${tx.id}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', textDecoration: 'none', borderBottom: i < transactions.length - 1 ? '0.5px solid var(--separator)' : 'none' }}>
-                    <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon name={isCredit(tx.type) ? 'sparkle' : 'receipt'} size={18} style={{ color: 'var(--label-secondary)' }} />
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.vendor?.name || tx.description || t(`m.hub.tx.${tx.type}` as 'm.hub.tx.PAYMENT')}</span>
-                      <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{shortDate(tx.createdAt)}{tx.status !== 'COMPLETED' ? ` · ${t(`m.hub.txStatus.${tx.status}` as 'm.hub.txStatus.PENDING')}` : ''}</span>
-                    </span>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: isCredit(tx.type) ? 'var(--success)' : 'var(--label-secondary)' }}>
-                      {isCredit(tx.type) ? '+' : '−'}<Price usd={Math.abs(tx.amount)} />
-                    </span>
-                    <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </div>
 
       {/* Redeem confirmation */}
@@ -580,22 +483,6 @@ export default function RewardsHub() {
             </div>
           )
         })()}
-      </div>
-
-      {/* Add card */}
-      <div className={`bottom-sheet-overlay ${cardSheet ? 'open' : ''}`} onClick={() => setCardSheet(false)} />
-      <div className={`bottom-sheet ${cardSheet ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.hub.addCard')}>
-        <div className="sheet-grabber" />
-        <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.hub.addCard')}</h3>
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.hub.cardBrand')}</p>
-          <input type="text" placeholder="Visa" value={newCard.brand} onChange={e => setNewCard({ ...newCard, brand: e.target.value })} style={inputStyle} />
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.hub.cardLast4')}</p>
-          <input type="text" inputMode="numeric" maxLength={4} placeholder="4242" value={newCard.last4} onChange={e => setNewCard({ ...newCard, last4: e.target.value.replace(/\D/g, '').slice(0, 4) })} style={inputStyle} />
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.hub.cardLabel')}</p>
-          <input type="text" value={newCard.label} onChange={e => setNewCard({ ...newCard, label: e.target.value })} style={{ ...inputStyle, marginBottom: '20px' }} />
-          <button className="btn btn-primary" style={{ width: '100%' }} disabled={!newCard.brand.trim() || newCard.last4.length !== 4} onClick={addCard}>{t('m.hub.addCard')}</button>
-        </div>
       </div>
 
       <Dock />
