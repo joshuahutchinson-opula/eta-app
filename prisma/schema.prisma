@@ -148,6 +148,11 @@ model User {
   stayLng               Float?
   // When the "planning your next trip?" nudge last went out (one per trip).
   homeNudgeSentAt       DateTime?
+  // The last Explore mode position fix (lib/explore.ts): explorer-only perks
+  // unlock when the QR scan follows an Explore session near that vendor.
+  exploreLastAt         DateTime?
+  exploreLastLat        Float?
+  exploreLastLng        Float?
 
   redemptions             Redemption[]
   dealClaims              FlashDealClaim[]
@@ -192,12 +197,14 @@ model User {
   instagramMentions  InstagramMention[]
   tripRecaps         TripRecap[]
   ownedProperties    PartnerProperty[]   @relation("PartnerOwner")
+  questProgress      QuestProgress[]
+  questsCreated      Quest[]             @relation("QuestCreator")
 
   @@index([instagramHandle])
 }
 
 model Vendor {
-  id                   String           @id @default(cuid())
+  id                   String               @id @default(cuid())
   name                 String
   category             VendorCategory
   neighborhood         String
@@ -210,22 +217,22 @@ model Vendor {
   website              String?
   images               String[]
   videos               String[]
-  open                 Boolean          @default(false)
-  live                 Boolean          @default(false)
-  isPremium            Boolean          @default(false)
+  open                 Boolean              @default(false)
+  live                 Boolean              @default(false)
+  isPremium            Boolean              @default(false)
   // A local spot: cook shop, jerk centre or street food. Drives the
   // "Most local" badge on generated routes (lib/plan.ts).
-  localSpot            Boolean          @default(false)
-  isTransport          Boolean          @default(false)
-  visibleInMarketplace Boolean          @default(true)
-  visibleOnMap         Boolean          @default(true)
+  localSpot            Boolean              @default(false)
+  isTransport          Boolean              @default(false)
+  visibleInMarketplace Boolean              @default(true)
+  visibleOnMap         Boolean              @default(true)
   menu                 Json?
-  whoThere             Int              @default(0)
-  tipsJar              Boolean          @default(false)
-  payItForward         Boolean          @default(false)
+  whoThere             Int                  @default(0)
+  tipsJar              Boolean              @default(false)
+  payItForward         Boolean              @default(false)
   // Mobility/accessibility features the vendor has confirmed, as keys from
   // lib/accessibility.ts (e.g. WHEELCHAIR_ACCESSIBLE). Empty = not yet verified.
-  accessibility        String[]         @default([])
+  accessibility        String[]             @default([])
   // Weekly opening hours, Jamaica time: { mon: [["09:00","17:00"]], ... }.
   // A missing day means closed that day; a null value means hours not listed.
   hours                Json?
@@ -234,22 +241,28 @@ model Vendor {
   whatsapp             String?
   // What the vendor is pushing today: { name, price, imageUrl, videoUrl?, prepMinutes? }.
   dishOfDay            Json?
-  acceptsReservations  Boolean          @default(false)
+  acceptsReservations  Boolean              @default(false)
   // The partner property this vendor belongs to (its own restaurant, bar,
   // spa, activities). Guests paying here in the app is ETA's only cut.
   partnerPropertyId    String?
-  partnerProperty      PartnerProperty? @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  partnerProperty      PartnerProperty?     @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
   // "Fair price, same as locals": the vendor confirms tourists pay what
   // locals pay. Set from the vendor app; the date is when they confirmed.
-  fairPrice            Boolean          @default(false)
+  fairPrice            Boolean              @default(false)
   fairPriceConfirmedAt DateTime?
+  // How sure we are of lat/lng (see VendorLocationStatus). source: "vendor_gps",
+  // "vendor_drag", "geocode_osm", "geocode_mapbox" or null for seed data.
+  locationStatus       VendorLocationStatus @default(UNCONFIRMED)
+  locationSource       String?
+  locationAccuracyM    Float?
+  locationUpdatedAt    DateTime?
   // Placeholder listing from the seed, not a real vetted vendor.
   // scripts/remove-mock-data.ts deletes everything flagged this way.
-  isMock               Boolean          @default(false)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  isMock               Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
   ownerId              String?
-  owner                User?            @relation(fields: [ownerId], references: [id])
+  owner                User?                @relation(fields: [ownerId], references: [id])
 
   menuItems            MenuItem[]
   rewardVendors        RewardVendor[]
@@ -271,6 +284,8 @@ model Vendor {
   taggedStories       Story[]              @relation("StoryPlace")
   qrCard              VendorQrCard?
   hostPicks           HostPick[]
+  questsSponsored     Quest[]
+  questCheckpoints    QuestCheckpoint[]
   transferServices    TransferService[]
 }
 
@@ -891,7 +906,18 @@ enum GemCategory {
   HOT_SPRING
   CULTURAL_ARTIFACT
   VIEWPOINT
+  STREET_ART
+  SWIMMING_SPOT
+  LOCAL_FAVOURITE
   OTHER
+}
+
+// Whether a vendor's pin is where they really are. CONFIRMED = the vendor set
+// it on site from their phone (vendor app); UNCONFIRMED = seed data or a
+// geocoded suggestion (scripts/suggest-vendor-locations.ts).
+enum VendorLocationStatus {
+  CONFIRMED
+  UNCONFIRMED
 }
 
 enum GemStatus {
@@ -1523,4 +1549,84 @@ model VendorQrCard {
   vendor   Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   token    String   @unique
   issuedAt DateTime @default(now())
+}
+
+// ---------- Explore mode: quests ----------
+
+// A short trail of checkpoints with a clue each ("West End Cliffs: 5
+// checkpoints"). Made by ETA or a vendor (vendor app); finishing earns the
+// badge and rewardPoints, plus an explorer-only reward if one is attached.
+model Quest {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String
+  description  String
+  city         City
+  badgeName    String
+  rewardPoints Int      @default(200)
+  // An explorer-only Reward (kind "explorer") handed out on finishing.
+  rewardId     String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("QuestCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  // The vendor that sponsors it, when a vendor made it.
+  vendorId    String?
+  vendor      Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  checkpoints QuestCheckpoint[]
+  progress    QuestProgress[]
+}
+
+// One stop on a quest. Its location is never sent to the app until reached;
+// the clue is what guides you there. Reached by being within radiusM, or by
+// scanning vendorId's QR card when the checkpoint is a vendor.
+model QuestCheckpoint {
+  id      String @id @default(cuid())
+  order   Int
+  name    String
+  clue    String
+  lat     Float
+  lng     Float
+  radiusM Int    @default(75)
+
+  questId  String
+  quest    Quest                @relation(fields: [questId], references: [id], onDelete: Cascade)
+  vendorId String?
+  vendor   Vendor?              @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  hits     QuestCheckpointHit[]
+
+  @@unique([questId, order])
+}
+
+model QuestProgress {
+  id          String    @id @default(cuid())
+  // Checkpoints reached so far, in order.
+  reached     Int       @default(0)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  questId String
+  quest   Quest                @relation(fields: [questId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hits    QuestCheckpointHit[]
+
+  @@unique([questId, userId])
+}
+
+model QuestCheckpointHit {
+  id     String   @id @default(cuid())
+  // "gps" or "qr".
+  method String
+  at     DateTime @default(now())
+
+  progressId   String
+  progress     QuestProgress   @relation(fields: [progressId], references: [id], onDelete: Cascade)
+  checkpointId String
+  checkpoint   QuestCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+
+  @@unique([progressId, checkpointId])
 }

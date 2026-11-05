@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Discover Negril on the map',
-  description: 'Vendors, experiences and photo spots on one map — and hidden gems that only reveal themselves when you’re close.'
+  description: 'Vendors, experiences and photo spots in Negril on one map.'
 }
 
 export default async function DiscoverPage() {

@@ -14,6 +14,8 @@ export interface VisitResult {
   totalPoints: number
   vendor: { id: string; name: string }
   unlockedRewards: Array<{ id: string; name: string; cost: number; icon: string }>
+  /** Quest checkpoints this scan reached and explorer perks it unlocked (lib/explore.ts). */
+  explore?: { quests: Array<{ title: string; checkpoint: string; reached: number; total: number; completed: boolean; badgeName: string | null; points: number }>; perks: Array<{ name: string; code: string }> }
 }
 
 export class LocationError extends Error {}
@@ -25,9 +27,10 @@ function position(): Promise<GeolocationPosition> {
   })
 }
 
-export async function submitVisit(code: string): Promise<VisitResult> {
+/** via "explore": scanned from Explore mode, which can unlock explorer-only perks. */
+export async function submitVisit(code: string, via?: 'explore'): Promise<VisitResult> {
   const p = await position()
-  const result = await apiJson<VisitResult>('/api/visits', { method: 'POST', body: { code, lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy } })
+  const result = await apiJson<VisitResult>('/api/visits', { method: 'POST', body: { code, lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, ...(via ? { via } : {}) } })
   const u = getCurrentUser()
   if (u) setCurrentUser({ ...u, points: result.totalPoints })
   hapticRewardRedeemed()

@@ -639,7 +639,6 @@ export default function ExperiencesPage() {
         photoSpots={mapPhotoSpots}
         mode={tabMode}
         onModeChange={changeMode}
-        onPlanAround={anchor => openPlanner(anchor)}
       />
     )
   }

@@ -1,6 +1,7 @@
-// app/api/gems/route.ts — Hidden Gems for the Discover map.
-// GET  ?lat=&lng=  → gems revealed near that position, fog cells for the rest,
-//                    and the caller's own submissions (see lib/hidden-gems.ts).
+// app/api/gems/route.ts — Hidden Gems (Explore mode's secret spots).
+// GET  ?lat=&lng=  → gems within REVEAL_RADIUS_M of that position and the
+//                    caller's own submissions; nothing about the rest (rough
+//                    zones come from /api/explore, see lib/hidden-gems.ts).
 // POST multipart   → submit a new gem (signed in; at least one photo).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -9,7 +10,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { isAcceptableImage, uploadImage } from '@/lib/cloudinary-upload'
 import {
   GEM_CATEGORIES, MAX_SUBMISSIONS_PER_DAY, REVEAL_RADIUS_M, VERIFY_THRESHOLD,
-  distanceM, fogCell, parseCoord, type GemCategoryKey
+  distanceM, parseCoord, type GemCategoryKey
 } from '@/lib/hidden-gems'
 
 import { z } from '@/lib/validate'
@@ -55,7 +56,6 @@ export async function GET(request: Request) {
     })
 
     const revealed: GemView[] = []
-    const fog = new Map<string, { lat: number; lng: number; count: number }>()
     for (const g of gems) {
       const isMine = g.submittedByUserId === userId
       const dist = here ? Math.round(distanceM(here, g)) : null
@@ -67,14 +67,10 @@ export async function GET(request: Request) {
           photos: g.photos, status: g.status, confirmationCount: g.confirmationCount, threshold: VERIFY_THRESHOLD,
           isMine, confirmedByMe: confirmations.length > 0, distanceM: dist
         })
-      } else if (g.status === 'VERIFIED') {
-        const cell = fogCell(g.lat, g.lng)
-        const key = `${cell.lat.toFixed(3)},${cell.lng.toFixed(3)}`
-        fog.set(key, { ...cell, count: (fog.get(key)?.count ?? 0) + 1 })
       }
     }
 
-    return NextResponse.json({ revealed, fog: Array.from(fog.values()), revealRadiusM: REVEAL_RADIUS_M })
+    return NextResponse.json({ revealed, revealRadiusM: REVEAL_RADIUS_M })
   } catch (error) {
     console.error('Error fetching gems:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

@@ -3,12 +3,15 @@
 // draws it:
 //   markers   pins (colour, number, label, tap handler)
 //   routes    lines through stops, drawn along real roads (/api/route → OSRM)
+//   circles   dashed zones (Explore mode's "secret spot somewhere here")
 //   fog       fog of war over the region, cleared where you've been
 //   live      Waze-style: follows you with a smooth arrow, heading-up or
 //             north-up, tilted 3D, recenter button; asks iPhone for the
 //             compass once
-// The ETA style is Mapbox light/dark with ETA colours, and follows the app's
-// theme (html[data-theme]) as it changes.
+// The ETA style is Mapbox light/dark with ETA colours, or with `detailed`
+// the Mapbox Standard style (streets, road names, buildings, landmarks,
+// beaches) in day/night; either follows the app's theme (html[data-theme])
+// as it changes, unless `theme` pins it (Explore mode is always dark).
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -51,6 +54,14 @@ export interface MapRoute {
   dashed?: boolean
 }
 
+export interface MapCircle {
+  id: string
+  lat: number
+  lng: number
+  radiusM: number
+  color?: string
+}
+
 export interface MapFog {
   /** Where the traveler has been; each clears a circle. */
   explored: MapPoint[]
@@ -80,15 +91,36 @@ interface Props {
   label?: string
   /** Extra space at the bottom (px) for cards over the map; keeps controls and fits clear. */
   bottomInset?: number
+  /** The detailed street style (Discover, Explore). */
+  detailed?: boolean
+  /** Pin the theme instead of following the app's. */
+  theme?: 'light' | 'dark'
+  /** Dashed zone circles. */
+  circles?: MapCircle[]
+  /** Pin names show from this zoom on (otherwise on tap/selection only). */
+  labelsFromZoom?: number
 }
 
-// The bits of GeoJSON the route layer uses.
-interface Feature { type: 'Feature'; properties: Record<string, unknown>; geometry: { type: 'LineString'; coordinates: Array<[number, number]> } }
+// The bits of GeoJSON the route and circle layers use.
+interface Feature { type: 'Feature'; properties: Record<string, unknown>; geometry: { type: 'LineString'; coordinates: Array<[number, number]> } | { type: 'Polygon'; coordinates: Array<Array<[number, number]>> } }
 interface FeatureCollection { type: 'FeatureCollection'; features: Feature[] }
+
+/** A circle as a 64-point polygon (Mapbox has no metre-sized circles). */
+function circlePolygon(c: MapCircle): Feature {
+  const ring: Array<[number, number]> = []
+  const dLat = c.radiusM / 110540
+  const dLng = c.radiusM / (111320 * Math.cos((c.lat * Math.PI) / 180))
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2
+    ring.push([c.lng + dLng * Math.sin(a), c.lat + dLat * Math.cos(a)])
+  }
+  return { type: 'Feature', properties: { color: c.color ?? '#FFB800' }, geometry: { type: 'Polygon', coordinates: [ring] } }
+}
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 const ETA_RED = '#B82010'
 const STYLES = { light: 'mapbox://styles/mapbox/light-v11', dark: 'mapbox://styles/mapbox/dark-v11' } as const
+const DETAILED_STYLE = 'mapbox://styles/mapbox/standard'
 const ETA_COLORS = {
   light: { water: '#A9DCE3', land: '#F5EFE5', park: '#D6E9C6', fog: 'rgba(238, 233, 224, 0.88)', casing: '#FFFFFF' },
   dark: { water: '#0B2A3A', land: '#101218', park: '#14251C', fog: 'rgba(12, 14, 22, 0.86)', casing: '#0A0B10' }
@@ -185,9 +217,25 @@ function drawFog(canvas: HTMLCanvasElement, fog: MapFog, color: string) {
   }
 }
 
-export default function EtaMap({ markers = [], routes = [], user = null, center, zoom = 13, fitTo, interactive = true, live = false, onPosition, fog = null, onMapClick, label, bottomInset = 0 }: Props) {
+/** Standard style config for the ETA look in day or night. Unknown keys are ignored by older styles. */
+function standardConfig(theme: Theme) {
+  const c = ETA_COLORS[theme]
+  return {
+    lightPreset: theme === 'dark' ? 'night' : 'day',
+    showPointOfInterestLabels: true,
+    showPlaceLabels: true,
+    showRoadLabels: true,
+    showTransitLabels: true,
+    show3dObjects: true,
+    colorWater: c.water,
+    colorGreenspace: c.park
+  } as Record<string, string | boolean>
+}
+
+export default function EtaMap({ markers = [], routes = [], user = null, center, zoom = 13, fitTo, interactive = true, live = false, onPosition, fog = null, onMapClick, label, bottomInset = 0, detailed = false, theme: pinnedTheme, circles = [], labelsFromZoom }: Props) {
   const { t } = useLang()
-  const theme = useAppTheme()
+  const appTheme = useAppTheme()
+  const theme: Theme = pinnedTheme ?? appTheme
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapboxMap | null>(null)
   const libRef = useRef<typeof import('mapbox-gl').default | null>(null)
@@ -196,6 +244,7 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
   const puckRef = useRef<MapboxMarker | null>(null)
   const fogCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const routeDataRef = useRef<FeatureCollection>({ type: 'FeatureCollection', features: [] })
+  const circleDataRef = useRef<FeatureCollection>({ type: 'FeatureCollection', features: [] })
   const fittedRef = useRef<string | null>(null)
   const clickRef = useRef(onMapClick)
   const positionCbRef = useRef(onPosition)
@@ -236,7 +285,12 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
     paint('landuse', 'fill-color', c.park)
     paint('national-park', 'fill-color', c.park)
 
-    if (live && !map.getLayer('eta-3d-buildings') && map.getSource('composite')) {
+    if (detailed) {
+      const cfg = standardConfig(theme)
+      for (const [k, v] of Object.entries(cfg)) { try { map.setConfigProperty('basemap', k, v) } catch {} }
+    }
+
+    if (live && !detailed && !map.getLayer('eta-3d-buildings') && map.getSource('composite')) {
       map.addLayer({
         id: 'eta-3d-buildings', source: 'composite', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 15,
         filter: ['==', 'extrude', 'true'],
@@ -250,8 +304,13 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
       map.addLayer({ id: 'eta-routes-line', type: 'line', source: 'eta-routes', filter: ['!=', ['get', 'dashed'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'width'] } })
       map.addLayer({ id: 'eta-routes-dash', type: 'line', source: 'eta-routes', filter: ['==', ['get', 'dashed'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'width'], 'line-dasharray': [1, 1.6] } })
     }
+    if (!map.getSource('eta-circles')) {
+      map.addSource('eta-circles', { type: 'geojson', data: circleDataRef.current as never })
+      map.addLayer({ id: 'eta-circles-fill', type: 'fill', source: 'eta-circles', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } })
+      map.addLayer({ id: 'eta-circles-line', type: 'line', source: 'eta-circles', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.9 } })
+    }
     setStyleTick(n => n + 1)
-  }, [theme, live])
+  }, [theme, live, detailed])
 
   // ---- Create the map once ----------------------------------------------
   useEffect(() => {
@@ -266,7 +325,8 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
       const start = center ?? fitTo?.[0] ?? markers[0] ?? user ?? { lat: 18.27, lng: -78.35 }
       const map = new mapboxgl.Map({
         container: containerRef.current,
-        style: STYLES[theme],
+        style: detailed ? DETAILED_STYLE : STYLES[theme],
+        ...(detailed ? { config: { basemap: standardConfig(theme) } } : {}),
         center: [start.lng, start.lat],
         zoom,
         pitch: live ? 55 : 0,
@@ -282,6 +342,12 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
       map.on('load', () => setReady(true))
       map.on('click', e => clickRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }))
       map.on('rotate', () => setBearing(map.getBearing()))
+      // Names on the pins once you're close enough to read them.
+      if (labelsFromZoom !== undefined) {
+        const near = () => containerRef.current?.classList.toggle('eta-map-near', map.getZoom() >= labelsFromZoom)
+        map.on('zoom', near)
+        near()
+      }
       // Moving the map by hand stops following, like Waze; zooming doesn't.
       const stop = (e: { originalEvent?: unknown }) => { if (e.originalEvent) setFollow(false) }
       map.on('dragstart', stop)
@@ -309,8 +375,20 @@ export default function EtaMap({ markers = [], routes = [], user = null, center,
     themeRef.current = theme
     map.off('style.load', install)
     map.on('style.load', install)
-    map.setStyle(STYLES[theme])
-  }, [theme, ready, install])
+    // The detailed style just switches day/night; the others swap style.
+    if (detailed) install()
+    else map.setStyle(STYLES[theme])
+  }, [theme, ready, install, detailed])
+
+  // ---- Zone circles --------------------------------------------------------
+  const circleKey = JSON.stringify(circles.map(c => [c.id, c.lat.toFixed(5), c.lng.toFixed(5), c.radiusM, c.color]))
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    circleDataRef.current = { type: 'FeatureCollection', features: circles.map(circlePolygon) }
+    ;(map.getSource('eta-circles') as GeoJSONSource | undefined)?.setData(circleDataRef.current as never)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circleKey, ready, styleTick])
 
   // ---- Markers -----------------------------------------------------------
   useEffect(() => {

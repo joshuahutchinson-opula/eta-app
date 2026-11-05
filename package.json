@@ -12,7 +12,8 @@
     "db:status": "prisma migrate status",
     "db:seed": "prisma db seed",
     "seed:launch": "tsx scripts/seed-launch-data.ts",
-    "mock:remove": "tsx scripts/remove-mock-data.ts"
+    "mock:remove": "tsx scripts/remove-mock-data.ts",
+    "locations:suggest": "tsx scripts/suggest-vendor-locations.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

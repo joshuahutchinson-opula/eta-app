@@ -4,7 +4,9 @@
 // The caller must be within QR_VISIT_RADIUS_M of the vendor, once per vendor
 // per Jamaica day. Logs the visit (CheckIn, method "qr" — the vendor's
 // proof of visit), awards CHECKIN_POINTS plus the first-visit Discovery
-// bonus, and returns the vendor's rewards the visit unlocks.
+// bonus, and returns the vendor's rewards the visit unlocks. A quest
+// checkpoint at this vendor counts, and via "explore" (scanning from Explore
+// mode) can unlock the vendor's explorer-only perks (lib/explore.ts).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'
@@ -14,6 +16,7 @@ import { CHECKIN_POINTS, DISCOVERY_POINTS, QR_VISIT_RADIUS_M } from '@/lib/check
 import { startOfJamaicaDay } from '@/lib/booking-counts'
 import { parseScanned } from '@/lib/vendor-qr'
 import { rateLimit } from '@/lib/rate-limit'
+import { onExploreScan } from '@/lib/explore'
 import { lat, lng, parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +25,8 @@ const schema = z.object({
   code: z.string().trim().min(4).max(300),
   lat,
   lng,
-  accuracy: z.number().finite().min(0).optional()
+  accuracy: z.number().finite().min(0).optional(),
+  via: z.enum(['explore']).optional()
 })
 
 export async function POST(request: Request) {
@@ -55,7 +59,9 @@ export async function POST(request: Request) {
 
     const already = await prisma.checkIn.findFirst({ where: { userId, vendorId: vendor.id, createdAt: { gte: startOfJamaicaDay() } } })
     if (already) {
-      return NextResponse.json({ error: 'You already checked in here today', code: 'ALREADY_TODAY', alreadyToday: true, vendor: { id: vendor.id, name: vendor.name } }, { status: 409 })
+      // No points twice a day, but a quest checkpoint or explorer perk here still counts.
+      const explore = await onExploreScan(userId, vendor, parsed.data.via ?? null).catch(() => ({ quests: [], perks: [] }))
+      return NextResponse.json({ error: 'You already checked in here today', code: 'ALREADY_TODAY', alreadyToday: true, vendor: { id: vendor.id, name: vendor.name }, explore }, { status: 409 })
     }
 
     const result = await prisma.$transaction(async tx => {
@@ -75,7 +81,8 @@ export async function POST(request: Request) {
       select: { id: true, name: true, cost: true, icon: true }
     })
     const challenges = await evaluateChallenges(userId).catch(err => { console.error('Challenge check failed:', err); return [] })
-    return NextResponse.json({ ...result, vendor: { id: vendor.id, name: vendor.name }, unlockedRewards: unlocked, challengesCompleted: challenges }, { status: 201 })
+    const explore = await onExploreScan(userId, vendor, parsed.data.via ?? null).catch(err => { console.error('Explore scan failed:', err); return { quests: [], perks: [] } })
+    return NextResponse.json({ ...result, vendor: { id: vendor.id, name: vendor.name }, unlockedRewards: unlocked, challengesCompleted: challenges, explore }, { status: 201 })
   } catch (error) {
     console.error('Error logging visit:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

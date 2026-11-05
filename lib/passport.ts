@@ -39,7 +39,7 @@ export async function passportFor(userId: string) {
       include: {
         vendor: { select: { id: true, name: true, lat: true, lng: true, category: true, city: true } },
         photoSpot: { select: { id: true, name: true, lat: true, lng: true, city: true } },
-        hiddenGem: { select: { id: true, name: true, lat: true, lng: true, category: true } }
+        hiddenGem: { select: { id: true } }
       }
     }),
     prisma.checkIn.findMany({ where: { userId }, select: { createdAt: true, vendorId: true, photoSpotId: true } })
@@ -50,13 +50,13 @@ export async function passportFor(userId: string) {
     const at = d.createdAt.toISOString()
     if (d.vendor && !places.has(`v${d.vendor.id}`)) places.set(`v${d.vendor.id}`, { kind: 'vendor', id: d.vendor.id, name: d.vendor.name, lat: d.vendor.lat, lng: d.vendor.lng, category: d.vendor.category, city: d.vendor.city, firstAt: at })
     if (d.photoSpot && !places.has(`p${d.photoSpot.id}`)) places.set(`p${d.photoSpot.id}`, { kind: 'photospot', id: d.photoSpot.id, name: d.photoSpot.name, lat: d.photoSpot.lat, lng: d.photoSpot.lng, category: null, city: d.photoSpot.city, firstAt: at })
-    if (d.hiddenGem && !places.has(`g${d.hiddenGem.id}`)) places.set(`g${d.hiddenGem.id}`, { kind: 'gem', id: d.hiddenGem.id, name: d.hiddenGem.name, lat: d.hiddenGem.lat, lng: d.hiddenGem.lng, category: d.hiddenGem.category, city: null, firstAt: at })
   }
+  // Secret spots stay in Explore mode: counted here, never pinned.
   const list = Array.from(places.values())
   const byCategory: Record<string, number> = {}
   for (const p of list) if (p.kind === 'vendor' && p.category) byCategory[p.category] = (byCategory[p.category] ?? 0) + 1
   const photoSpots = list.filter(p => p.kind === 'photospot').length
-  const gems = list.filter(p => p.kind === 'gem').length
+  const gems = new Set(discoveries.map(d => d.hiddenGemId).filter(Boolean)).size
   const towns = new Set(list.map(p => p.city).filter(Boolean)).size
   const { current, best } = streaks(new Set(checkIns.map(c => dayKey(c.createdAt))))
 

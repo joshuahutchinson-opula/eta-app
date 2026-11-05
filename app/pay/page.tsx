@@ -3,10 +3,11 @@
 // vendor's rewards unlocked; lib/visit-client.ts) and goes straight on to
 // paying that vendor — amount, tip, how to pay — ending on the receipt.
 // Below the scanner: the wallet balance, payment history and saved cards.
-// /v/<token> (the phone camera) and ?code= land here mid-flow.
+// /v/<token> (the phone camera) and ?code= land here mid-flow; ?via=explore
+// (from Explore mode) lets the scan reach quest checkpoints' explorer perks.
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Icon from '@/lib/icons'
@@ -77,6 +78,7 @@ export default function ScanAndPayPage() {
   const [cardSheet, setCardSheet] = useState(false)
   const [newCard, setNewCard] = useState({ brand: '', last4: '', label: '' })
   const [showSuccess, setShowSuccess] = useState(false)
+  const viaRef = useRef<'explore' | undefined>(undefined)
 
   const loadTransactions = useCallback(async () => {
     setTxFailed(false)
@@ -92,7 +94,7 @@ export default function ScanAndPayPage() {
     // Who the card belongs to (for paying) and the visit, together.
     const who = apiJson<{ vendor: PayVendor }>(`/api/visits/vendor?code=${encodeURIComponent(code)}`).then(d => d.vendor).catch(() => null)
     try {
-      const result = await submitVisit(code)
+      const result = await submitVisit(code, viaRef.current)
       setVisit(result)
       const u = getCurrentUser()
       if (u) setUser({ ...u, points: result.totalPoints })
@@ -115,8 +117,10 @@ export default function ScanAndPayPage() {
     if (current) {
       apiJson<{ user: CurrentUser }>('/api/users/me').then(d => { if (d.user) { setCurrentUser(d.user); setUser(d.user) } }).catch(() => {})
       loadTransactions()
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) { window.history.replaceState(null, '', '/pay'); handleCode(code) }
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('via') === 'explore') viaRef.current = 'explore'
+      const code = params.get('code')
+      if (code) { window.history.replaceState(null, '', viaRef.current ? '/pay?via=explore' : '/pay'); handleCode(code) }
     }
     try {
       const raw = localStorage.getItem(CARDS_STORAGE_KEY)
@@ -263,6 +267,21 @@ export default function ScanAndPayPage() {
                   <span style={{ display: 'block', fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{visit.unlockedRewards.map(r => r.name).join(', ')}</span>
                 </span>
                 <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+              </Link>
+            )}
+
+            {visit?.explore && (visit.explore.quests.length > 0 || visit.explore.perks.length > 0) && (
+              <Link href="/explore" className="card" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', textDecoration: 'none', marginBottom: '12px', background: '#0E1220', color: 'white' }}>
+                <Icon name="compass" size={20} style={{ color: 'var(--gold)' }} />
+                <span style={{ flex: 1 }}>
+                  {visit.explore.quests.map(q => (
+                    <span key={q.title} style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>{q.completed ? t('m.ex.questDone', { title: q.title, badge: q.badgeName ?? '' }) : t('m.ex.checkpointHit', { title: q.title, n: q.reached, total: q.total })}</span>
+                  ))}
+                  {visit.explore.perks.map(p => (
+                    <span key={p.code} style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: 'var(--gold)' }}>{t('m.ex.perkUnlocked', { name: p.name })}</span>
+                  ))}
+                </span>
+                <Icon name="chevronRight" size={14} style={{ color: 'rgba(255,255,255,0.6)' }} />
               </Link>
             )}
 
