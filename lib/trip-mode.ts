@@ -18,6 +18,10 @@ export interface TripInfo {
   stayName: string | null
   stayCity: string | null
   stayAccommodationId: string | null
+  /** Where the stay is: a listing's location or a dropped pin. */
+  stayLat?: number | null
+  stayLng?: number | null
+  stayImage?: string | null
   partnerCode: string | null
 }
 
@@ -49,6 +53,7 @@ export async function pushTripToAccount(trip: TripInfo = readTrip()): Promise<vo
   if (trip.stayName) body.stayName = trip.stayName
   if (trip.stayCity) body.stayCity = trip.stayCity
   if (trip.stayAccommodationId) body.stayAccommodationId = trip.stayAccommodationId
+  if (typeof trip.stayLat === 'number' && typeof trip.stayLng === 'number') { body.stayLat = trip.stayLat; body.stayLng = trip.stayLng }
   if (Object.keys(body).length) await apiJson('/api/users/me', { method: 'PUT', body })
 }
 
@@ -81,14 +86,32 @@ export function readPlanDay(): string | null {
 }
 
 const PARTNER_CLAIMED_KEY = 'eta_partner_claimed'
+const PENDING_WELCOME_KEY = 'eta_pending_welcome'
+
+/** A welcome gift the guest tapped "Claim" on before having an account; claimed at sign-in. */
+export function setPendingWelcome(rewardId: string) {
+  try { localStorage.setItem(PENDING_WELCOME_KEY, rewardId) } catch {}
+}
+
+async function claimPendingWelcome() {
+  let rewardId: string | null = null
+  try { rewardId = localStorage.getItem(PENDING_WELCOME_KEY) } catch {}
+  if (!rewardId) return
+  try {
+    await apiJson('/api/welcome', { method: 'POST', body: { rewardId } })
+    localStorage.removeItem(PENDING_WELCOME_KEY)
+  } catch {}
+}
 
 /**
- * After sign-in: copies the device's trip onto the account and joins the
- * partner property whose code was entered while signed out (claiming its
- * welcome perk). Safe to call on every load.
+ * After sign-in: claims a welcome gift tapped while signed out, copies the
+ * device's trip onto the account, and joins the partner property whose code
+ * was entered while signed out (claiming its welcome perk). Safe to call on
+ * every load.
  */
 export async function syncTripToAccount(): Promise<void> {
   if (!getCurrentUser()) return
+  await claimPendingWelcome()
   let local: TripInfo | null = null
   try { local = JSON.parse(localStorage.getItem(KEY) || 'null') } catch {}
   if (!local) return

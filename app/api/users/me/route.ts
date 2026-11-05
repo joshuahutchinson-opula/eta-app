@@ -4,7 +4,7 @@
 //          emergencyContactPhone?, leaderboardOptIn?, notify*?,
 //          instagramHandle?, whatsappNumber?, notifyWhatsapp?,
 //          tripStart?, tripEnd? (YYYY-MM-DD, Jamaica days),
-//          stayName?, stayCity?, stayAccommodationId? } → updated user.
+//          stayName?, stayCity?, stayAccommodationId?, stayLat?, stayLng? } → updated user.
 // DELETE { confirm: "DELETE" } → delete the account: personal data is
 //          removed or anonymised (see lib/account.ts) and every session ends.
 import { NextResponse } from 'next/server'
@@ -59,7 +59,9 @@ const schema = z.object({
   tripEnd: dateOnly.nullable(),
   stayName: nullableText(120),
   stayCity: z.enum(CITY_CODES as [string, ...string[]]).nullable(),
-  stayAccommodationId: z.string().max(64).nullable()
+  stayAccommodationId: z.string().max(64).nullable(),
+  stayLat: z.number().finite().min(-90).max(90).nullable(),
+  stayLng: z.number().finite().min(-180).max(180).nullable()
 }).partial()
 
 export async function PUT(request: Request) {

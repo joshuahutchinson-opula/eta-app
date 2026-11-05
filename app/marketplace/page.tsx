@@ -15,6 +15,7 @@ import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { useLang } from '@/lib/i18n-client'
 import { hapticSaved } from '@/lib/haptics'
 import SearchBar from '@/components/SearchBar'
+import PartnerBadge from '@/components/PartnerBadge'
 import Price from '@/components/Price'
 import { useRegion } from '@/components/RegionProvider'
 import ErrorState from '@/components/ErrorState'
@@ -62,6 +63,7 @@ interface Accommodation {
   vetted?: boolean
   city: string
   nightlyPrice?: number | null
+  partner?: { code: string; name: string } | null
 }
 
 interface FlashDeal {
@@ -118,7 +120,8 @@ export default function MarketplacePage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState('Recommended')
   const [savedVendors, setSavedVendors] = useState<string[]>([])
-  const [accommodationType, setAccommodationType] = useState('All-Inclusive')
+  // Empty = every type; partners stay first (the API orders them).
+  const [accommodationType, setAccommodationType] = useState('')
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [selectedAccess, setSelectedAccess] = useState<string[]>([])
@@ -463,13 +466,14 @@ export default function MarketplacePage() {
               <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px' }}>
-              {['All-Inclusive', 'À la carte', 'Villa'].map(type => (
+              {['ALL_INCLUSIVE', 'A_LA_CARTE', 'VILLA'].map(type => (
                 <button
                   key={type}
-                  onClick={() => setAccommodationType(type)}
+                  onClick={() => setAccommodationType(accommodationType === type ? '' : type)}
                   className={`chip ${accommodationType === type ? 'active' : ''}`}
+                  aria-pressed={accommodationType === type}
                 >
-                  {type}
+                  {labels.stayType(type)}
                 </button>
               ))}
             </div>
@@ -479,6 +483,7 @@ export default function MarketplacePage() {
                   <div className="card">
                     <div className="card-image" style={{ height: '160px' }}>
                       {a.media?.[0]?.url && <Img src={a.media[0].url} alt={a.name} width={600} height={400} sizes="80vw" />}
+                      {a.partner && <div style={{ position: 'absolute', top: '8px', left: '8px' }}><PartnerBadge /></div>}
                     </div>
                     <div className="card-content">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
@@ -486,7 +491,7 @@ export default function MarketplacePage() {
                         <span className="num-font" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{a.googleStars}</span>
                       </div>
                       <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{a.type}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{labels.stayType(a.type)}</p>
                       <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum-text)' }}>
                         {a.nightlyPrice != null ? <Price usd={a.nightlyPrice} /> : a.priceRange}
                         <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> {t('m.common.perNightShort')}</span>

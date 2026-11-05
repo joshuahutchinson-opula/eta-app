@@ -1,6 +1,6 @@
-// components/SearchBar.tsx — the search field at the top of Home and Market.
-// Uncontrolled (Home): typing and pressing search opens /search with the
-// query. Controlled (Market): value/onChange filter the screen in place.
+// components/SearchBar.tsx — the search field at the top of Market.
+// Controlled (Market): value/onChange filter the screen in place.
+// Uncontrolled: typing and pressing search opens /search with the query.
 'use client'
 
 import { useState } from 'react'

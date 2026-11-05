@@ -1,6 +1,7 @@
 // components/experiences/ExperiencesHome.tsx — the Experiences tab's first
-// screen: one hero to start planning, the trip days left to plan (trip
-// mode), your trip (if any), Parties & Happenings, and mood shortcuts.
+// screen: "At your stay" first for partner guests, one hero to start
+// planning, the trip days left to plan (trip mode), your trip (if any),
+// Parties & Happenings, and mood shortcuts.
 // Everything else is a tap away.
 'use client'
 
@@ -9,6 +10,8 @@ import Img from '@/components/Img'
 import SmartVideo from '@/components/SmartVideo'
 import ErrorState from '@/components/ErrorState'
 import PartiesHappenings from '@/components/PartiesHappenings'
+import AtYourStay from '@/components/AtYourStay'
+import { useAtStay } from '@/lib/at-stay-client'
 import { useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
 import { pressable } from '@/lib/pressable'
@@ -41,6 +44,7 @@ export default function ExperiencesHome({ moods, heroVideo, loading, failed, onR
 }) {
   const { t, lang } = useLang()
   const { progress, daysLeft } = useTripMode()
+  const { stay } = useAtStay()
   const locale = lang === 'en' ? 'en-US' : lang
   const today = jamaicaDayKey()
   const dayLabel = (d: string) => d === today ? t('m.trip.today') : new Date(`${d}T12:00:00-05:00`).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', timeZone: 'America/Jamaica' })
@@ -53,6 +57,8 @@ export default function ExperiencesHome({ moods, heroVideo, loading, failed, onR
       </div>
 
       <h1 style={{ padding: '20px 16px 14px', fontSize: '30px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--label-primary)', lineHeight: 1.1 }}>{t('m.xh.title')}</h1>
+
+      {stay && <div style={{ marginTop: '-16px', marginBottom: '8px' }}><AtYourStay stay={stay} /></div>}
 
       {/* Hero: plan my day */}
       <section style={{ padding: '0 16px' }} aria-label={t('m.xh.planMyDay')}>

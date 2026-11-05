@@ -2,7 +2,8 @@
 // GET ?city=NEGRIL&days=7            → events that haven't ended, starting within the window
 // GET ?city=NEGRIL&window=tonight    → All Events filters (tonight|tomorrow|weekend|week)
 // GET ?ids=a,b                       → specific events (Saved)
-// &limit= caps the list. Each event carries its interested count.
+// &limit= caps the list. Each event carries its interested count, and the
+// partner property that posted it, if one did.
 import { NextResponse } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
           },
       orderBy: { startAt: 'asc' },
       take: limit,
-      include: { _count: { select: { interests: true } } }
+      include: { _count: { select: { interests: true } }, partnerProperty: { select: { code: true, name: true } } }
     })
     return NextResponse.json(events.map(({ _count, ...e }) => ({ ...e, interestedCount: _count.interests })))
   } catch (error) {

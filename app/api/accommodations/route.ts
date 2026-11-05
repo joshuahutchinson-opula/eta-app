@@ -4,7 +4,8 @@ import { listParams } from '@/lib/list-params'
 
 export const dynamic = 'force-dynamic'
 
-// GET ?city= | ?region=  ?ids=  ?limit=
+// GET ?city= | ?region=  ?ids=  ?limit= — stay listings (book direct with the
+// property). ETA Partner properties come first and carry `partner`.
 export async function GET(request: Request) {
   const { cities, ids, limit } = listParams(request.url)
   try {
@@ -16,11 +17,12 @@ export async function GET(request: Request) {
         { googleStars: 'desc' }
       ],
       include: {
-        bundles: true
+        bundles: true,
+        partner: { select: { code: true, name: true, active: true } }
       }
     })
-
-    return NextResponse.json(accommodations)
+    const shaped = accommodations.map(({ partner, ...a }) => ({ ...a, partner: partner?.active ? { code: partner.code, name: partner.name } : null }))
+    return NextResponse.json([...shaped.filter(a => a.partner), ...shaped.filter(a => !a.partner)])
   } catch (error) {
     console.error('Error fetching accommodations:', error)
     return NextResponse.json(
