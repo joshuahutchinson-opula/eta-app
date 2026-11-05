@@ -96,6 +96,7 @@ interface VendorDetail {
   tipsJar: boolean
   payItForward: boolean
   fairPrice?: boolean
+  locationStatus?: 'CONFIRMED' | 'UNCONFIRMED'
   accessibility?: string[]
   hours?: unknown
   phone?: string | null
@@ -629,6 +630,11 @@ export default function VendorDetailPage() {
                 <div style={{ position: 'relative', height: '240px' }}>
                   <EtaMap center={{ lat: vendor.lat, lng: vendor.lng }} zoom={15} markers={[{ id: vendor.id, lat: vendor.lat, lng: vendor.lng, color: cat.color, size: 22, label: vendor.name, labelAlways: true }]} label={t('m.vendor.mapOf', { name: vendor.name })} />
                 </div>
+                {vendor.locationStatus === 'UNCONFIRMED' && (
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px 0', fontSize: '12px', color: 'var(--label-secondary)' }}>
+                    <Icon name="mapPin" size={12} /> {t('m.vendor.pinUnconfirmed')}
+                  </p>
+                )}
                 <button onClick={handleDirections} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
                   <Icon name="mapPin" size={18} style={{ color: cat.color, flexShrink: 0 }} />
                   <span style={{ flex: 1 }}>

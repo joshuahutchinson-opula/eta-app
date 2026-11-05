@@ -1,6 +1,7 @@
 // app/api/gems/[id]/confirm/route.ts — "I found it."
 // Geofenced: the caller's GPS fix must be within REVEAL_RADIUS_M of the gem.
-// Awards discovery points once per user per gem; for a pending gem it also
+// Awards discovery points once per user per gem (none if Explore mode
+// already revealed it to them); for a pending gem it also
 // counts toward verification, and the confirmation that crosses the threshold
 // verifies the gem and pays its submitter a one-time bonus.
 import { NextResponse } from 'next/server'
@@ -44,10 +45,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: `You’re ${dist} m away — get within ${REVEAL_RADIUS_M} m to confirm`, distanceM: dist }, { status: 403 })
     }
 
+    // Walking into range in Explore mode already counted the find (lib/explore.ts).
+    const alreadyFound = Boolean(await prisma.discovery.findFirst({ where: { userId, hiddenGemId: gem.id }, select: { id: true } }))
+    const pointsAwarded = alreadyFound ? 0 : GEM_DISCOVERY_POINTS
     const result = await prisma.$transaction(async tx => {
       await tx.gemConfirmation.create({ data: { userId, gemId: gem.id, lat, lng } })
-      await tx.discovery.create({ data: { userId, hiddenGemId: gem.id, type: 'HIDDEN_GEM', points: GEM_DISCOVERY_POINTS } })
-      await tx.user.update({ where: { id: userId }, data: { points: { increment: GEM_DISCOVERY_POINTS } } })
+      if (!alreadyFound) {
+        await tx.discovery.create({ data: { userId, hiddenGemId: gem.id, type: 'HIDDEN_GEM', points: GEM_DISCOVERY_POINTS } })
+        await tx.user.update({ where: { id: userId }, data: { points: { increment: GEM_DISCOVERY_POINTS } } })
+      }
 
       if (gem.status !== 'PENDING') return { verifiedNow: false, confirmationCount: gem.confirmationCount, status: gem.status }
 
@@ -66,7 +72,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return { verifiedNow: flipped.count > 0, confirmationCount: updated.confirmationCount, status: 'VERIFIED' as const }
     })
 
-    return NextResponse.json({ pointsAwarded: GEM_DISCOVERY_POINTS, ...result })
+    return NextResponse.json({ pointsAwarded, ...result })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ error: 'You’ve already confirmed this one' }, { status: 409 })

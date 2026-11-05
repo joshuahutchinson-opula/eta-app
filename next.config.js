@@ -15,13 +15,12 @@ module.exports = {
     deviceSizes: [360, 414, 640, 828, 1080, 1280],
     imageSizes: [48, 64, 96, 128, 256, 384]
   },
-  // Retired screens: the wallet lives on Scan & Pay, My Discoveries in the
-  // Rewards hub, and the old map screen is Discover.
+  // Retired screens: the wallet lives on Scan & Pay and My Discoveries in
+  // the Rewards hub. (/explore is Explore mode now.)
   async redirects() {
     return [
       { source: '/wallet', destination: '/pay', permanent: false },
-      { source: '/passport', destination: '/rewards?tab=discoveries', permanent: false },
-      { source: '/explore', destination: '/experiences?mode=discover', permanent: false }
+      { source: '/passport', destination: '/rewards?tab=discoveries', permanent: false }
     ]
   }
 }
