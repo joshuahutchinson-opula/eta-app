@@ -5,12 +5,14 @@
 //    sends for a revoked or expired token (lib/auth-server.ts);
 //  • refreshes the cached user once per load, so points and verification
 //    status stay current;
-//  • after sign-in, moves saves made while logged out onto the account.
+//  • after sign-in, moves saves made while logged out onto the account,
+//    along with the trip dates, stay and partner code (lib/trip-mode.ts).
 'use client'
 
 import { useEffect } from 'react'
 import { AUTH_EVENT, expireSession, getAuthToken, setCurrentUser, tokenExpiry } from '@/lib/auth-client'
 import { syncSavedToAccount } from '@/lib/saved'
+import { syncTripToAccount } from '@/lib/trip-mode'
 
 let patched = false
 
@@ -48,9 +50,9 @@ export default function SessionGuard() {
   useEffect(() => {
     patchFetch()
     checkExpiry()
-    refreshUser().then(() => syncSavedToAccount())
+    refreshUser().then(() => { syncSavedToAccount(); syncTripToAccount() })
     const timer = setInterval(checkExpiry, 60000)
-    const onAuth = (e: Event) => { if ((e as CustomEvent).detail === 'signin') syncSavedToAccount() }
+    const onAuth = (e: Event) => { if ((e as CustomEvent).detail === 'signin') { syncSavedToAccount(); syncTripToAccount() } }
     window.addEventListener(AUTH_EVENT, onAuth)
     return () => { clearInterval(timer); window.removeEventListener(AUTH_EVENT, onAuth) }
   }, [])

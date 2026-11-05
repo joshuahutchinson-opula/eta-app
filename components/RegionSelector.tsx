@@ -1,9 +1,7 @@
-// components/RegionSelector.tsx — choosing the region.
-//   default — the pill at the top of Home: one compact line that expands
-//             into the parishes, then the towns in the picked parish, plus
-//             "Use my current location".
-//   RegionPill — the same picker from a small pill in a bottom sheet, for
-//             Market, Experiences, Search and Events.
+// components/RegionSelector.tsx — choosing the region. The one location
+// changer in the app, at the top of Home: a compact line that expands into
+// the parishes, then the towns in the picked parish, plus "Use my current
+// location". The choice applies everywhere (components/RegionProvider).
 'use client'
 
 import { useState } from 'react'
@@ -13,8 +11,8 @@ import { useRegion } from '@/components/RegionProvider'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
 
-function RegionPicker({ onDone, showCurrentParish }: { onDone: () => void; showCurrentParish?: boolean }) {
-  const { city, parish, setCity, locateMe } = useRegion()
+function RegionPicker({ onDone }: { onDone: () => void }) {
+  const { city, setCity, locateMe } = useRegion()
   const { t } = useLang()
   const errorText = useErrorText()
   const [pickedParish, setPickedParish] = useState<Parish | null>(null)
@@ -35,7 +33,7 @@ function RegionPicker({ onDone, showCurrentParish }: { onDone: () => void; showC
     }
   }
 
-  const parishShown = pickedParish ?? (showCurrentParish ? parish : null)
+  const parishShown = pickedParish
 
   return (
     <>
@@ -111,40 +109,5 @@ export default function RegionSelector() {
         </div>
       )}
     </div>
-  )
-}
-
-/** Compact region pill that opens the picker in a bottom sheet. */
-export function RegionPill() {
-  const { town } = useRegion()
-  const { t } = useLang()
-  const [open, setOpen] = useState(false)
-  const [key, setKey] = useState(0)
-  const close = () => { setOpen(false); setKey(k => k + 1) }
-
-  return (
-    <>
-      <button
-        onClick={() => { triggerHaptic('light'); setOpen(true) }}
-        aria-haspopup="dialog"
-        aria-label={t('m.region.change', { town: town.name })}
-        className="chip"
-        style={{ minHeight: '36px', padding: '4px 10px', fontSize: '13px', fontWeight: 600, background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', flexShrink: 0 }}
-      >
-        <Icon name="mapPin" size={12} style={{ color: 'var(--rum-text)' }} />
-        {town.name}
-        <Icon name="chevronDown" size={10} style={{ color: 'var(--label-secondary)' }} />
-      </button>
-      <div className={`bottom-sheet-overlay ${open ? 'open' : ''}`} onClick={close} />
-      <div className={`bottom-sheet ${open ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.region.pill', { town: town.name })}>
-        <div className="sheet-grabber" />
-        {open && (
-          <div style={{ padding: '0 20px 24px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '12px' }}>{t('m.region.pill', { town: town.name })}</h3>
-            <RegionPicker key={key} onDone={close} showCurrentParish />
-          </div>
-        )}
-      </div>
-    </>
   )
 }

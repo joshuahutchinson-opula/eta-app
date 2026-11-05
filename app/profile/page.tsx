@@ -1,4 +1,6 @@
-// app/profile/page.tsx
+// app/profile/page.tsx — the traveler's profile: Bookings, Saved, Rewards
+// (points, vouchers, discoveries and wallet in one hub) and Settings, with
+// Safety always one tap away in the corner.
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -19,10 +21,13 @@ import { LANGS, LANG_NAMES } from '@/lib/i18n'
 import Price from '@/components/Price'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import { absoluteUrl } from '@/lib/site-url'
+import { useTripMode } from '@/lib/trip-mode'
+import { CITY_CODES, cityName } from '@/lib/regions'
 
-const NOTIFY_TYPES = ['bookings', 'events', 'deals', 'live', 'crew'] as const
+const NOTIFY_TYPES = ['bookings', 'events', 'deals', 'live', 'crew', 'trips'] as const
 type NotifyType = (typeof NOTIFY_TYPES)[number]
-const NOTIFY_FIELD = { bookings: 'notifyBookings', events: 'notifyEvents', deals: 'notifyDeals', live: 'notifyLive', crew: 'notifyCrew' } as const
+const NOTIFY_FIELD = { bookings: 'notifyBookings', events: 'notifyEvents', deals: 'notifyDeals', live: 'notifyLive', crew: 'notifyCrew', trips: 'notifyTrips' } as const
+const fieldStyle: React.CSSProperties = { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '8px' }
 
 function Switch({ on }: { on: boolean }) {
   return (
@@ -44,7 +49,12 @@ export default function ProfilePage() {
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', bio: '', homeCountry: '' })
+  const [form, setForm] = useState({ name: '', bio: '', homeCountry: '', instagramHandle: '' })
+  const [whatsapp, setWhatsapp] = useState({ number: '', on: false })
+  const [whatsappMsg, setWhatsappMsg] = useState<string | null>(null)
+  const { trip, save: saveTrip } = useTripMode()
+  const [tripForm, setTripForm] = useState({ start: '', end: '', stayName: '', stayCity: '' })
+  const [tripMsg, setTripMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const { currency, setCurrency } = useCurrency()
@@ -76,6 +86,7 @@ export default function ProfilePage() {
             setCurrentUser(data.user)
             setUser(data.user)
             setEmergency({ name: data.user.emergencyContactName ?? '', phone: data.user.emergencyContactPhone ?? '' })
+            setWhatsapp({ number: data.user.whatsappNumber ?? '', on: Boolean(data.user.notifyWhatsapp) })
           }
         })
         .catch(() => {})
@@ -106,7 +117,12 @@ export default function ProfilePage() {
     } catch {}
 
     // Deep link from the inbox: /profile?settings=1
-    if (new URLSearchParams(window.location.search).get('settings') === '1') setShowSettingsSheet(true)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('settings') === '1') setShowSettingsSheet(true)
+    else if (params.get('edit') === '1' && current) {
+      setForm({ name: current.name, bio: current.bio ?? '', homeCountry: current.homeCountry ?? '', instagramHandle: current.instagramHandle ? '@' + current.instagramHandle : '' })
+      setEditOpen(true)
+    }
 
     setMounted(true)
   }, [])
@@ -174,7 +190,7 @@ export default function ProfilePage() {
 
   const openEdit = () => {
     if (!user) return
-    setForm({ name: user.name, bio: user.bio ?? '', homeCountry: user.homeCountry ?? '' })
+    setForm({ name: user.name, bio: user.bio ?? '', homeCountry: user.homeCountry ?? '', instagramHandle: user.instagramHandle ? '@' + user.instagramHandle : '' })
     setSaveError(null)
     setEditOpen(true)
   }
@@ -183,7 +199,7 @@ export default function ProfilePage() {
     setSaving(true)
     setSaveError(null)
     try {
-      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: form })
+      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: { ...form, instagramHandle: form.instagramHandle.trim() || null } })
       setCurrentUser(updated)
       setUser(updated)
       setEditOpen(false)
@@ -242,6 +258,36 @@ export default function ProfilePage() {
     }
   }
 
+  const saveWhatsapp = async (next: { number: string; on: boolean }) => {
+    setWhatsappMsg(null)
+    try {
+      const { user: updated } = await apiJson<{ user: CurrentUser }>('/api/users/me', { method: 'PUT', body: { whatsappNumber: next.number.trim() || null, notifyWhatsapp: next.on && Boolean(next.number.trim()) } })
+      setCurrentUser(updated)
+      setUser(updated)
+      setWhatsapp({ number: updated.whatsappNumber ?? '', on: Boolean(updated.notifyWhatsapp) })
+      setWhatsappMsg(t('m.profile.saved2'))
+    } catch (e) {
+      setWhatsappMsg(errorText(e))
+    }
+  }
+
+  const openSettings = () => {
+    setTripForm({ start: trip.start ?? '', end: trip.end ?? '', stayName: trip.stayName ?? '', stayCity: trip.stayCity ?? '' })
+    setTripMsg(null)
+    setShowSettingsSheet(true)
+  }
+
+  const saveTripSettings = async () => {
+    setTripMsg(null)
+    if (tripForm.start && tripForm.end && tripForm.end < tripForm.start) { setTripMsg(t('m.onb.datesOrder')); return }
+    try {
+      await saveTrip({ start: tripForm.start || null, end: tripForm.end || null, stayName: tripForm.stayName.trim() || null, stayCity: tripForm.stayCity || null })
+      setTripMsg(t('m.profile.saved2'))
+    } catch (e) {
+      setTripMsg(errorText(e))
+    }
+  }
+
   const downloadData = async () => {
     try {
       const res = await fetch('/api/users/me/export', { headers: authHeadersFor() })
@@ -281,12 +327,8 @@ export default function ProfilePage() {
   const menuItems: { label: string; icon: string; href?: string; onClick?: () => void }[] = [
     { label: t('m.profile.bookings'), icon: 'clock', href: '/bookings' },
     { label: t('m.profile.saved'), icon: 'heart', href: '/saved' },
-    { label: t('m.inbox.title'), icon: 'bell', href: '/notifications' },
-    { label: t('m.profile.wallet'), icon: 'sparkle', href: '/wallet' },
     { label: t('m.profile.rewards'), icon: 'gift', href: '/rewards' },
-    { label: t('m.profile.passport'), icon: 'mapPin', href: '/passport' },
-    { label: t('m.safety.title'), icon: 'route', href: '/safety' },
-    { label: t('m.profile.settings'), icon: 'settings', onClick: () => setShowSettingsSheet(true) }
+    { label: t('m.profile.settings'), icon: 'settings', onClick: openSettings }
   ]
 
   if (!mounted) {
@@ -321,7 +363,15 @@ export default function ProfilePage() {
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      <div style={{ padding: '16px' }}>
+      {/* Safety: always visible, whatever you scroll to */}
+      <Link
+        href="/safety"
+        aria-label={t('m.safety.title')}
+        style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', right: '16px', zIndex: 30, display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '40px', padding: '0 14px', borderRadius: '999px', background: 'var(--error)', color: 'white', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: 'var(--shadow-elevated)' }}
+      >
+        <Icon name="shield" size={16} /> {t('m.profile.safety')}
+      </Link>
+      <div style={{ padding: '64px 16px 16px' }}>
         <div style={{ marginBottom: '16px' }}><VerifyEmailBanner padded={false} /></div>
         <div className="card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
           <button
@@ -372,14 +422,14 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid-2" style={{ gap: '12px', marginBottom: '24px' }}>
-          <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+          <Link href="/rewards" className="card" style={{ padding: '16px', textAlign: 'center', textDecoration: 'none' }}>
             <p className="num-font" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--rum)' }}>{user.points.toLocaleString()}</p>
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.points')}</p>
-          </div>
-          <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+          </Link>
+          <Link href="/rewards?tab=wallet" className="card" style={{ padding: '16px', textAlign: 'center', textDecoration: 'none' }}>
             <Price usd={user.walletBalance} style={{ fontSize: '22px', fontWeight: 700, color: 'var(--label-primary)' }} />
             <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>{t('m.profile.wallet')}</p>
-          </div>
+          </Link>
         </div>
 
         {referral && (
@@ -486,6 +536,38 @@ export default function ProfilePage() {
               </div>
             </div>
             <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.rate', { rate: rate ?? '—' })}</p>
+          </div>
+
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+              <Icon name="calendar" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.profile.tripTitle')}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '2px 0 8px 32px' }}>{t('m.profile.tripSub')}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.onb.arrive')}<input type="date" value={tripForm.start} onChange={e => setTripForm({ ...tripForm, start: e.target.value })} style={{ ...fieldStyle, marginTop: '4px' }} /></label>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.onb.leave')}<input type="date" value={tripForm.end} min={tripForm.start || undefined} onChange={e => setTripForm({ ...tripForm, end: e.target.value })} style={{ ...fieldStyle, marginTop: '4px' }} /></label>
+            </div>
+            <input value={tripForm.stayName} maxLength={120} onChange={e => setTripForm({ ...tripForm, stayName: e.target.value })} placeholder={t('m.onb.stayPlaceholder')} aria-label={t('m.onb.stayTitle')} style={fieldStyle} />
+            <select value={tripForm.stayCity} onChange={e => setTripForm({ ...tripForm, stayCity: e.target.value })} aria-label={t('m.onb.stayTown')} style={fieldStyle}>
+              <option value="">{t('m.onb.stayTown')}</option>
+              {CITY_CODES.map(c => <option key={c} value={c}>{cityName(c)}</option>)}
+            </select>
+            <button className="btn btn-secondary" onClick={saveTripSettings} style={{ width: '100%' }}>{t('m.profile.save')}</button>
+            {tripMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-primary)', marginTop: '6px' }}>{tripMsg}</p>}
+          </div>
+
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
+              <Icon name="send" size={20} style={{ color: 'var(--label-secondary)' }} /> WhatsApp
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '2px 0 8px 32px' }}>{t('m.profile.whatsappSub')}</p>
+            <input value={whatsapp.number} type="tel" maxLength={24} onChange={e => setWhatsapp({ ...whatsapp, number: e.target.value })} placeholder={t('m.profile.whatsappNumber')} aria-label={t('m.profile.whatsappNumber')} autoComplete="tel" style={fieldStyle} />
+            <button role="switch" aria-checked={whatsapp.on} disabled={!whatsapp.number.trim()} onClick={() => saveWhatsapp({ ...whatsapp, on: !whatsapp.on })} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', background: 'none', border: 'none', borderTop: '0.5px solid var(--separator)', fontFamily: 'inherit', cursor: 'pointer', minHeight: '44px', opacity: whatsapp.number.trim() ? 1 : 0.5 }}>
+              <span style={{ fontSize: '15px', color: 'var(--label-primary)', textAlign: 'left' }}>{t('m.profile.whatsappOn')}</span>
+              <Switch on={whatsapp.on} />
+            </button>
+            <button className="btn btn-secondary" onClick={() => saveWhatsapp(whatsapp)} style={{ width: '100%' }}>{t('m.profile.save')}</button>
+            {whatsappMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-primary)', marginTop: '6px' }}>{whatsappMsg}</p>}
           </div>
 
           <button
@@ -633,6 +715,11 @@ export default function ProfilePage() {
                 <input value={form[key]} maxLength={max} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit' }} />
               </label>
             ))}
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>
+              {t('m.profile.instagram')}
+              <input value={form.instagramHandle} maxLength={40} onChange={e => setForm({ ...form, instagramHandle: e.target.value })} placeholder="@yourname" autoCapitalize="none" autoCorrect="off" style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit' }} />
+              <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, marginTop: '4px' }}>{t('m.profile.instagramSub')}</span>
+            </label>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '12px' }}>
               {t('m.profile.bio')}
               <textarea value={form.bio} maxLength={280} rows={3} onChange={e => setForm({ ...form, bio: e.target.value })} style={{ width: '100%', marginTop: '6px', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', resize: 'vertical' }} />

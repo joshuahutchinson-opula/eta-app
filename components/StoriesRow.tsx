@@ -2,7 +2,9 @@
 // from /api/stories?city=. Rings with stories the viewer hasn't seen get the
 // colour ring; seen ones go grey (seen state is stored on the account).
 // "Your Story" posts a photo or short video with an optional caption for
-// 24 hours, tagged with the current region.
+// 24 hours, tagged with the current region and (optionally) the place it was
+// taken, which gives the story its "Go here" button. Without a pick, the
+// server tags the vendor you QR-scanned at in the last few hours.
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -13,6 +15,7 @@ import { apiJson, uploadMedia } from '@/lib/api-client'
 import { useRegion } from '@/components/RegionProvider'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
+import { sortByDistance, useUserLocation } from '@/lib/geo'
 
 export interface StoryRow {
   id: string
@@ -45,7 +48,10 @@ export default function StoriesRow() {
   const [caption, setCaption] = useState('')
   const [posting, setPosting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
+  const [places, setPlaces] = useState<Array<{ id: string; name: string; lat?: number | null; lng?: number | null }>>([])
+  const [placeId, setPlaceId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const location = useUserLocation()
 
   const load = useCallback(async () => {
     setFailed(false)
@@ -76,7 +82,9 @@ export default function StoriesRow() {
     if (!getCurrentUser()) { setPostError(t('m.stories.loginToPost')); return }
     setPostError(null)
     setCaption('')
+    setPlaceId(null)
     setDraft({ file, preview: URL.createObjectURL(file), video: file.type.startsWith('video/') })
+    fetch(`/api/vendors?city=${city}&limit=40`).then(r => (r.ok ? r.json() : [])).then(d => setPlaces(Array.isArray(d) ? d : [])).catch(() => setPlaces([]))
   }
 
   const closeDraft = () => {
@@ -93,8 +101,8 @@ export default function StoriesRow() {
       await apiJson('/api/stories', {
         method: 'POST',
         body: media.kind === 'video'
-          ? { imageUrl: media.poster ?? media.url, videoUrl: media.url, caption: caption.trim() || undefined, city }
-          : { imageUrl: media.url, caption: caption.trim() || undefined, city }
+          ? { imageUrl: media.poster ?? media.url, videoUrl: media.url, caption: caption.trim() || undefined, city, placeVendorId: placeId ?? undefined }
+          : { imageUrl: media.url, caption: caption.trim() || undefined, city, placeVendorId: placeId ?? undefined }
       })
       triggerHaptic('medium')
       closeDraft()
@@ -170,6 +178,18 @@ export default function StoriesRow() {
               aria-label={t('m.stories.captionPlaceholder')}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', fontSize: '16px', fontFamily: 'inherit', color: 'var(--label-primary)', marginBottom: '8px', minHeight: '44px' }}
             />
+            {places.length > 0 && (
+              <>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.story.where')}</p>
+                <div className="horizontal-scroll" style={{ gap: '6px', padding: '0 0 8px' }}>
+                  {sortByDistance(places, location).slice(0, 10).map(p => (
+                    <button key={p.id} type="button" onClick={() => setPlaceId(placeId === p.id ? null : p.id)} aria-pressed={placeId === p.id} className={`chip ${placeId === p.id ? 'active' : ''}`} style={{ flexShrink: 0, minHeight: '32px', fontSize: '13px' }}>
+                      <Icon name="mapPin" size={12} /> {p.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{t('m.stories.lasts', { town: town.name })}</p>
             {postError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{postError}</p>}
             <div style={{ display: 'flex', gap: '8px' }}>

@@ -18,8 +18,13 @@ export async function POST(request: Request) {
   const userId = auth.user.id
   const parsed = await parseBody(request, z.object({ rewardId: id }))
   if (!parsed.ok) return parsed.response
-  const reward = await prisma.reward.findFirst({ where: { id: parsed.data.rewardId, active: true } })
+  const reward = await prisma.reward.findFirst({ where: { id: parsed.data.rewardId, active: true, kind: 'catalog' }, include: { vendors: { select: { vendorId: true } } } })
   if (!reward) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
+  // Visit-locked rewards open once you've scanned one of their vendors' QR cards.
+  if (reward.requiresVisit) {
+    const visit = await prisma.checkIn.findFirst({ where: { userId, method: 'qr', vendorId: { in: reward.vendors.map(v => v.vendorId) } }, select: { id: true } })
+    if (!visit) return NextResponse.json({ error: 'Scan the vendor’s ETA QR card on your visit to unlock this', code: 'VISIT_REQUIRED' }, { status: 403 })
+  }
 
   try {
     const result = await prisma.$transaction(async tx => {

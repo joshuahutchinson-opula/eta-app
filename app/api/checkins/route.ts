@@ -1,7 +1,9 @@
-// app/api/checkins/route.ts — checking in at a vendor or photo spot.
-// GET  → the signed-in caller's check-ins (newest first).
-// POST { vendorId | photoSpotId, lat, lng, accuracy? } (signed in) — the
-// caller must be within CHECKIN_RADIUS_M of the place. Earns CHECKIN_POINTS
+// app/api/checkins/route.ts — check-ins.
+// GET  → the signed-in caller's check-ins (newest first), vendor QR visits included.
+// POST { photoSpotId, lat, lng, accuracy? } (signed in) — GPS check-in at a
+// photo spot. Vendors are checked in by scanning their QR card instead
+// (POST /api/visits). The caller must be within CHECKIN_RADIUS_M of the
+// place. Earns CHECKIN_POINTS
 // once per place per day, plus a one-time Discovery bonus the first time
 // (same amounts as elsewhere: vendor 50, photo spot 30). Points are added
 // server-side.
@@ -56,9 +58,10 @@ export async function POST(request: Request) {
   if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) {
     return NextResponse.json({ error: `Your GPS is fuzzy (±${Math.round(accuracy)} m). Step outside and try again.` }, { status: 422 })
   }
-  const vendorId = body.vendorId ?? null
-  const photoSpotId = !vendorId ? body.photoSpotId ?? null : null
-  if (!vendorId && !photoSpotId) return NextResponse.json({ error: 'Pick a place to check in' }, { status: 400 })
+  if (body.vendorId) return NextResponse.json({ error: 'Scan the vendor’s ETA QR card to check in', code: 'USE_QR' }, { status: 400 })
+  const vendorId = null
+  const photoSpotId = body.photoSpotId ?? null
+  if (!photoSpotId) return NextResponse.json({ error: 'Pick a place to check in' }, { status: 400 })
 
   try {
     const place = vendorId
@@ -77,7 +80,7 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async tx => {
       const firstTime = !(await tx.discovery.findFirst({ where }))
       const discoveryPoints = firstTime ? DISCOVERY_POINTS[vendorId ? 'vendor' : 'photospot'] : 0
-      await tx.checkIn.create({ data: { ...where, lat, lng, points: CHECKIN_POINTS } })
+      await tx.checkIn.create({ data: { ...where, lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : null, distanceM: dist, method: 'gps', points: CHECKIN_POINTS } })
       if (firstTime) await tx.discovery.create({ data: { ...where, type: vendorId ? 'VENDOR' : 'PHOTOSPOT', points: discoveryPoints } })
       const user = await tx.user.update({ where: { id: userId }, data: { points: { increment: CHECKIN_POINTS + discoveryPoints } }, select: { points: true } })
       return { pointsAwarded: CHECKIN_POINTS + discoveryPoints, firstDiscovery: firstTime, totalPoints: user.points }

@@ -14,5 +14,12 @@ module.exports = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [360, 414, 640, 828, 1080, 1280],
     imageSizes: [48, 64, 96, 128, 256, 384]
+  },
+  // Wallet and My Discoveries live in the Rewards hub now.
+  async redirects() {
+    return [
+      { source: '/wallet', destination: '/rewards?tab=wallet', permanent: true },
+      { source: '/passport', destination: '/rewards?tab=discoveries', permanent: true }
+    ]
   }
 }

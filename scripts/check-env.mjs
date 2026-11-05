@@ -9,3 +9,7 @@ if (missing.length) {
 }
 const warn = ['NEXT_PUBLIC_SITE_URL', 'CRON_SECRET', 'EMAIL_API_KEY', 'EMAIL_FROM'].filter(k => !process.env[k])
 if (warn.length) console.warn(`ETA: not set (features fall back or stay off): ${warn.join(', ')}`)
+// Integrations that switch on when configured (see .env.example).
+const whatsapp = process.env.WHATSAPP_PROVIDER ? `WhatsApp via ${process.env.WHATSAPP_PROVIDER}` : 'WhatsApp off'
+const instagram = process.env.INSTAGRAM_APP_SECRET && process.env.INSTAGRAM_VERIFY_TOKEN && process.env.INSTAGRAM_ACCESS_TOKEN ? 'Instagram mentions on' : 'Instagram mentions off'
+console.log(`ETA: ${whatsapp}; ${instagram}`)

@@ -15,6 +15,9 @@ export interface RewardItem {
   /** Null = everywhere in Jamaica. */
   city?: string | null
   vendors?: Array<{ id: string; name: string }>
+  /** Needs a QR visit to one of the vendors first (signed-in callers only). */
+  locked?: boolean
+  requiresVisit?: boolean
 }
 
 /** Seed catalog. `vendors` are matched by name; `city` null = island-wide. */

@@ -37,6 +37,8 @@ export interface VendorCardData {
   rating: number | null
   reviewCount: number
   accessibility: string[]
+  /** Vendor-confirmed "Fair price, same as locals". */
+  fairPrice?: boolean
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {

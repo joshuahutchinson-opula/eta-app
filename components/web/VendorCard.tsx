@@ -42,6 +42,7 @@ export default function VendorCard({ vendor, lang = 'en' }: { vendor: VendorCard
             <span style={{ color: 'var(--cat)' }}>{'$'.repeat(tier)}</span><span className="w-faint">{'$'.repeat(4 - tier)}</span>
           </span>
           <span>{areaLabel(vendor.area)}</span>
+          {vendor.fairPrice ? <span className="w-pill" title={t(lang, 'm.fair.note')}>✓ {t(lang, 'm.fair.badge')}</span> : null}
         </p>
         {pitch ? <p className="w-card-pitch">{pitch}</p> : null}
         <div className="w-card-foot">

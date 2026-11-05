@@ -67,6 +67,7 @@ const CARD_SELECT = {
   isPremium: true,
   whoThere: true,
   accessibility: true,
+  fairPrice: true,
   createdAt: true,
   reviews: { select: { rating: true } }
 } satisfies Prisma.VendorSelect
@@ -96,6 +97,7 @@ function toCard(v: CardRow): VendorCardData & { createdAt: Date } {
     rating,
     reviewCount,
     accessibility: v.accessibility,
+    fairPrice: v.fairPrice,
     createdAt: v.createdAt
   }
 }

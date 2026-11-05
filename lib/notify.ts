@@ -1,6 +1,7 @@
 // lib/notify.ts — account notifications: one entry in the user's inbox
 // (NotificationLog with userId), a push to each of their devices, and
-// optionally an email. Every sender goes through notifyUser(), which checks
+// optionally an email, plus a WhatsApp copy of booking and crew messages for
+// travelers who opted in (lib/whatsapp.ts). Every sender goes through notifyUser(), which checks
 // the user's preference for that type first and skips everything when it's
 // off. Device-level alerts (saved vendor live, nearby flash deals) live in
 // lib/alerts.ts and check the same preferences.
@@ -9,20 +10,30 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { pushConfigured, type AlertPayload } from '@/lib/alerts'
 import { send, type EmailMessage } from '@/lib/email'
+import { sendWhatsApp, type WhatsAppKind } from '@/lib/whatsapp'
+import { absoluteUrl } from '@/lib/site-url'
 
-export type NotifyType = 'bookings' | 'events' | 'deals' | 'live' | 'crew'
+export type NotifyType = 'bookings' | 'events' | 'deals' | 'live' | 'crew' | 'trips'
 
 export const PREF_FIELD = {
   bookings: 'notifyBookings',
   events: 'notifyEvents',
   deals: 'notifyDeals',
   live: 'notifyLive',
-  crew: 'notifyCrew'
+  crew: 'notifyCrew',
+  trips: 'notifyTrips'
 } as const satisfies Record<NotifyType, keyof Prisma.UserSelect>
 
 export async function wantsNotification(userId: string, type: NotifyType): Promise<boolean> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { deletedAt: true, [PREF_FIELD[type]]: true } })
   return Boolean(user && !user.deletedAt && (user as Record<string, unknown>)[PREF_FIELD[type]] !== false)
+}
+
+/** Booking and crew notifications go to WhatsApp too; reminders are told apart by key. */
+function whatsappKind(type: NotifyType, key: string): WhatsAppKind | null {
+  if (type === 'bookings') return /:(day|hour)$/.test(key) ? 'BOOKING_REMINDER' : 'BOOKING_CONFIRMED'
+  if (type === 'crew') return 'CREW'
+  return null
 }
 
 /**
@@ -34,7 +45,7 @@ export async function notifyUser(
   type: NotifyType,
   key: string,
   payload: Omit<AlertPayload, 'tag'> & { tag?: string },
-  opts: { email?: EmailMessage } = {}
+  opts: { email?: EmailMessage; whatsapp?: WhatsAppKind | false } = {}
 ): Promise<boolean> {
   if (!(await wantsNotification(userId, type))) return false
   try {
@@ -62,5 +73,13 @@ export async function notifyUser(
   }
 
   if (opts.email) await send(opts.email)
+
+  const kind = opts.whatsapp === false ? null : opts.whatsapp ?? whatsappKind(type, key)
+  if (kind) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { whatsappNumber: true, notifyWhatsapp: true } })
+    if (user?.notifyWhatsapp && user.whatsappNumber) {
+      await sendWhatsApp({ to: user.whatsappNumber, kind, title: payload.title, detail: payload.body, url: payload.url ? absoluteUrl(payload.url) : undefined })
+    }
+  }
   return true
 }

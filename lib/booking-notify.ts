@@ -1,5 +1,5 @@
 // lib/booking-notify.ts — booking confirmations and reminders (inbox, push
-// if enabled, email), plus event reminders. The reminder passes run from
+// if enabled, email, WhatsApp if opted in), plus event reminders. The reminder passes run from
 // /api/cron/reminders every ~15 minutes; each notification has a unique key
 // per user so running them again never double-sends.
 import { prisma } from '@/lib/prisma'
@@ -8,6 +8,7 @@ import { bookingConfirmationEmail, bookingReminderEmail, receiptEmail, type Book
 import { absoluteUrl } from '@/lib/site-url'
 import { bookingCode } from '@/lib/pricing'
 import { formatMoney } from '@/lib/money'
+import { sendWhatsApp } from '@/lib/whatsapp'
 
 const TZ = 'America/Jamaica'
 const HOUR = 3600000
@@ -60,17 +61,21 @@ export async function onBookingCreated(bookingId: string, transactionId?: string
 }
 
 export async function sendReceipt(transactionId: string): Promise<void> {
-  const tx = await prisma.transaction.findUnique({ where: { id: transactionId }, include: { user: { select: { email: true, notifyBookings: true } } } })
+  const tx = await prisma.transaction.findUnique({ where: { id: transactionId }, include: { user: { select: { email: true, notifyBookings: true, notifyWhatsapp: true, whatsappNumber: true } } } })
   if (!tx || !tx.user.notifyBookings) return
   const { send } = await import('@/lib/email')
-  await send(receiptEmail(tx.user.email, {
+  const receipt = {
     description: tx.description ?? 'ETA payment',
     amount: formatMoney(tx.amount, 'USD'),
     date: tx.createdAt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ }),
     rail: tx.rail ?? 'ETA Wallet',
     ref: tx.id.slice(-10).toUpperCase(),
     receiptUrl: absoluteUrl(`/receipt/${tx.id}`)
-  }))
+  }
+  await send(receiptEmail(tx.user.email, receipt))
+  if (tx.user.notifyWhatsapp && tx.user.whatsappNumber) {
+    await sendWhatsApp({ to: tx.user.whatsappNumber, kind: 'RECEIPT', title: `Receipt: ${receipt.description}`, detail: `${receipt.amount} · ${receipt.date} · ref ${receipt.ref}`, url: receipt.receiptUrl })
+  }
 }
 
 /** Day-before (20–26 h out) and one-hour (within 70 min) reminders. */

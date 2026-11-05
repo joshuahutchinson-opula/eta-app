@@ -1,6 +1,8 @@
 // components/RegionProvider.tsx — the one place the traveler's chosen town
-// lives. Home's region pill sets it; Home, Market, Experiences, events, stays,
-// flash deals and the route generator all read it through useRegion().
+// lives. Home's region selector is the only place it changes (plus the
+// arrival moment, partner codes and onboarding, which preset it); Home,
+// Market, Experiences, events, stays, flash deals and the route generator
+// all read it through useRegion().
 // Persisted in localStorage so it survives reloads.
 'use client'
 

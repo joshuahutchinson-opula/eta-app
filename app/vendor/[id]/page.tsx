@@ -1,11 +1,14 @@
-// app/vendor/[id]/page.tsx
+// app/vendor/[id]/page.tsx — a vendor, slimmed down: photos, the key facts
+// and Book / Directions up top, then one tap row per topic (about, menu,
+// hours, reviews, location, deals, experiences, stories, good to know) that
+// opens its own sheet. Checking in is scanning the vendor's QR card.
 'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
-import { hapticSaved } from '@/lib/haptics'
+import { hapticSaved, triggerHaptic } from '@/lib/haptics'
 import { useErrorText, useLang, usePatois } from '@/lib/i18n-client'
 import { useLabels } from '@/lib/labels'
 import BackButtonShared from '@/components/BackButton'
@@ -18,11 +21,11 @@ import { directionsUrl } from '@/lib/calendar'
 import type { PopularTimes as PopularTimesData } from '@/lib/popular-times'
 import AddToTripSheet from '@/components/AddToTripSheet'
 import { alertsEnabled, enableAlerts, syncAlerts } from '@/lib/alerts-client'
-import { accessibilityLabel } from '@/lib/accessibility'
 import { categoryStyle, priceTier } from '@/lib/vendor-style'
 import VendorCard, { type VendorCardVendor } from '@/components/VendorCard'
 import Price from '@/components/Price'
-import CheckInButton from '@/components/CheckInButton'
+import QrScanSheet from '@/components/QrScanSheet'
+import FairPriceBadge from '@/components/FairPriceBadge'
 import ReviewSheet from '@/components/ReviewSheet'
 import QRCode from '@/components/QRCode'
 import ErrorState from '@/components/ErrorState'
@@ -31,6 +34,11 @@ import { shareOrCopy } from '@/lib/share'
 import { authHeaders } from '@/lib/api-client'
 import { getCurrentUser } from '@/lib/auth-client'
 import { jamaicaToday } from '@/lib/pricing'
+import { formatCity } from '@/lib/format'
+import { absoluteUrl } from '@/lib/site-url'
+import ReportButton from '@/components/ReportButton'
+import { responseError } from '@/lib/errors'
+import type { DictKey } from '@/lib/i18n'
 
 interface ReviewItem {
   id: string
@@ -55,11 +63,6 @@ interface ExperienceItem {
   tagline: string
   price: number
   imageUrl: string
-  videoUrl?: string | null
-  city: string
-  startLocation: string
-  travelTime: number
-  travelMode: string
 }
 
 interface FlashDealItem {
@@ -89,6 +92,7 @@ interface VendorDetail {
   whoThere: number
   tipsJar: boolean
   payItForward: boolean
+  fairPrice?: boolean
   accessibility?: string[]
   hours?: unknown
   phone?: string | null
@@ -105,10 +109,7 @@ interface VendorDetail {
   flashDeals: FlashDealItem[]
 }
 
-import { formatCity } from '@/lib/format'
-import { absoluteUrl } from '@/lib/site-url'
-import ReportButton from '@/components/ReportButton'
-import { responseError } from '@/lib/errors'
+type SheetKey = 'about' | 'menu' | 'hours' | 'reviews' | 'location' | 'info' | 'deals' | 'experiences' | 'stories'
 
 type T = ReturnType<typeof useLang>['t']
 
@@ -136,68 +137,40 @@ function renderMenuItems(items: any[]) {
     }
     if (!name) return null
     return (
-      <div
-        key={i}
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '10px 0',
-          borderBottom: i < items.length - 1 ? '0.5px solid var(--separator)' : 'none'
-        }}
-      >
+      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < items.length - 1 ? '0.5px solid var(--separator)' : 'none' }}>
         <span style={{ fontSize: '15px', color: 'var(--label-primary)' }}>{name}</span>
-        {price !== undefined && price !== null && (
-          <span className="num-font" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }}>${price}</span>
-        )}
+        {typeof price === 'number' ? (
+          <Price usd={price} style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }} />
+        ) : price ? (
+          <span className="num-font" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }}>{price}</span>
+        ) : null}
       </div>
     )
   })
 }
 
-function MenuSection({ menu }: { menu: any }) {
-  const { t } = useLang()
-  if (Array.isArray(menu)) {
-    if (menu.length === 0) return null
-    return (
-      <div style={{ marginBottom: '32px' }}>
-        <div className="section-header">
-          <div className="section-heading">
-            <span className="section-title">{t('m.vendor.menu')}</span>
-          </div>
-        </div>
-        <div className="card" style={{ padding: '0 16px' }}>
-          {renderMenuItems(menu)}
-        </div>
-      </div>
-    )
-  }
-
+/** The older free-form menu (Vendor.menu): a list, or sections of lists. */
+function LegacyMenu({ menu }: { menu: any }) {
+  if (Array.isArray(menu)) return menu.length ? <div className="card" style={{ padding: '0 16px', cursor: 'default' }}>{renderMenuItems(menu)}</div> : null
   if (menu && typeof menu === 'object') {
-    const entries = Object.entries(menu)
-    if (entries.length === 0) return null
     return (
-      <div style={{ marginBottom: '32px' }}>
-        <div className="section-header">
-          <div className="section-heading">
-            <span className="section-title">{t('m.vendor.menu')}</span>
-          </div>
-        </div>
-        {entries.map(([category, value], idx) => (
+      <>
+        {Object.entries(menu).map(([category, value], idx) => (
           <div key={idx} style={{ marginBottom: '12px' }}>
             <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '6px' }}>{category}</p>
-            <div className="card" style={{ padding: '0 16px' }}>
-              {Array.isArray(value) ? renderMenuItems(value) : (
-                <p style={{ fontSize: '14px', color: 'var(--label-secondary)', padding: '10px 0' }}>{String(value)}</p>
-              )}
+            <div className="card" style={{ padding: '0 16px', cursor: 'default' }}>
+              {Array.isArray(value) ? renderMenuItems(value) : <p style={{ fontSize: '14px', color: 'var(--label-secondary)', padding: '10px 0' }}>{String(value)}</p>}
             </div>
           </div>
         ))}
-      </div>
+      </>
     )
   }
-
   return null
+}
+
+function hasLegacyMenu(menu: any): boolean {
+  return Array.isArray(menu) ? menu.length > 0 : Boolean(menu && typeof menu === 'object' && Object.keys(menu).length)
 }
 
 export default function VendorDetailPage() {
@@ -223,6 +196,8 @@ export default function VendorDetailPage() {
   const [related, setRelated] = useState<VendorCardVendor[]>([])
   const [loadFailed, setLoadFailed] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
+  const [sheet, setSheet] = useState<SheetKey | null>(null)
   const [shareMsg, setShareMsg] = useState<string | null>(null)
   const [voucher, setVoucher] = useState<{ code: string; deal: string; expires: string } | null>(null)
   const [claiming, setClaiming] = useState<string | null>(null)
@@ -235,6 +210,7 @@ export default function VendorDetailPage() {
     fetchVendor()
     alertsEnabled().then(setAlertsOn).catch(() => setAlertsOn(false))
     setSaved(readSaved('vendors').includes(vendorId))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorId])
 
   const fetchVendor = async () => {
@@ -274,6 +250,7 @@ export default function VendorDetailPage() {
       if (!res.ok) throw await responseError(res)
       const data = await res.json()
       hapticSaved()
+      setSheet(null)
       setVoucher({ code: data.code, deal: data.deal, expires: data.expires })
     } catch (e) {
       setClaimError(errorText(e))
@@ -335,28 +312,19 @@ export default function VendorDetailPage() {
     if (url) window.open(url, '_blank')
   }
 
+  const openSheet = (key: SheetKey) => { triggerHaptic('light'); setSheet(key) }
+
   const BackButton = <BackButtonShared floating fallback="/marketplace" />
 
   if (loading) {
     return (
       <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
         {BackButton}
-        <div className="skeleton-card" style={{ height: '45vh' }}>
-          <div className="skeleton-image" style={{ height: '100%' }} />
-        </div>
+        <div className="skeleton-card" style={{ height: '40vh' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
         <div style={{ padding: '16px' }}>
-          <div className="skeleton-card" style={{ height: '26px', width: '60%', marginBottom: '10px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '16px', width: '40%', marginBottom: '20px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '80px', marginBottom: '20px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '140px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
+          <div className="skeleton-card" style={{ height: '26px', width: '60%', marginBottom: '10px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
+          <div className="skeleton-card" style={{ height: '80px', marginBottom: '20px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
+          <div className="skeleton-card" style={{ height: '220px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
         </div>
       </main>
     )
@@ -379,9 +347,7 @@ export default function VendorDetailPage() {
           <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
           <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{patois.emptySearch}</p>
           <p>{t('m.vendor.gone')}</p>
-          <button className="btn btn-primary" onClick={() => router.push('/vendors')} style={{ marginTop: '8px' }}>
-            {t('m.vendor.backToVendors')}
-          </button>
+          <button className="btn btn-primary" onClick={() => router.push('/vendors')} style={{ marginTop: '8px' }}>{t('m.vendor.backToVendors')}</button>
         </div>
       </main>
     )
@@ -408,22 +374,52 @@ export default function VendorDetailPage() {
   const bbox = [vendor.lng - 0.006, vendor.lat - 0.004, vendor.lng + 0.006, vendor.lat + 0.004].join(',')
   const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${vendor.lat},${vendor.lng}`
   const goodToKnow = [
+    vendor.fairPrice && { icon: 'check', text: t('m.fair.note') },
     vendor.tipsJar && { icon: 'gift', text: t('m.vendor.tipsJar') },
     vendor.payItForward && { icon: 'heart', text: t('m.vendor.payItForward') },
     vendor.isPremium && { icon: 'crown', text: t('m.bon.member') },
     vendor.live && { icon: 'users', text: t('m.vendor.travelersHere', { n: vendor.whoThere }) }
   ].filter(Boolean) as Array<{ icon: string; text: string }>
+  const hasInfo = goodToKnow.length > 0 || Boolean(vendor.accessibility?.length) || Boolean(vendor.instagram) || Boolean(vendor.website)
+  const hasMenu = Boolean(vendor.menuItems?.length) || hasLegacyMenu(vendor.menu)
+
+  // Book: a table request if they take them, else their experience(s), else a message or call.
+  const book: { label: DictKey; run: () => void } | null = vendor.acceptsReservations
+    ? { label: 'm.vendor.book', run: () => { setResvState({ busy: false, error: null, sent: false }); setResvOpen(true) } }
+    : vendor.experiences.length === 1
+      ? { label: 'm.vendor.book', run: () => router.push(`/experiences/${vendor.experiences[0].id}`) }
+      : vendor.experiences.length > 1
+        ? { label: 'm.vendor.book', run: () => openSheet('experiences') }
+        : waLink
+          ? { label: 'm.vendor.message', run: () => window.open(waLink, '_blank') }
+          : vendor.phone
+            ? { label: 'm.vendor.call', run: () => { window.location.href = `tel:${vendor.phone!.replace(/[^+\d]/g, '')}` } }
+            : null
+
+  const rows: Array<{ key: SheetKey; icon: string; label: string; detail?: string | null; show: boolean }> = [
+    { key: 'about', icon: 'journal', label: t('m.vendor.about'), detail: vendor.description.slice(0, 60) + (vendor.description.length > 60 ? '…' : ''), show: Boolean(vendor.description) },
+    { key: 'deals', icon: 'flame', label: t('m.market.flashDeals'), detail: vendor.flashDeals[0]?.deal, show: vendor.flashDeals.length > 0 },
+    { key: 'menu', icon: 'food', label: t('m.vendor.menu'), detail: vendor.menuItems?.length ? t('m.vendor.itemsN', { n: vendor.menuItems.length }) : null, show: hasMenu },
+    { key: 'hours', icon: 'clock', label: t('m.vendor.hours'), detail: hoursDetail ?? (isOpen ? t('common.open') : t('common.closed')), show: Boolean(hours) || Boolean(vendor.popularTimes) },
+    { key: 'reviews', icon: 'star', label: t('vendor.reviews'), detail: vendor.reviewCount ? `★ ${vendor.rating?.toFixed(1)} · ${vendor.reviewCount}` : t('m.review.write'), show: true },
+    { key: 'experiences', icon: 'route', label: t('m.home.experiences'), detail: vendor.experiences.length ? t('m.vendor.itemsN', { n: vendor.experiences.length }) : null, show: vendor.experiences.length > 0 },
+    { key: 'stories', icon: 'camera', label: t('m.vendor.recentStories'), detail: t('m.vendor.itemsN', { n: vendor.stories.length }), show: vendor.stories.length > 0 },
+    { key: 'location', icon: 'mapPin', label: t('m.vendor.location'), detail: `${vendor.neighborhood}, ${formatCity(vendor.city)}`, show: true },
+    { key: 'info', icon: 'shield', label: t('m.vendor.goodToKnow'), detail: null, show: hasInfo }
+  ]
+
+  const sheetTitle: Record<SheetKey, string> = {
+    about: t('m.vendor.about'), menu: t('m.vendor.menu'), hours: t('m.vendor.hours'), reviews: t('vendor.reviews'), location: t('m.vendor.location'),
+    info: t('m.vendor.goodToKnow'), deals: t('m.market.flashDeals'), experiences: t('m.home.experiences'), stories: t('m.vendor.recentStories')
+  }
 
   return (
-    <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '92px' }}>
+    <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
       {BackButton}
 
-      {/* Hero gallery: videos first, then photos; swipe through */}
-      <div style={{ position: 'relative', height: '45vh', background: 'var(--system-bg-secondary)', overflow: 'hidden', borderBottom: `3px solid ${cat.color}` }}>
-        <div
-          onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
-          style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
-        >
+      {/* Photos: videos first, then photos; swipe through */}
+      <div style={{ position: 'relative', height: '40vh', background: 'var(--system-bg-secondary)', overflow: 'hidden', borderBottom: `3px solid ${cat.color}` }}>
+        <div onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
           {media.map((m, i) => (
             <div key={m.src} style={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start' }}>
               {m.type === 'video'
@@ -433,321 +429,99 @@ export default function VendorDetailPage() {
           ))}
         </div>
         <div className="featured-hero-overlay" style={{ pointerEvents: 'none' }} />
-
         {vendor.isPremium && (
           <div className="card-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px', left: 'auto', right: '12px', top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
-            <Icon name="crown" size={11} />
-            {t('common.premium')}
+            <Icon name="crown" size={11} /> {t('common.premium')}
           </div>
         )}
         {media.length > 1 && (
-          <span style={{ position: 'absolute', bottom: '12px', right: '12px', padding: '4px 10px', borderRadius: '999px', background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '12px', fontWeight: 700, pointerEvents: 'none' }}>
-            {slide + 1} / {media.length}
-          </span>
+          <span style={{ position: 'absolute', bottom: '12px', right: '12px', padding: '4px 10px', borderRadius: '999px', background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '12px', fontWeight: 700, pointerEvents: 'none' }}>{slide + 1} / {media.length}</span>
         )}
         {vendor.live && (
           <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '999px', background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: '12px', fontWeight: 700, pointerEvents: 'none' }}>
-            <span className="live-dot" />
-            <span className="num-font">{vendor.whoThere}</span> {t('m.home.hereNow')}
+            <span className="live-dot" /><span className="num-font">{vendor.whoThere}</span> {t('m.home.hereNow')}
           </div>
         )}
       </div>
 
-      <div style={{ padding: '20px 16px' }}>
-        {/* Name / category */}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '999px', background: `${cat.color}1F`, color: cat.color, fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
-          <Icon name={cat.icon} size={12} /> {labels.category(vendor.category)}
-        </span>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '4px' }}>
-          {vendor.name}
-        </h1>
-        <p style={{ fontSize: '15px', color: 'var(--label-secondary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Icon name="mapPin" size={14} /> {vendor.neighborhood}, {formatCity(vendor.city)}
+      <div style={{ padding: '16px' }}>
+        {/* Name & key facts */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '999px', background: `${cat.color}1F`, color: cat.color, fontSize: '12px', fontWeight: 700 }}>
+            <Icon name={cat.icon} size={12} /> {labels.category(vendor.category)}
+          </span>
+          {vendor.fairPrice && <FairPriceBadge size="md" />}
+        </div>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '2px' }}>{vendor.name}</h1>
+        <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Icon name="mapPin" size={13} /> {vendor.neighborhood}, {formatCity(vendor.city)}
         </p>
 
-        {/* Quick facts — the mobile take on the web page's side panel */}
-        <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', padding: '14px 4px', marginBottom: '20px', cursor: 'default' }}>
-          <div style={{ textAlign: 'center', padding: '0 6px' }}>
-            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)' }}>
+        <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', padding: '12px 4px', marginBottom: '12px', cursor: 'default' }}>
+          <button onClick={() => openSheet('reviews')} style={{ textAlign: 'center', padding: '0 6px', background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>
+            <p className="num-font" style={{ fontSize: '19px', fontWeight: 700, color: 'var(--label-primary)' }}>
               {vendor.rating ? <><span style={{ color: 'var(--gold)' }}>★</span> {vendor.rating.toFixed(1)}</> : '—'}
             </p>
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>
               {vendor.reviewCount ? `${vendor.reviewCount} ${vendor.reviewCount === 1 ? t('m.common.review1') : t('m.common.reviewsN')}` : t('m.common.newOnEta')}
             </p>
-          </div>
+          </button>
           <div style={{ textAlign: 'center', padding: '0 6px', borderLeft: '0.5px solid var(--separator)', borderRight: '0.5px solid var(--separator)' }}>
-            <p className="num-font" style={{ fontSize: '20px', fontWeight: 700 }}>
+            <p className="num-font" style={{ fontSize: '19px', fontWeight: 700 }}>
               <span style={{ color: cat.color }}>{'$'.repeat(tier)}</span>
               <span style={{ color: 'var(--label-tertiary)', opacity: 0.5 }}>{'$'.repeat(4 - tier)}</span>
             </p>
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{labels.priceNoun(vendor.category) || t('m.priceNoun.OTHER')}</p>
           </div>
-          <div style={{ textAlign: 'center', padding: '0 6px' }}>
-            <p style={{ fontSize: '17px', fontWeight: 700, color: isOpen ? 'var(--success)' : 'var(--label-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '28px' }}>
+          <button onClick={() => hours && openSheet('hours')} style={{ textAlign: 'center', padding: '0 6px', background: 'none', border: 'none', fontFamily: 'inherit', cursor: hours ? 'pointer' : 'default' }}>
+            <p style={{ fontSize: '16px', fontWeight: 700, color: isOpen ? 'var(--success)' : 'var(--label-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '26px' }}>
               <span className={isOpen ? 'open-dot' : 'closed-dot'} /> {isOpen ? t('common.open') : t('common.closed')}
             </p>
             <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{hoursDetail ?? (vendor.live ? `${vendor.whoThere} ${t('m.home.hereNow')}` : t('m.vendor.rightNow'))}</p>
-          </div>
+          </button>
         </div>
 
-        {/* Contact & actions — each shows only when the vendor has listed it */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          {vendor.phone && (
-            <a href={`tel:${vendor.phone.replace(/[^+\d]/g, '')}`} className="chip" style={{ textDecoration: 'none', flex: 1, justifyContent: 'center' }}><Icon name="audio" size={14} /> {t('m.vendor.call')}</a>
+        {/* Book / Directions */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+          {book && (
+            <button className="btn btn-primary" onClick={() => { triggerHaptic('light'); book.run() }} style={{ flex: 1 }}>
+              <Icon name={book.label === 'm.vendor.book' ? 'calendar' : book.label === 'm.vendor.call' ? 'phone' : 'send'} size={16} /> {t(book.label)}
+            </button>
           )}
-          {waLink && (
-            <a href={waLink} target="_blank" rel="noopener noreferrer" className="chip" style={{ textDecoration: 'none', flex: 1, justifyContent: 'center' }}><Icon name="journal" size={14} /> WhatsApp</a>
-          )}
-          {vendor.acceptsReservations && (
-            <button className="chip" onClick={() => { setResvState({ busy: false, error: null, sent: false }); setResvOpen(true) }} style={{ flex: 1, justifyContent: 'center' }}><Icon name="clock" size={14} /> {t('m.vendor.reserve')}</button>
-          )}
-          <button className="chip" onClick={share} style={{ flex: 1, justifyContent: 'center' }}><Icon name="share" size={14} /> {shareMsg ?? t('m.events.share')}</button>
+          <button className={`btn ${book ? 'btn-secondary' : 'btn-primary'}`} onClick={handleDirections} style={{ flex: 1 }}>
+            <Icon name="navigate" size={16} /> {t('m.nav.directions')}
+          </button>
         </div>
 
-        {hours && (
-          <div className="card" style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'default' }} aria-label={t('m.vendor.hours')}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--label-secondary)', padding: '6px 0' }}>{t('m.vendor.hours')}</p>
-            {[1, 2, 3, 4, 5, 6, 0].map(d => {
-              const ranges = hours[DAYS[d]] ?? []
-              return (
-                <div key={d} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '14px', fontWeight: d === todayIdx ? 700 : 400, color: d === todayIdx ? 'var(--label-primary)' : 'var(--label-secondary)' }}>
-                  <span>{t(`m.day.${DAYS[d]}` as 'm.day.mon')}</span>
-                  <span className="num-font">{ranges.length ? ranges.map(([a, b]) => `${formatTime(a)} – ${formatTime(b)}`).join(', ') : t('common.closed')}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <PopularTimes data={vendor.popularTimes} />
-
-        {vendor.lat && vendor.lng ? <CheckInButton target={{ kind: 'vendor', id: vendor.id, lat: vendor.lat, lng: vendor.lng }} /> : null}
+        {/* Quick actions */}
+        <div className="horizontal-scroll" style={{ gap: '8px', padding: '0 0 4px', marginBottom: '16px' }}>
+          <button className="chip" onClick={() => setScanOpen(true)} style={{ flexShrink: 0, background: 'var(--rum-tint)', color: 'var(--rum-text)', fontWeight: 700 }}><Icon name="qr" size={14} /> {t('m.scan.button')}</button>
+          <button className="chip" onClick={toggleSave} aria-pressed={saved} style={{ flexShrink: 0, color: saved ? 'var(--rum)' : undefined }}><Icon name="heart" size={14} className={saved ? 'filled' : ''} /> {saved ? t('m.saved.unsave') : t('m.saved.save')}</button>
+          {fromExperiences && <button className="chip" onClick={() => setShowAddToTrip(true)} style={{ flexShrink: 0 }}><Icon name="plus" size={14} /> {t('m.addTrip.title')}</button>}
+          {vendor.phone && book?.label !== 'm.vendor.call' && <a href={`tel:${vendor.phone.replace(/[^+\d]/g, '')}`} className="chip" style={{ flexShrink: 0, textDecoration: 'none' }}><Icon name="phone" size={14} /> {t('m.vendor.call')}</a>}
+          {waLink && book?.label !== 'm.vendor.message' && <a href={waLink} target="_blank" rel="noopener noreferrer" className="chip" style={{ flexShrink: 0, textDecoration: 'none' }}><Icon name="send" size={14} /> WhatsApp</a>}
+          {showPayButton && <button className="chip" onClick={() => router.push('/pay')} style={{ flexShrink: 0 }}><Icon name="card" size={14} /> {t('m.vendor.payHere')}</button>}
+          <button className="chip" onClick={share} style={{ flexShrink: 0 }}><Icon name="share" size={14} /> {shareMsg ?? t('m.events.share')}</button>
+        </div>
 
         {saved && (!alertsOn || alertMsg) && (
-          <div className="card" style={{ padding: '12px 14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default' }}>
+          <div className="card" style={{ padding: '12px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default' }}>
             <Icon name="bell" size={18} style={{ color: 'var(--rum-text)', flexShrink: 0 }} />
-            <p style={{ flex: 1, fontSize: '14px', color: 'var(--label-primary)' }}>
-              {alertMsg ?? t('m.vendor.alertPrompt', { name: vendor.name })}
-            </p>
-            {!alertsOn && (
-              <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>{t('m.vendor.turnOn')}</button>
-            )}
+            <p style={{ flex: 1, fontSize: '14px', color: 'var(--label-primary)' }}>{alertMsg ?? t('m.vendor.alertPrompt', { name: vendor.name })}</p>
+            {!alertsOn && <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>{t('m.vendor.turnOn')}</button>}
           </div>
         )}
 
-        {/* About */}
-        <div style={{ marginBottom: '28px' }}>
-          <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.about')}</span></div></div>
-          <p style={{ fontSize: '15px', lineHeight: 1.55, color: 'var(--label-primary)' }}>
-            {vendor.description}
-          </p>
-        </div>
-
-        {/* Good to know */}
-        {(goodToKnow.length > 0 || (vendor.accessibility && vendor.accessibility.length > 0) || vendor.instagram || vendor.website) && (
-          <div style={{ marginBottom: '28px' }}>
-            <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.goodToKnow')}</span></div></div>
-            <div className="card" style={{ padding: '4px 16px', cursor: 'default' }}>
-              {goodToKnow.map((g, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }}>
-                  <Icon name={g.icon} size={18} style={{ color: cat.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '15px', color: 'var(--label-primary)' }}>{g.text}</span>
-                </div>
-              ))}
-              {vendor.accessibility && vendor.accessibility.length > 0 && (
-                <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }} aria-label={t('m.exp.accessibility')}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.vendor.accessConfirmed')}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {vendor.accessibility.map(k => (
-                      <span key={k} className="chip" style={{ cursor: 'default', minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>♿ {labels.access(k)}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {vendor.instagram && (
-                <a href={vendor.instagram} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: vendor.website ? '0.5px solid var(--separator)' : 'none', color: 'var(--label-primary)', textDecoration: 'none' }}>
-                  <Icon name="instagram" size={18} style={{ color: cat.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: '15px' }}>Instagram</span>
-                  <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
-                </a>
-              )}
-              {vendor.website && (
-                <a href={vendor.website} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', color: 'var(--label-primary)', textDecoration: 'none' }}>
-                  <Icon name="globe" size={18} style={{ color: cat.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: '15px' }}>{t('m.vendor.website')}</span>
-                  <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Menu: structured items when the vendor has them, else the older free-form menu */}
-        {vendor.menuItems?.length ? <VendorMenu items={vendor.menuItems} /> : <MenuSection menu={vendor.menu} />}
-
-        {/* Flash deals */}
-        {vendor.flashDeals.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.market.limited')}</span>
-                <span className="section-title">{t('m.market.flashDeals')}</span>
-              </div>
-            </div>
-            <div className="horizontal-scroll">
-              {vendor.flashDeals.map(fd => (
-                <div key={fd.id} className="card" style={{ width: '200px', cursor: 'default' }}>
-                  <div className="card-image" style={{ height: '110px' }}>
-                    {vendor.images[0] && <Img src={vendor.images[0]} alt={vendor.name} width={400} height={220} sizes="200px" />}
-                    <div className="card-overlay" />
-                  </div>
-                  <div className="card-content">
-                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{fd.deal}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Icon name="clock" size={12} />
-                      {formatCountdown(fd.expires, t)}
-                    </p>
-                    <button className="btn btn-primary" onClick={() => claimDeal(fd.id)} disabled={claiming === fd.id} style={{ width: '100%', minHeight: '36px', fontSize: '14px', marginTop: '8px' }}>
-                      {claiming === fd.id ? '…' : t('m.vendor.claim')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Experiences */}
-        {vendor.experiences.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.vendor.fromVendor')}</span>
-                <span className="section-title">{t('m.home.experiences')}</span>
-              </div>
-              <Link href="/experiences/browse" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div className="horizontal-scroll">
-              {vendor.experiences.map(exp => (
-                <Link key={exp.id} href={`/experiences/${exp.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div className="card" style={{ width: '180px' }}>
-                    <div className="card-image" style={{ height: '110px' }}>
-                      {exp.imageUrl && <Img src={exp.imageUrl} alt={exp.name} width={360} height={220} sizes="180px" />}
-                      <div className="card-overlay" />
-                    </div>
-                    <div className="card-content">
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{exp.name}</p>
-                      <Price usd={exp.price} className="card-price" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Recent stories */}
-        {vendor.stories.length > 0 && (
-          <div style={{ marginBottom: '32px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-title">{t('m.vendor.recentStories')}</span>
-              </div>
-            </div>
-            <div className="horizontal-scroll">
-              {vendor.stories.map(story => (
-                <Link key={story.id} href={`/stories?start=${vendor.id}`} aria-label={t('m.stories.open', { name: vendor.name })} style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <div className={`story-ring ${vendor.isPremium ? 'premium' : 'standard'}`}>
-                    {story.imageUrl && <img src={story.imageUrl} alt="" />}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Location */}
-        <div style={{ marginBottom: '32px' }}>
-          <div className="section-header"><div className="section-heading"><span className="section-title">{t('m.vendor.location')}</span></div></div>
-          <div className="card" style={{ overflow: 'hidden', cursor: 'default' }}>
-            <div style={{ position: 'relative', height: '180px' }}>
-              <iframe src={mapSrc} title={t('m.vendor.mapOf', { name: vendor.name })} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none' }} />
-            </div>
-            <button onClick={handleDirections} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-              <Icon name="mapPin" size={18} style={{ color: cat.color, flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{vendor.neighborhood}</span>
-                <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCity(vendor.city)} · {t('m.vendor.getDirections')}</span>
-              </span>
-              <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
+        {/* One row per topic; each opens a sheet */}
+        <div className="card" style={{ padding: '0 16px', marginBottom: '28px', cursor: 'default' }}>
+          {rows.filter(r => r.show).map((r, i, list) => (
+            <button key={r.key} onClick={() => openSheet(r.key)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 0', background: 'none', border: 'none', borderBottom: i < list.length - 1 ? '0.5px solid var(--separator)' : 'none', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', minHeight: '52px' }}>
+              <Icon name={r.icon} size={18} style={{ color: cat.color, flexShrink: 0 }} />
+              <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--label-primary)', flexShrink: 0 }}>{r.label}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: '13px', color: 'var(--label-secondary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.detail}</span>
+              <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)', flexShrink: 0 }} />
             </button>
-          </div>
-        </div>
-
-        {/* Reviews */}
-        <div style={{ marginBottom: '32px' }}>
-          <div className="section-header">
-            <div className="section-heading">
-              <span className="section-title">{t('vendor.reviews')}</span>
-            </div>
-            <button className="section-link" onClick={() => (getCurrentUser() ? setReviewOpen(true) : router.push('/login'))} style={{ background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>
-              <Icon name="star" size={14} /> {t('m.review.write')}
-            </button>
-          </div>
-          {vendor.reviews.length === 0 ? (
-            <div className="empty-state">
-              <Icon name="star" size={28} style={{ color: 'var(--label-tertiary)' }} />
-              <p>{patois.emptyReviews}</p>
-            </div>
-          ) : (
-            <>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', marginBottom: '12px', cursor: 'default' }}>
-                <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                  <p className="num-font" style={{ fontSize: '36px', fontWeight: 700, color: 'var(--label-primary)', lineHeight: 1 }}>{vendor.rating?.toFixed(1)}</p>
-                  <p style={{ color: 'var(--gold)', fontSize: '13px', marginTop: '4px' }}>{'★'.repeat(Math.round(vendor.rating ?? 0))}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>{vendor.reviews.length} {vendor.reviews.length === 1 ? t('m.common.review1') : t('m.common.reviewsN')}</p>
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {ratingCounts.map(({ n, count }) => (
-                    <div key={n} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--label-secondary)' }}>
-                      <span className="num-font" style={{ width: '10px' }}>{n}</span>
-                      <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
-                        <div style={{ width: `${(count / vendor.reviews.length) * 100}%`, height: '100%', background: 'var(--gold)' }} />
-                      </div>
-                      <span className="num-font" style={{ width: '16px', textAlign: 'right' }}>{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {vendor.reviews.map(r => (
-                  <div key={r.id} className="card" style={{ padding: '12px', cursor: 'default' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {r.user.avatarUrl ? (
-                          <img src={r.user.avatarUrl} alt={r.user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <Icon name="user" size={16} style={{ color: 'var(--label-tertiary)' }} />
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{r.user.name}</p>
-                        <div className="rating-text" style={{ gap: 0 }}>
-                          <span style={{ color: 'var(--gold)' }}>{'★'.repeat(Math.max(0, Math.min(5, r.rating)))}</span>
-                          <span style={{ color: 'var(--label-tertiary)' }}>{'★'.repeat(Math.max(0, 5 - r.rating))}</span>
-                        </div>
-                      </div>
-                      <span style={{ fontSize: '12px', color: 'var(--label-tertiary)', flexShrink: 0 }}>{formatDate(r.createdAt, locale)}</span>
-                    </div>
-                    {r.comment && (
-                      <p style={{ fontSize: '14px', color: 'var(--label-secondary)', lineHeight: 1.4 }}>{r.comment}</p>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px', marginBottom: '-10px' }}><ReportButton targetType="REVIEW" targetId={r.id} /></div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          ))}
         </div>
 
         {/* More like this */}
@@ -766,48 +540,181 @@ export default function VendorDetailPage() {
         )}
       </div>
 
-      {/* Action bar */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'var(--system-bg-elevated)',
-          borderTop: '0.5px solid var(--separator)',
-          padding: '10px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 20
-        }}
-      >
-        <button
-          className="heart-btn"
-          onClick={toggleSave}
-          aria-pressed={saved}
-          aria-label={saved ? t('m.saved.unsave') : t('m.saved.save')}
-          style={{ color: saved ? 'var(--rum)' : 'var(--label-secondary)' }}
-        >
-          <Icon name="heart" size={20} className={saved ? 'filled' : ''} />
-        </button>
-        {fromExperiences && (
-          <button className="btn btn-secondary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => setShowAddToTrip(true)}>
-            <Icon name="plus" size={16} />
-            {t('m.addTrip.title')}
-          </button>
-        )}
-        <button className="btn btn-secondary" style={{ flex: showPayButton && fromExperiences ? undefined : 1, padding: showPayButton && fromExperiences ? '0 14px' : undefined }} onClick={handleDirections} aria-label={t('m.vendor.getDirections')}>
-          <Icon name="navigate" size={16} />
-          {showPayButton && fromExperiences ? null : t('m.nav.directions')}
-        </button>
-        {showPayButton && (
-          <button className="btn btn-primary" style={{ flex: 1, padding: '0 12px', whiteSpace: 'nowrap', fontSize: '16px' }} onClick={() => router.push('/pay')}>
-            <Icon name="card" size={16} />
-            {t('m.vendor.payHere')}
-          </button>
+      {/* Topic sheet */}
+      <div className={`bottom-sheet-overlay ${sheet ? 'open' : ''}`} onClick={() => setSheet(null)} />
+      <div className={`bottom-sheet ${sheet ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={sheet ? sheetTitle[sheet] : undefined} style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+        <div className="sheet-grabber" />
+        {sheet && (
+          <div style={{ padding: '0 20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)' }}>{sheetTitle[sheet]}</h3>
+              {sheet === 'reviews' && (
+                <button className="section-link" onClick={() => { setSheet(null); getCurrentUser() ? setReviewOpen(true) : router.push('/login') }} style={{ background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>
+                  <Icon name="star" size={14} /> {t('m.review.write')}
+                </button>
+              )}
+            </div>
+
+            {sheet === 'about' && <p style={{ fontSize: '15px', lineHeight: 1.55, color: 'var(--label-primary)' }}>{vendor.description}</p>}
+
+            {sheet === 'menu' && (vendor.menuItems?.length ? <VendorMenu items={vendor.menuItems} /> : <LegacyMenu menu={vendor.menu} />)}
+
+            {sheet === 'hours' && (
+              <>
+                {hours && (
+                  <div className="card" style={{ padding: '8px 16px', marginBottom: '16px', cursor: 'default' }}>
+                    {[1, 2, 3, 4, 5, 6, 0].map(d => {
+                      const ranges = hours[DAYS[d]] ?? []
+                      return (
+                        <div key={d} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', fontWeight: d === todayIdx ? 700 : 400, color: d === todayIdx ? 'var(--label-primary)' : 'var(--label-secondary)' }}>
+                          <span>{t(`m.day.${DAYS[d]}` as 'm.day.mon')}</span>
+                          <span className="num-font">{ranges.length ? ranges.map(([a, b]) => `${formatTime(a)} – ${formatTime(b)}`).join(', ') : t('common.closed')}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                <PopularTimes data={vendor.popularTimes} />
+              </>
+            )}
+
+            {sheet === 'reviews' && (vendor.reviews.length === 0 ? (
+              <div className="empty-state"><Icon name="star" size={28} style={{ color: 'var(--label-tertiary)' }} /><p>{patois.emptyReviews}</p></div>
+            ) : (
+              <>
+                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', marginBottom: '12px', cursor: 'default' }}>
+                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <p className="num-font" style={{ fontSize: '36px', fontWeight: 700, color: 'var(--label-primary)', lineHeight: 1 }}>{vendor.rating?.toFixed(1)}</p>
+                    <p style={{ color: 'var(--gold)', fontSize: '13px', marginTop: '4px' }}>{'★'.repeat(Math.round(vendor.rating ?? 0))}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--label-secondary)' }}>{vendor.reviews.length} {vendor.reviews.length === 1 ? t('m.common.review1') : t('m.common.reviewsN')}</p>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {ratingCounts.map(({ n, count }) => (
+                      <div key={n} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--label-secondary)' }}>
+                        <span className="num-font" style={{ width: '10px' }}>{n}</span>
+                        <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
+                          <div style={{ width: `${(count / vendor.reviews.length) * 100}%`, height: '100%', background: 'var(--gold)' }} />
+                        </div>
+                        <span className="num-font" style={{ width: '16px', textAlign: 'right' }}>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {vendor.reviews.map(r => (
+                    <div key={r.id} className="card" style={{ padding: '12px', cursor: 'default' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--system-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {r.user.avatarUrl ? <img src={r.user.avatarUrl} alt={r.user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon name="user" size={16} style={{ color: 'var(--label-tertiary)' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{r.user.name}</p>
+                          <div className="rating-text" style={{ gap: 0 }}>
+                            <span style={{ color: 'var(--gold)' }}>{'★'.repeat(Math.max(0, Math.min(5, r.rating)))}</span>
+                            <span style={{ color: 'var(--label-tertiary)' }}>{'★'.repeat(Math.max(0, 5 - r.rating))}</span>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: 'var(--label-tertiary)', flexShrink: 0 }}>{formatDate(r.createdAt, locale)}</span>
+                      </div>
+                      {r.comment && <p style={{ fontSize: '14px', color: 'var(--label-secondary)', lineHeight: 1.4 }}>{r.comment}</p>}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px', marginBottom: '-10px' }}><ReportButton targetType="REVIEW" targetId={r.id} /></div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ))}
+
+            {sheet === 'location' && (
+              <div className="card" style={{ overflow: 'hidden', cursor: 'default' }}>
+                <div style={{ position: 'relative', height: '220px' }}>
+                  <iframe src={mapSrc} title={t('m.vendor.mapOf', { name: vendor.name })} loading="lazy" tabIndex={-1} style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none' }} />
+                </div>
+                <button onClick={handleDirections} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                  <Icon name="mapPin" size={18} style={{ color: cat.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{vendor.neighborhood}</span>
+                    <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{formatCity(vendor.city)} · {t('m.vendor.getDirections')}</span>
+                  </span>
+                  <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
+                </button>
+              </div>
+            )}
+
+            {sheet === 'info' && (
+              <div className="card" style={{ padding: '4px 16px', cursor: 'default' }}>
+                {goodToKnow.map((g, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }}>
+                    <Icon name={g.icon} size={18} style={{ color: cat.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: '15px', color: 'var(--label-primary)' }}>{g.text}</span>
+                  </div>
+                ))}
+                {vendor.accessibility && vendor.accessibility.length > 0 && (
+                  <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--separator)' }} aria-label={t('m.exp.accessibility')}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.vendor.accessConfirmed')}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {vendor.accessibility.map(k => <span key={k} className="chip" style={{ cursor: 'default', minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>♿ {labels.access(k)}</span>)}
+                    </div>
+                  </div>
+                )}
+                {vendor.instagram && (
+                  <a href={vendor.instagram} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: vendor.website ? '0.5px solid var(--separator)' : 'none', color: 'var(--label-primary)', textDecoration: 'none' }}>
+                    <Icon name="instagram" size={18} style={{ color: cat.color, flexShrink: 0 }} /><span style={{ flex: 1, fontSize: '15px' }}>Instagram</span><Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
+                  </a>
+                )}
+                {vendor.website && (
+                  <a href={vendor.website} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', color: 'var(--label-primary)', textDecoration: 'none' }}>
+                    <Icon name="globe" size={18} style={{ color: cat.color, flexShrink: 0 }} /><span style={{ flex: 1, fontSize: '15px' }}>{t('m.vendor.website')}</span><Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {sheet === 'deals' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {vendor.flashDeals.map(fd => (
+                  <div key={fd.id} className="card" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'default' }}>
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{fd.deal}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--label-secondary)', marginTop: '2px' }}><Icon name="clock" size={12} /> {formatCountdown(fd.expires, t)}</span>
+                    </span>
+                    <button className="btn btn-primary" onClick={() => claimDeal(fd.id)} disabled={claiming === fd.id} style={{ minHeight: '36px', padding: '0 14px', fontSize: '14px' }}>{claiming === fd.id ? '…' : t('m.vendor.claim')}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {sheet === 'experiences' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {vendor.experiences.map(exp => (
+                  <Link key={exp.id} href={`/experiences/${exp.id}`} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', textDecoration: 'none' }}>
+                    <span style={{ width: '64px', height: '64px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: 'var(--system-bg-secondary)' }}>
+                      {exp.imageUrl && <Img src={exp.imageUrl} alt="" width={128} height={128} sizes="64px" />}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{exp.name}</span>
+                      <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.tagline}</span>
+                      <Price usd={exp.price} className="card-price" />
+                    </span>
+                    <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {sheet === 'stories' && (
+              <div className="horizontal-scroll">
+                {vendor.stories.map(story => (
+                  <Link key={story.id} href={`/stories?start=${vendor.id}`} aria-label={t('m.stories.open', { name: vendor.name })} style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <div className={`story-ring ${vendor.isPremium ? 'premium' : 'standard'}`}>{story.imageUrl && <img src={story.imageUrl} alt="" />}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      <QrScanSheet open={scanOpen} onClose={() => setScanOpen(false)} vendorName={vendor.name} />
 
       <ReviewSheet
         open={reviewOpen}
@@ -855,9 +762,7 @@ export default function VendorDetailPage() {
                 </div>
                 <textarea value={resv.note} onChange={e => setResv({ ...resv, note: e.target.value })} placeholder={t('m.vendor.reserveNotePlaceholder')} aria-label={t('m.vendor.reserveNotePlaceholder')} rows={2} maxLength={280} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', color: 'var(--label-primary)', fontSize: '16px', fontFamily: 'inherit', marginBottom: '12px' }} />
                 {resvState.error && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{resvState.error}</p>}
-                <button className="btn btn-primary" onClick={requestReservation} disabled={resvState.busy || !resv.date || !resv.time} style={{ width: '100%' }}>
-                  {resvState.busy ? '…' : t('m.vendor.reserveSend')}
-                </button>
+                <button className="btn btn-primary" onClick={requestReservation} disabled={resvState.busy || !resv.date || !resv.time} style={{ width: '100%' }}>{resvState.busy ? '…' : t('m.vendor.reserveSend')}</button>
               </>
             )}
           </div>
@@ -882,7 +787,7 @@ export default function VendorDetailPage() {
       </div>
 
       {claimError && (
-        <div role="alert" style={{ position: 'fixed', left: '16px', right: '16px', bottom: '84px', zIndex: 30, padding: '12px 14px', borderRadius: '14px', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-elevated)', fontSize: '14px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div role="alert" style={{ position: 'fixed', left: '16px', right: '16px', bottom: '24px', zIndex: 30, padding: '12px 14px', borderRadius: '14px', background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-elevated)', fontSize: '14px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ flex: 1 }}>{claimError}</span>
           <button onClick={() => setClaimError(null)} aria-label={t('m.profile.done')} style={{ background: 'none', border: 'none', color: 'var(--label-secondary)', cursor: 'pointer', minWidth: '32px', minHeight: '32px' }}><Icon name="close" size={14} /></button>
         </div>
