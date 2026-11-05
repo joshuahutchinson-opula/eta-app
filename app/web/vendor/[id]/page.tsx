@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import MediaGallery from '@/components/web/MediaGallery'
 import VendorCard from '@/components/web/VendorCard'
 import Icon from '@/lib/icons'
+import EtaMap from '@/components/map/EtaMap'
 import { getVendorDetail, formatCity } from '@/lib/web-data'
 import { queryVendors, CATEGORY_LABELS } from '@/lib/vendor-query'
 import { areaLabel } from '@/lib/areas'
@@ -46,8 +47,6 @@ export default async function VendorDetailPage({ params }: { params: { id: strin
     related = [...related, ...sameArea.items]
   }
 
-  const bbox = [vendor.lng - 0.006, vendor.lat - 0.004, vendor.lng + 0.006, vendor.lat + 0.004].join(',')
-  const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${vendor.lat},${vendor.lng}`
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${vendor.lat},${vendor.lng}`
 
   return (
@@ -176,7 +175,7 @@ export default async function VendorDetailPage({ params }: { params: { id: strin
           </div>
 
           <div className="w-map">
-            <iframe src={mapSrc} title={`Map showing ${vendor.name}`} loading="lazy" tabIndex={-1} />
+            <EtaMap center={{ lat: vendor.lat, lng: vendor.lng }} zoom={15} interactive={false} markers={[{ id: vendor.id, lat: vendor.lat, lng: vendor.lng, size: 22 }]} label={`Map showing ${vendor.name}`} />
             <a className="w-map-link" href={directions} target="_blank" rel="noopener noreferrer" aria-label={`${t(lang, 'vendor.directions')} to ${vendor.name}`} />
           </div>
           <a href={directions} target="_blank" rel="noopener noreferrer" className="w-link-arrow" style={{ alignSelf: 'flex-start' }}>

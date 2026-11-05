@@ -467,7 +467,7 @@ const en = {
   'm.reset.save': 'Save and log in',
   'm.reset.noToken': 'This reset link is incomplete.',
   'm.reset.newLink': 'Get a new link',
-  'm.tab.pay': 'ETA Pay',
+  'm.tab.pay': 'Scan & Pay',
   'm.tab.nav': 'Main',
 }
 
@@ -914,7 +914,7 @@ const es: Record<BaseKey, string> = {
   'm.reset.save': 'Guardar y entrar',
   'm.reset.noToken': 'Este enlace está incompleto.',
   'm.reset.newLink': 'Pedir un enlace nuevo',
-  'm.tab.pay': 'ETA Pay',
+  'm.tab.pay': 'Escanear y pagar',
   'm.tab.nav': 'Principal',
 }
 
@@ -1359,7 +1359,7 @@ const de: Record<BaseKey, string> = {
   'm.reset.save': 'Speichern und anmelden',
   'm.reset.noToken': 'Dieser Link ist unvollständig.',
   'm.reset.newLink': 'Neuen Link anfordern',
-  'm.tab.pay': 'ETA Pay',
+  'm.tab.pay': 'Scannen & Zahlen',
   'm.tab.nav': 'Hauptmenü',
 }
 
@@ -1804,7 +1804,7 @@ const fr: Record<BaseKey, string> = {
   'm.reset.save': 'Enregistrer et se connecter',
   'm.reset.noToken': 'Ce lien est incomplet.',
   'm.reset.newLink': 'Demander un nouveau lien',
-  'm.tab.pay': 'ETA Pay',
+  'm.tab.pay': 'Scanner et payer',
   'm.tab.nav': 'Navigation principale',
 }
 
@@ -2793,6 +2793,36 @@ const more = {
   'm.stay.email': ['Email', 'Correo', 'E-Mail', 'E-mail'],
   'm.stay.waText': ['Hi {name}, I found you on ETA and would like to book a stay.', 'Hola {name}, los encontré en ETA y quiero reservar.', 'Hallo {name}, ich habe euch auf ETA gefunden und möchte buchen.', 'Bonjour {name}, je vous ai trouvé sur ETA et j’aimerais réserver.'],
   'm.stay.mailSubject': ['Booking a stay at {name} (via ETA)', 'Reserva en {name} (vía ETA)', 'Buchungsanfrage für {name} (über ETA)', 'Réservation à {name} (via ETA)'],
+  // Scan & Pay (app/pay)
+  'm.sp.eyebrow': ['ETA Pay', 'ETA Pay', 'ETA Pay', 'ETA Pay'],
+  'm.sp.title': ['Scan & Pay', 'Escanear y pagar', 'Scannen & Zahlen', 'Scanner et payer'],
+  'm.sp.sub': ['Scan the vendor’s ETA card: you check in, earn points and pay in one go.', 'Escanea la tarjeta ETA del negocio: te registras, ganas puntos y pagas de una vez.', 'Scanne die ETA-Karte des Anbieters: einchecken, Punkte sammeln und bezahlen in einem.', 'Scannez la carte ETA du commerçant : check-in, points et paiement d’un coup.'],
+  'm.sp.loginTitle': ['Log in to scan & pay', 'Inicia sesión para escanear y pagar', 'Melde dich an, um zu scannen & zu zahlen', 'Connectez-vous pour scanner et payer'],
+  'm.sp.loginBody': ['Check in at vendors, earn points and pay them — your wallet lives here too.', 'Regístrate en los negocios, gana puntos y págales; tu billetera también está aquí.', 'Bei Anbietern einchecken, Punkte sammeln und bezahlen – auch dein Wallet ist hier.', 'Faites un check-in, gagnez des points et payez — votre portefeuille est ici aussi.'],
+  'm.sp.payVendor': ['Pay {name}', 'Pagar a {name}', '{name} bezahlen', 'Payer {name}'],
+  'm.sp.amount': ['Amount', 'Importe', 'Betrag', 'Montant'],
+  'm.sp.enterIn': ['Enter the amount in {currency}', 'Introduce el importe en {currency}', 'Betrag in {currency} eingeben', 'Saisissez le montant en {currency}'],
+  'm.sp.delete': ['Delete', 'Borrar', 'Löschen', 'Effacer'],
+  'm.sp.payWith': ['Pay with', 'Pagar con', 'Bezahlen mit', 'Payer avec'],
+  'm.sp.wallet': ['ETA Wallet', 'Billetera ETA', 'ETA-Wallet', 'Portefeuille ETA'],
+  'm.sp.auto': ['Best rail (auto)', 'Mejor vía (auto)', 'Beste Methode (auto)', 'Meilleur moyen (auto)'],
+  'm.sp.pointsEarned': ['Points earned', 'Puntos ganados', 'Gesammelte Punkte', 'Points gagnés'],
+  'm.sp.payNow': ['Pay {name}', 'Pagar a {name}', '{name} bezahlen', 'Payer {name}'],
+  'm.sp.enterAmount': ['Enter an amount', 'Introduce un importe', 'Betrag eingeben', 'Saisissez un montant'],
+  'm.sp.done': ['Not paying — done', 'No voy a pagar, listo', 'Nicht zahlen – fertig', 'Pas de paiement — terminé'],
+  'm.scan.aim': ['Point at the ETA QR card', 'Apunta a la tarjeta QR de ETA', 'Auf die ETA-QR-Karte richten', 'Visez la carte QR ETA'],
+  'm.scan.payButton': ['Scan & Pay', 'Escanear y pagar', 'Scannen & Zahlen', 'Scanner et payer'],
+  // Maps (components/map/EtaMap)
+  'm.map.you': ['You', 'Tú', 'Du', 'Vous'],
+  'm.map.unavailable': ['The map isn’t available right now.', 'El mapa no está disponible ahora.', 'Die Karte ist gerade nicht verfügbar.', 'La carte n’est pas disponible pour le moment.'],
+  'm.map.recenter': ['Recenter on me', 'Centrar en mí', 'Auf mich zentrieren', 'Recentrer sur moi'],
+  'm.map.headingUp': ['Turn the map with me', 'Girar el mapa conmigo', 'Karte mit mir drehen', 'Tourner la carte avec moi'],
+  'm.map.northUp': ['North up', 'Norte arriba', 'Norden oben', 'Nord en haut'],
+  'm.map.headingShort': ['↑', '↑', '↑', '↑'],
+  'm.map.noLocation': ['Location is off — allow it to follow you on the map.', 'La ubicación está desactivada; actívala para seguirte en el mapa.', 'Standort ist aus – erlaube ihn, damit die Karte dir folgt.', 'La localisation est coupée — autorisez-la pour vous suivre sur la carte.'],
+  'm.map.compassTitle': ['Let the map turn with you', 'Deja que el mapa gire contigo', 'Lass die Karte mitdrehen', 'Laissez la carte tourner avec vous'],
+  'm.map.compassBody': ['ETA uses your compass so the map faces the way you’re facing. iPhone asks once.', 'ETA usa tu brújula para que el mapa mire hacia donde miras. El iPhone lo pregunta una vez.', 'ETA nutzt deinen Kompass, damit die Karte in deine Blickrichtung zeigt. Das iPhone fragt einmal.', 'ETA utilise votre boussole pour orienter la carte comme vous. L’iPhone le demande une fois.'],
+  'm.map.compassOn': ['Turn on compass', 'Activar brújula', 'Kompass einschalten', 'Activer la boussole'],
 } as const satisfies Record<string, readonly [string, string, string, string]>
 
 export type DictKey = BaseKey | keyof typeof more

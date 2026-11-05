@@ -34,7 +34,6 @@ import { checkArrivalOnce } from '@/lib/arrival-client'
 import PlanBCard from '@/components/PlanBCard'
 import { TripDayChip, TripEndCards } from '@/components/TripStatus'
 import { needsOnboarding } from '@/lib/onboarding'
-import QrScanSheet from '@/components/QrScanSheet'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import SmartVideo from '@/components/SmartVideo'
 import Img from '@/components/Img'
@@ -129,7 +128,6 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [firstName, setFirstName] = useState<string | null>(null)
-  const [scanOpen, setScanOpen] = useState(false)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
   const isTouchingRef = useRef(false)
@@ -309,9 +307,6 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 className="greeting-text" style={{ flex: 1, minWidth: 0 }}>{t('m.home.greeting', { name: firstName ? `, ${firstName}` : '' })}</h1>
             <TripDayChip />
-            <button onClick={() => { triggerHaptic('light'); setScanOpen(true) }} aria-label={t('m.scan.title')} className="heart-btn" style={{ background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', color: 'var(--label-primary)' }}>
-              <Icon name="qr" size={18} />
-            </button>
             <NotificationBell />
           </div>
         </div>
@@ -446,7 +441,6 @@ export default function HomePage() {
         )}
       </div>
 
-      <QrScanSheet open={scanOpen} onClose={() => setScanOpen(false)} />
       <Dock />
     </main>
   )

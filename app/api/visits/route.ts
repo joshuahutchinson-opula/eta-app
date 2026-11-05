@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const vendor = card.vendor
     const dist = Math.round(distanceM({ lat: parsed.data.lat, lng: parsed.data.lng }, vendor))
     if (dist > QR_VISIT_RADIUS_M) {
-      return NextResponse.json({ error: `You’re ${dist} m from ${vendor.name} — scan the card when you’re there`, code: 'TOO_FAR', distanceM: dist, radiusM: QR_VISIT_RADIUS_M }, { status: 403 })
+      return NextResponse.json({ error: `You’re ${dist} m from ${vendor.name} — scan the card when you’re there`, code: 'TOO_FAR', distanceM: dist, radiusM: QR_VISIT_RADIUS_M, vendor: { id: vendor.id, name: vendor.name } }, { status: 403 })
     }
 
     const already = await prisma.checkIn.findFirst({ where: { userId, vendorId: vendor.id, createdAt: { gte: startOfJamaicaDay() } } })

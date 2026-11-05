@@ -22,13 +22,11 @@ import ErrorState from '@/components/ErrorState'
 import { moodCategories } from '@/lib/mood-profiles'
 import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
 import { useLabels } from '@/lib/labels'
+import { categoryStyle } from '@/lib/vendor-style'
 import SmartVideo from '@/components/SmartVideo'
 import Img from '@/components/Img'
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false })
-const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
+const EtaMap = dynamic(() => import('@/components/map/EtaMap'), { ssr: false })
 
 interface Vendor {
   id: string
@@ -126,6 +124,7 @@ export default function MarketplacePage() {
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [selectedAccess, setSelectedAccess] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [mapVendor, setMapVendor] = useState<Vendor | null>(null)
   const realLocation = useUserLocation()
   const { town: regionTown } = useRegion()
   const userLocation = realLocation ?? { lat: regionTown.lat, lng: regionTown.lng }
@@ -336,34 +335,31 @@ export default function MarketplacePage() {
 
         {/* Map view */}
         {viewMode === 'map' && (
-          <div style={{ height: '400px', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' }}>
-            <MapContainer
-              center={[userLocation.lat, userLocation.lng]}
+          <div style={{ position: 'relative', height: '440px', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' }}>
+            <EtaMap
+              center={userLocation}
               zoom={14}
-              style={{ height: '100%', width: '100%' }}
-              zoomControl={false}
-            >
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; OpenStreetMap &copy; CARTO'
-              />
-              {filteredVendors.filter(v => v.lat && v.lng).map(v => {
-                return (
-                  <Marker key={v.id} position={[v.lat!, v.lng!]}>
-                    <Popup>
-                      <div style={{ minWidth: '150px', background: '#1C1C1E', color: '#FFFFFF', padding: '8px', borderRadius: '8px' }}>
-                        <p style={{ fontSize: '15px', fontWeight: 600 }}>{v.name}</p>
-                        <p style={{ fontSize: '13px', color: '#A1A1A1' }}>{labels.category(v.category)} · {v.priceRange}</p>
-                        <p style={{ fontSize: '13px', color: v.open ? '#34C759' : '#A1A1A1' }}>
-                          {v.open ? t('m.common.open') : t('m.common.closed')}
-                          {v.isPremium && ' · ★ B.O.N'}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                )
-              })}
-            </MapContainer>
+              user={realLocation}
+              markers={filteredVendors.filter(v => v.lat && v.lng).map(v => ({
+                id: v.id, lat: v.lat!, lng: v.lng!, color: categoryStyle(v.category).color, ring: v.isPremium ? '#FFB800' : '#FFFFFF',
+                size: v.isPremium ? 20 : 16, label: v.name, selected: mapVendor?.id === v.id, onClick: () => setMapVendor(v)
+              }))}
+              bottomInset={mapVendor ? 110 : 0}
+              label={t('m.market.allVendors')}
+            />
+            {mapVendor && (
+              <Link href={`/vendor/${mapVendor.id}`} className="card" style={{ position: 'absolute', left: '10px', right: '10px', bottom: '10px', zIndex: 5, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', textDecoration: 'none', boxShadow: 'var(--shadow-elevated)' }}>
+                <span style={{ width: '56px', height: '56px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'var(--system-bg-secondary)' }}>
+                  {mapVendor.images[0] && <Img src={mapVendor.images[0]} alt="" width={112} height={112} sizes="56px" />}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapVendor.name}</span>
+                  <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{labels.category(mapVendor.category)} · {mapVendor.priceRange}{mapVendor.isPremium ? ' · ★ B.O.N' : ''}</span>
+                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: mapVendor.open ? 'var(--success)' : 'var(--label-secondary)' }}>{mapVendor.open ? t('m.common.open') : t('m.common.closed')}</span>
+                </span>
+                <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+              </Link>
+            )}
           </div>
         )}
 

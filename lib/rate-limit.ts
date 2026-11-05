@@ -49,7 +49,9 @@ export const LIMITS = {
   // QR scans (wrong codes, out-of-range retries) and partner code guesses.
   visit: { limit: 30, windowMs: 60 * 60000 },
   partnerCode: { limit: 20, windowMs: 60 * 60000 },
-  webhook: { limit: 600, windowMs: 60000 }
+  webhook: { limit: 600, windowMs: 60000 },
+  // Road geometry for maps (each call can fan out to OSRM per leg).
+  route: { limit: 240, windowMs: 10 * 60000 }
 } as const
 
 export type LimitName = keyof typeof LIMITS

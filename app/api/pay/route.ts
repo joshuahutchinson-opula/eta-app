@@ -1,43 +1,54 @@
-// POST { amount, tip, rail, vendorCode? } (signed in) — records a Pay-tab
-// payment with its tip as a transaction (the receipt) and credits the points
-// the checkout promised (1 per dollar, tip excluded). The rails themselves
-// (JAM-DEX / Lynk / Stripe) aren't wired yet; this just records the choice.
+// POST { vendorId?, amount, tip?, rail } (signed in) — Scan & Pay: pays a
+// vendor (from their scanned QR) with an optional tip, records it as a
+// transaction (the receipt) and credits the points the checkout promised
+// (1 per dollar, tip excluded). rail "ETA Wallet" takes it from the wallet
+// balance; the other rails (JAM-DEX / Lynk / Stripe) aren't wired yet, so
+// for those this records the choice.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
+import { payFromWallet, WalletError } from '@/lib/wallet-pay'
+import { sendReceipt } from '@/lib/booking-notify'
+import { id, parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: Request) {
-  const userId = userIdFromRequest(request)
-  if (!userId) return NextResponse.json({ error: 'Log in to pay' }, { status: 401 })
-  const body = await request.json().catch(() => ({}))
-  const amount = Math.round(Number(body.amount) * 100) / 100
-  const tip = Math.max(0, Math.round(Number(body.tip || 0) * 100) / 100)
-  if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: 'Enter an amount' }, { status: 400 })
-  const vendorId = typeof body.vendorId === 'string' ? body.vendorId : null
+const WALLET_RAIL = 'ETA Wallet'
 
+const schema = z.object({
+  vendorId: id.nullable().optional(),
+  amount: z.number().finite().positive().max(100000),
+  tip: z.number().finite().min(0).max(100000).default(0),
+  rail: z.string().trim().max(40).default('Auto')
+})
+
+const cents = (n: number) => Math.round(n * 100) / 100
+
+export async function POST(request: Request) {
+  const auth = await requireUser(request, { message: 'Log in to pay' })
+  if (!auth.ok) return auth.response
+  const parsed = await parseBody(request, schema)
+  if (!parsed.ok) return parsed.response
+  const userId = auth.user.id
+  const amount = cents(parsed.data.amount)
+  const tip = cents(parsed.data.tip)
+  const total = cents(amount + tip)
   try {
-    const vendor = vendorId ? await prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, name: true } }) : null
+    const vendor = parsed.data.vendorId ? await prisma.vendor.findUnique({ where: { id: parsed.data.vendorId }, select: { id: true, name: true } }) : null
+    if (parsed.data.vendorId && !vendor) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
+    const description = vendor?.name ?? 'ETA Pay'
     const tx = await prisma.$transaction(async db => {
-      const row = await db.transaction.create({
-        data: {
-          userId,
-          vendorId: vendor?.id ?? null,
-          amount: Math.round((amount + tip) * 100) / 100,
-          tip,
-          rail: typeof body.rail === 'string' ? body.rail.slice(0, 30) : null,
-          description: vendor?.name ?? (typeof body.vendorCode === 'string' && body.vendorCode.trim() ? `Vendor ${body.vendorCode.trim().slice(0, 20)}` : 'ETA Pay'),
-          type: 'PAYMENT',
-          status: 'COMPLETED'
-        }
-      })
+      const row = parsed.data.rail === WALLET_RAIL
+        ? await payFromWallet(db, { userId, amount: total, tip, description, vendorId: vendor?.id ?? null })
+        : await db.transaction.create({ data: { userId, vendorId: vendor?.id ?? null, amount: total, tip, rail: parsed.data.rail, description, type: 'PAYMENT', status: 'COMPLETED' } })
       await db.user.update({ where: { id: userId }, data: { points: { increment: Math.floor(amount) } } })
       return row
     })
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true } })
-    return NextResponse.json({ transactionId: tx.id, points: user?.points ?? null }, { status: 201 })
+    sendReceipt(tx.id).catch(err => console.error('Receipt failed:', err))
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true, walletBalance: true } })
+    return NextResponse.json({ transactionId: tx.id, points: user?.points ?? null, walletBalance: user?.walletBalance ?? null }, { status: 201 })
   } catch (error) {
+    if (error instanceof WalletError) return NextResponse.json({ error: error.message, code: 'WALLET' }, { status: 402 })
     console.error('Payment failed:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }

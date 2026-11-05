@@ -1,21 +1,20 @@
 // components/arrival/PinDropMap.tsx — "Not listed? Drop a pin": tap the map
-// to place your stay. Loaded with next/dynamic (ssr: false) because Leaflet
-// needs the browser.
+// to place your stay (components/map/EtaMap).
 'use client'
 
-import { CircleMarker, MapContainer, TileLayer, useMapEvents } from 'react-leaflet'
-
-function TapToPick({ onPick }: { onPick: (p: { lat: number; lng: number }) => void }) {
-  useMapEvents({ click: e => onPick({ lat: e.latlng.lat, lng: e.latlng.lng }) })
-  return null
-}
+import EtaMap from '@/components/map/EtaMap'
+import { useLang } from '@/lib/i18n-client'
 
 export default function PinDropMap({ center, pin, onPick }: { center: [number, number]; pin: { lat: number; lng: number } | null; onPick: (p: { lat: number; lng: number }) => void }) {
+  const { t } = useLang()
   return (
-    <MapContainer center={center} zoom={13} zoomControl={false} style={{ height: '100%', width: '100%' }}>
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
-      <TapToPick onPick={onPick} />
-      {pin && <CircleMarker center={[pin.lat, pin.lng]} radius={10} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#B82010', fillOpacity: 1 }} />}
-    </MapContainer>
+    <EtaMap
+      center={{ lat: center[0], lng: center[1] }}
+      zoom={13}
+      fitTo={[{ lat: center[0], lng: center[1] }]}
+      markers={pin ? [{ id: 'pin', lat: pin.lat, lng: pin.lng, size: 22, label: t('m.arrival.pinName'), labelAlways: true }] : []}
+      onMapClick={onPick}
+      label={t('m.arrival.pinHelp')}
+    />
   )
 }

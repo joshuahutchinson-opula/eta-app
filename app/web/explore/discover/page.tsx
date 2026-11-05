@@ -1,6 +1,6 @@
 // app/web/explore/discover/page.tsx — Explore › Discover: the full-screen dark map.
-// Needs MAPBOX_ACCESS_TOKEN (a public, URL-restricted Mapbox token); without it
-// the page says so instead of showing a stand-in.
+// Needs NEXT_PUBLIC_MAPBOX_TOKEN (the public, URL-restricted Mapbox token the
+// app's maps use too); without it the page says so instead of showing a stand-in.
 import type { Metadata } from 'next'
 import DiscoverMap, { type DiscoverExperience, type DiscoverSpot, type DiscoverVendor } from '@/components/web/DiscoverMap'
 import ExploreTabs from '@/components/web/ExploreTabs'
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default async function DiscoverPage() {
   const lang = getServerLang()
-  const token = process.env.MAPBOX_ACCESS_TOKEN ?? ''
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
   const [vendorRows, experienceRows, spotRows] = await Promise.all([
     prisma.vendor.findMany({
@@ -58,7 +58,7 @@ export default async function DiscoverPage() {
         <div className="w-container">
           <div className="w-panel dm-setup" role="status">
             <h2 className="w-h2" style={{ marginTop: 0 }}>The Discover map isn’t switched on yet</h2>
-            <p className="w-muted">It runs on Mapbox. Add a public Mapbox access token as <code>MAPBOX_ACCESS_TOKEN</code> in the server environment (Railway variables) and redeploy.</p>
+            <p className="w-muted">It runs on Mapbox. Add a public Mapbox access token as <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> in the environment (Railway variables) and redeploy.</p>
           </div>
         </div>
       )}

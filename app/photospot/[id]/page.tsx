@@ -130,7 +130,7 @@ export default function PhotoSpotDetailPage() {
   return (
     <main className="screen-push-in" style={{ minHeight: '100vh', position: 'relative', zIndex: 1, paddingBottom: '80px' }}>
       {/* Back button */}
-      <BackButton floating fallback="/explore" />
+      <BackButton floating fallback="/experiences?mode=discover" />
 
       <div style={{ position: 'relative', height: '340px' }}>
         {/* Swipeable gallery; the cover photo leads */}

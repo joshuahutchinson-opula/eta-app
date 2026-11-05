@@ -1,6 +1,6 @@
 // app/web/layout.tsx
 // Desktop web app shell. Lives under /web so it can sit beside the mobile
-// app's routes (/, /explore, /experiences, /vendor/[id]) in the same
+// app's routes (/, /experiences, /vendor/[id]) in the same
 // project, same Prisma client and same API layer.
 import type { Metadata, Viewport } from 'next'
 import { Fraunces, Inter } from 'next/font/google'

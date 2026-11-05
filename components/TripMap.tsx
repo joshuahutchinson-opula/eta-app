@@ -1,38 +1,11 @@
-// components/TripMap.tsx — the active trip's stops, the traveler's live
-// position and (opt-in) the rest of the crew's on a real map. Done stops are
-// dimmed, the next one is gold, crew members are green.
+// components/TripMap.tsx — the active trip's stops joined along real roads,
+// the traveler's position and (opt-in) the rest of the crew's. Done stops
+// are dimmed, the next one is gold, crew members are green. With `live` it
+// becomes the Waze-style map that follows you (components/map/EtaMap).
 'use client'
 
-import { useEffect } from 'react'
-import dynamic from 'next/dynamic'
-
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
-const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
-const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMarker), { ssr: false })
-const Polyline = dynamic(() => import('react-leaflet').then(m => m.Polyline), { ssr: false })
-const Tooltip = dynamic(() => import('react-leaflet').then(m => m.Tooltip), { ssr: false })
-
-// Fits the view to every point once the map exists, then again when they change.
-const FitBounds = dynamic(
-  () => import('react-leaflet').then(mod => {
-    function Component({ points }: { points: Array<[number, number]> }) {
-      const map = mod.useMap()
-      const key = points.map(p => p.join(',')).join('|')
-      useEffect(() => {
-        const t = setTimeout(() => {
-          map.invalidateSize()
-          if (points.length === 1) map.setView(points[0], 15)
-          else if (points.length > 1) map.fitBounds(points, { padding: [40, 40], maxZoom: 16 })
-        }, 150)
-        return () => clearTimeout(t)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [map, key])
-      return null
-    }
-    return Component
-  }),
-  { ssr: false }
-)
+import { useMemo } from 'react'
+import EtaMap from '@/components/map/EtaMap'
 
 export interface TripMapStop {
   name: string
@@ -40,7 +13,7 @@ export interface TripMapStop {
   lng: number | null
 }
 
-export default function TripMap({ stops, currentIndex, user, fallbackCenter, crew = [], youLabel = 'You' }: {
+export default function TripMap({ stops, currentIndex, user, fallbackCenter, crew = [], youLabel = 'You', live = false, bottomInset = 0 }: {
   stops: TripMapStop[]
   currentIndex: number
   user: { lat: number; lng: number } | null
@@ -48,46 +21,46 @@ export default function TripMap({ stops, currentIndex, user, fallbackCenter, cre
   /** Crew members sharing their live location (never includes the viewer). */
   crew?: Array<{ name: string; lat: number; lng: number }>
   youLabel?: string
+  /** Follow the traveler, heading-up, as on the active trip screen. */
+  live?: boolean
+  /** Space kept clear at the bottom for the cards over the map. */
+  bottomInset?: number
 }) {
-  const placed = stops.map((s, i) => ({ ...s, i })).filter((s): s is TripMapStop & { i: number; lat: number; lng: number } => s.lat !== null && s.lng !== null)
-  const points: Array<[number, number]> = [
-    ...placed.map(s => [s.lat, s.lng] as [number, number]),
-    ...(user ? [[user.lat, user.lng] as [number, number]] : []),
-    ...crew.map(c => [c.lat, c.lng] as [number, number])
-  ]
+  const placed = useMemo(() => stops.map((s, i) => ({ ...s, i })).filter((s): s is TripMapStop & { i: number; lat: number; lng: number } => s.lat !== null && s.lng !== null), [stops])
+  const markers = useMemo(() => [
+    ...placed.map(s => ({
+      id: `stop-${s.i}`,
+      lat: s.lat,
+      lng: s.lng,
+      text: String(s.i + 1),
+      size: s.i === currentIndex ? 28 : 22,
+      color: s.i < currentIndex ? '#636366' : s.i === currentIndex ? '#FFB800' : '#B82010',
+      dim: s.i < currentIndex,
+      label: `${s.i + 1}. ${s.name}`,
+      labelAlways: s.i === currentIndex,
+      selected: s.i === currentIndex
+    })),
+    ...crew.map(c => ({ id: `crew-${c.name}`, lat: c.lat, lng: c.lng, color: '#34C759', size: 18, label: c.name, labelAlways: true }))
+  ], [placed, currentIndex, crew])
+  const routes = useMemo(() => {
+    const ahead = placed.filter(s => s.i >= Math.max(0, currentIndex - 1))
+    const done = placed.filter(s => s.i <= currentIndex)
+    return [
+      ...(done.length > 1 ? [{ id: 'done', points: done.map(s => ({ lat: s.lat, lng: s.lng })), color: '#8E8E93', width: 3, dashed: true, mode: 'walking' as const }] : []),
+      ...(ahead.length > 1 ? [{ id: 'ahead', points: ahead.map(s => ({ lat: s.lat, lng: s.lng })), color: '#00B8A9', width: 5, mode: 'walking' as const }] : [])
+    ]
+  }, [placed, currentIndex])
 
   return (
-    <MapContainer center={points[0] ?? fallbackCenter} zoom={14} zoomControl={false} style={{ position: 'absolute', inset: 0, background: '#0A1628' }}>
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
-      <FitBounds points={points} />
-      {placed.length > 1 && (
-        <Polyline positions={placed.map(s => [s.lat, s.lng] as [number, number])} pathOptions={{ color: '#00E5CC', weight: 3, dashArray: '6 6', opacity: 0.8 }} />
-      )}
-      {placed.map(s => (
-        <CircleMarker
-          key={`${s.i}-${s.name}`}
-          center={[s.lat, s.lng]}
-          radius={s.i === currentIndex ? 11 : 8}
-          pathOptions={{
-            color: '#FFFFFF',
-            weight: 2,
-            fillColor: s.i < currentIndex ? '#636366' : s.i === currentIndex ? '#FFB800' : '#B82010',
-            fillOpacity: 0.95
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -8]} permanent={s.i === currentIndex}>{`${s.i + 1}. ${s.name}`}</Tooltip>
-        </CircleMarker>
-      ))}
-      {user && (
-        <CircleMarker center={[user.lat, user.lng]} radius={8} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#007AFF', fillOpacity: 1 }}>
-          <Tooltip direction="top" offset={[0, -8]}>{youLabel}</Tooltip>
-        </CircleMarker>
-      )}
-      {crew.map(c => (
-        <CircleMarker key={`crew-${c.name}`} center={[c.lat, c.lng]} radius={8} pathOptions={{ color: '#FFFFFF', weight: 3, fillColor: '#34C759', fillOpacity: 1 }}>
-          <Tooltip direction="top" offset={[0, -8]} permanent>{c.name}</Tooltip>
-        </CircleMarker>
-      ))}
-    </MapContainer>
+    <EtaMap
+      center={{ lat: fallbackCenter[0], lng: fallbackCenter[1] }}
+      zoom={14}
+      markers={markers}
+      routes={routes}
+      user={live ? null : user}
+      live={live}
+      bottomInset={bottomInset}
+      label={`${youLabel}: ${placed.map(s => s.name).join(', ')}`}
+    />
   )
 }
