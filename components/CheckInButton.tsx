@@ -1,6 +1,7 @@
-// components/CheckInButton.tsx — "Check in" on vendor and photo spot pages.
-// Tracks your position; the button unlocks once you're within range and the
-// server (not the device) awards the points.
+// components/CheckInButton.tsx — "Check in" on photo spot pages (vendors are
+// checked in by scanning their QR card, components/QrScanSheet). Tracks your
+// position; the button unlocks once you're within range and the server (not
+// the device) awards the points.
 'use client'
 
 import { useState } from 'react'
@@ -13,7 +14,7 @@ import { CHECKIN_RADIUS_M } from '@/lib/checkins'
 import { useLang, useErrorText } from '@/lib/i18n-client'
 import { hapticRewardRedeemed } from '@/lib/haptics'
 
-export default function CheckInButton({ target }: { target: { kind: 'vendor' | 'photospot'; id: string; lat: number; lng: number } }) {
+export default function CheckInButton({ target }: { target: { kind: 'photospot'; id: string; lat: number; lng: number } }) {
   const { t } = useLang()
   const errorText = useErrorText()
   const [watching, setWatching] = useState(false)
@@ -33,7 +34,7 @@ export default function CheckInButton({ target }: { target: { kind: 'vendor' | '
       const res = await fetch('/api/checkins', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ [target.kind === 'vendor' ? 'vendorId' : 'photoSpotId']: target.id, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy })
+        body: JSON.stringify({ photoSpotId: target.id, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')

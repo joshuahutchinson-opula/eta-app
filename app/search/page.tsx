@@ -11,7 +11,6 @@ import BackButton from '@/components/BackButton'
 import Icon from '@/lib/icons'
 import ErrorState from '@/components/ErrorState'
 import Img from '@/components/Img'
-import { RegionPill } from '@/components/RegionSelector'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang, usePatois } from '@/lib/i18n-client'
 import { formatCity } from '@/lib/format'
@@ -143,7 +142,6 @@ export default function SearchPage() {
             style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
           />
         </label>
-        <RegionPill />
       </div>
 
       <div style={{ padding: '0 16px' }}>

@@ -18,6 +18,8 @@ export async function deleteAccount(userId: string): Promise<void> {
     await tx.savedList.deleteMany({ where: { userId } })
     await tx.eventInterest.deleteMany({ where: { userId } })
     await tx.storyView.deleteMany({ where: { userId } })
+    await tx.instagramMention.deleteMany({ where: { userId } })
+    await tx.tripRecap.deleteMany({ where: { userId } })
     await tx.checkIn.deleteMany({ where: { userId } })
     await tx.gemConfirmation.deleteMany({ where: { userId } })
     await tx.safetyShare.deleteMany({ where: { userId } })
@@ -40,6 +42,11 @@ export async function deleteAccount(userId: string): Promise<void> {
         emergencyContactPhone: null,
         referralCode: null,
         leaderboardOptIn: false,
+        instagramHandle: null,
+        whatsappNumber: null,
+        notifyWhatsapp: false,
+        stayName: null,
+        stayAccommodationId: null,
         deletedAt: new Date(),
         tokenVersion: { increment: 1 }
       }

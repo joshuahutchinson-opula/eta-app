@@ -16,6 +16,7 @@ import Price from '@/components/Price'
 import QRCode from '@/components/QRCode'
 import Img from '@/components/Img'
 import ErrorState from '@/components/ErrorState'
+import PlanBCard from '@/components/PlanBCard'
 import AddToCalendar from '@/components/AddToCalendar'
 import { Filled } from '@/components/LinkedText'
 import { apiJson, authHeaders } from '@/lib/api-client'
@@ -385,6 +386,7 @@ export default function MyBookingsPage() {
 
       <div style={{ padding: '0 16px' }}>
         {offlineAt && <p role="status" style={{ fontSize: '13px', color: 'var(--warning)', marginBottom: '12px' }}>{t('m.bookings.offline', { when: fmtWhen(offlineAt) })}</p>}
+        {signedIn && <PlanBCard padded={false} onSwapped={load} />}
         {notice && (
           <p role="status" style={{ fontSize: '14px', color: 'var(--label-primary)', marginBottom: '12px' }}>
             <Icon name="check" size={14} style={{ color: 'var(--success)' }} />{' '}

@@ -1,10 +1,14 @@
 // app/stories/page.tsx — full-screen stories for the selected region.
 // Photos show for 5 s, videos for their length (up to 30 s). Each story
 // viewed is marked seen on the account, which greys its ring on Home.
+// Every story with a place carries a "Go here" (vendor) or "Book this"
+// (event) button. Vendor-approved Instagram story mentions play inside the
+// vendor's ring, straight from Instagram.
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Icon from '@/lib/icons'
 import ReportButton from '@/components/ReportButton'
 import { useRegion } from '@/components/RegionProvider'
@@ -31,6 +35,9 @@ interface Story {
     name: string
     avatarUrl: string | null
   } | null
+  source?: 'eta' | 'instagram'
+  igUsername?: string
+  action?: { kind: 'vendor' | 'event'; id: string; name: string } | null
 }
 
 interface StoryGroup {
@@ -119,7 +126,7 @@ export default function StoriesPage() {
   // Mark each story seen once, for the ring on Home.
   useEffect(() => {
     setDurationMs(ITEM_DURATION_MS)
-    if (!currentItem || currentItem.seen || seenRef.current.has(currentItem.id) || !getCurrentUser()) return
+    if (!currentItem || currentItem.seen || currentItem.source === 'instagram' || seenRef.current.has(currentItem.id) || !getCurrentUser()) return
     seenRef.current.add(currentItem.id)
     fetch(`/api/stories/${currentItem.id}/view`, { method: 'POST', headers: authHeaders() }).catch(() => {})
   }, [currentItem])
@@ -332,7 +339,7 @@ export default function StoriesPage() {
               <Icon name="audio" size={16} />
             </button>
           )}
-          <span onClick={() => setPaused(true)}><ReportButton targetType="STORY" targetId={currentItem.id} tone="light" /></span>
+          {currentItem.source !== 'instagram' && <span onClick={() => setPaused(true)}><ReportButton targetType="STORY" targetId={currentItem.id} tone="light" /></span>}
         </span>
         <button
           aria-label={t('m.stories.close')}
@@ -349,9 +356,24 @@ export default function StoriesPage() {
         </div>
       )}
 
-      {/* Story caption */}
-      <div style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)', left: '16px', right: '16px', zIndex: 5 }}>
-        <p style={{ fontSize: '18px', fontWeight: 700, color: 'white' }}>{currentItem.content}</p>
+      {/* Caption, then where it is: "Go here" / "Book this" */}
+      <div style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)', left: '16px', right: '16px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '12px' }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+        {currentItem.source === 'instagram' && currentItem.igUsername && (
+          <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}><Icon name="instagram" size={14} /> @{currentItem.igUsername}</p>
+        )}
+        {currentItem.content && <p style={{ fontSize: '18px', fontWeight: 700, color: 'white' }}>{currentItem.content}</p>}
+        {currentItem.action && (
+          <Link
+            href={currentItem.action.kind === 'event' ? `/events/${currentItem.action.id}` : `/vendor/${currentItem.action.id}`}
+            onClick={() => triggerHaptic('medium')}
+            className="btn btn-primary"
+            style={{ textDecoration: 'none', width: '100%', justifyContent: 'center' }}
+          >
+            <Icon name={currentItem.action.kind === 'event' ? 'ticket' : 'navigate'} size={16} />
+            {currentItem.action.kind === 'event' ? t('m.story.bookThis') : t('m.story.goHere')}
+            <span style={{ fontWeight: 500, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {currentItem.action.name}</span>
+          </Link>
+        )}
       </div>
     </main>
   )

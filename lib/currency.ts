@@ -1,5 +1,5 @@
-// lib/currency.ts — every price in the data is USD. The traveler picks which
-// currency leads (Profile -> Settings); the other is shown smaller. The JMD
+// lib/currency.ts — every price in the data is USD. The traveler picks the
+// currency they see (Profile -> Settings); prices show in that one only. The JMD
 // rate comes from /api/exchange-rate (refreshed daily), cached on the device
 // for a day; until it loads the last cached rate, or 157, is used.
 'use client'
@@ -56,7 +56,7 @@ export function formatMoney(usd: number, currency: Currency): string {
   return format$(usd, currency, rate)
 }
 
-export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void; format: (usd: number) => string; formatOther: (usd: number) => string } {
+export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) => void; format: (usd: number) => string } {
   const [currency, setState] = useState<Currency>('USD')
   const [usdJmd, setUsdJmd] = useState(rate)
   useEffect(() => {
@@ -77,6 +77,5 @@ export function useCurrency(): { currency: Currency; setCurrency: (c: Currency) 
     window.dispatchEvent(new CustomEvent(EVENT, { detail: c }))
   }, [])
   const format = useCallback((usd: number) => format$(usd, currency, usdJmd), [currency, usdJmd])
-  const formatOther = useCallback((usd: number) => format$(usd, currency === 'USD' ? 'JMD' : 'USD', usdJmd), [currency, usdJmd])
-  return { currency, setCurrency, format, formatOther }
+  return { currency, setCurrency, format }
 }

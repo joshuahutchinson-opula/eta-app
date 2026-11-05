@@ -16,6 +16,7 @@ import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { getAuthToken, getCurrentUser, isVerified, setCurrentUser } from '@/lib/auth-client'
 import { jamaicaDateTime, jamaicaToday, priceBreakdown } from '@/lib/pricing'
+import { readPlanDay } from '@/lib/trip-mode'
 import { parseTier, TIER_SUMMARY_KEY } from '@/lib/cancellation'
 import { hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import type { SlotState } from '@/lib/slots'
@@ -91,7 +92,7 @@ export default function BookingSheet({ open, onClose, title, unitPrice, priceIsE
     setStep('details')
     setError(null)
     setParty(Math.min(max, Math.max(1, defaultPartySize)))
-    if (fixedWhen) setDate(fixedWhen.date)
+    setDate(fixedWhen ? fixedWhen.date : readPlanDay() ?? jamaicaToday())
     const user = getCurrentUser()
     setWallet(user?.walletBalance ?? null)
     setVerified(!user || isVerified(user))
@@ -318,7 +319,7 @@ export default function BookingSheet({ open, onClose, title, unitPrice, priceIsE
                   {!signedIn ? (
                     <Link href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/')}`} className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.profile.login')}</Link>
                   ) : short ? (
-                    <Link href="/wallet" className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.book.topUp')}</Link>
+                    <Link href="/rewards?tab=wallet" className="btn btn-primary" style={{ flex: 2, textDecoration: 'none' }}>{t('m.book.topUp')}</Link>
                   ) : (
                     <button className="btn btn-primary" onClick={pay} disabled={paying || !verified} style={{ flex: 2 }}>
                       {paying ? '…' : <>{t('m.book.pay')} <Price usd={due} compact /></>}

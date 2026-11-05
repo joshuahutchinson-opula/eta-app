@@ -113,7 +113,7 @@ export default function ReceiptPage() {
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
             {receipt.booking && <Link href="/bookings" className="btn btn-secondary" style={{ flex: 1, textDecoration: 'none' }}>{t('m.profile.bookings')}</Link>}
-            <Link href="/wallet" className="btn btn-secondary" style={{ flex: 1, textDecoration: 'none' }}>{t('m.profile.wallet')}</Link>
+            <Link href="/rewards?tab=wallet" className="btn btn-secondary" style={{ flex: 1, textDecoration: 'none' }}>{t('m.profile.wallet')}</Link>
           </div>
         </div>
       )}

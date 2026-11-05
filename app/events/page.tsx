@@ -7,7 +7,6 @@ import Dock from '@/components/Dock'
 import BackButton from '@/components/BackButton'
 import EventCard from '@/components/EventCard'
 import ErrorState from '@/components/ErrorState'
-import { RegionPill } from '@/components/RegionSelector'
 import { useRegion } from '@/components/RegionProvider'
 import Icon from '@/lib/icons'
 import { useLang } from '@/lib/i18n-client'
@@ -54,7 +53,6 @@ export default function AllEventsPage() {
           <span className="section-eyebrow">{t('m.events.eyebrow')}</span>
           <h1 className="section-title">{t('m.events.allTitle')}</h1>
         </div>
-        <RegionPill />
       </div>
       <div className="horizontal-scroll" role="tablist" style={{ padding: '0 16px 12px', gap: '8px' }}>
         {WINDOWS.map(w => (

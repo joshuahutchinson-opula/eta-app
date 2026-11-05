@@ -11,6 +11,7 @@ import { formatDistance } from '@/lib/geo'
 import { useLang } from '@/lib/i18n-client'
 import { useLabels } from '@/lib/labels'
 import Img from '@/components/Img'
+import FairPriceBadge from '@/components/FairPriceBadge'
 
 export interface VendorCardVendor {
   id: string
@@ -27,6 +28,8 @@ export interface VendorCardVendor {
   rating?: number | null
   reviewCount?: number | null
   accessibility?: string[]
+  /** Vendor-confirmed "Fair price, same as locals". */
+  fairPrice?: boolean
 }
 
 interface Props {
@@ -148,6 +151,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
               <Icon name="mapPin" size={10} /> {distance ? `${distance} · ` : ''}{v.neighborhood}
             </p>
             <div style={{ fontSize: '12px' }}><Rating rating={v.rating} reviewCount={v.reviewCount} compact /></div>
+            {v.fairPrice && <div><FairPriceBadge /></div>}
           </div>
         </div>
       </Link>
@@ -188,6 +192,7 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', flexWrap: 'wrap' }}>
             <Rating rating={v.rating} reviewCount={v.reviewCount} />
             {liveLine}
+            {v.fairPrice && <FairPriceBadge />}
             {access.length > 0 && <span style={{ color: 'var(--label-secondary)' }}>♿ {access[0]}</span>}
           </div>
         </div>

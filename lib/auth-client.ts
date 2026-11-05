@@ -25,6 +25,16 @@ export interface CurrentUser {
   notifyDeals?: boolean
   notifyLive?: boolean
   notifyCrew?: boolean
+  notifyTrips?: boolean
+  notifyWhatsapp?: boolean
+  whatsappNumber?: string | null
+  instagramHandle?: string | null
+  tripStart?: string | null
+  tripEnd?: string | null
+  stayName?: string | null
+  stayCity?: string | null
+  stayAccommodationId?: string | null
+  partnerPropertyId?: string | null
 }
 
 const TOKEN_KEY = 'eta_token'

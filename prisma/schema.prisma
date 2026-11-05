@@ -106,7 +106,7 @@ model User {
   emailVerifiedAt       DateTime?
   // Bumped on log-out and account deletion; tokens carry the version they
   // were issued with, so older ones stop working (lib/auth-server.ts).
-  tokenVersion          Int       @default(0)
+  tokenVersion          Int              @default(0)
   // Set when the user deletes their account; personal fields are wiped then.
   deletedAt             DateTime?
   // Which terms/privacy version the user agreed to at sign-up (lib/legal.ts).
@@ -116,13 +116,35 @@ model User {
   emergencyContactName  String?
   emergencyContactPhone String?
   // Shown on the monthly leaderboard as first name + initial only.
-  leaderboardOptIn      Boolean   @default(false)
+  leaderboardOptIn      Boolean          @default(false)
   // Notification preferences per type, respected by every sender (lib/notify.ts).
-  notifyBookings        Boolean   @default(true)
-  notifyEvents          Boolean   @default(true)
-  notifyDeals           Boolean   @default(true)
-  notifyLive            Boolean   @default(true)
-  notifyCrew            Boolean   @default(true)
+  notifyBookings        Boolean          @default(true)
+  notifyEvents          Boolean          @default(true)
+  notifyDeals           Boolean          @default(true)
+  notifyLive            Boolean          @default(true)
+  notifyCrew            Boolean          @default(true)
+  // Trip tips and the "planning your next trip?" nudge once they're home.
+  notifyTrips           Boolean          @default(true)
+  // WhatsApp copies of booking confirmations, reminders, receipts and crew
+  // messages (lib/whatsapp.ts). Opt-in: WhatsApp requires it.
+  whatsappNumber        String?
+  notifyWhatsapp        Boolean          @default(false)
+  // Instagram username, lowercase without the @. Story mentions of @ETA from
+  // this account are matched to the vendor they QR-scanned at (lib/instagram.ts).
+  instagramHandle       String?
+  // Trip mode: the dates of the current (or last) trip, Jamaica days.
+  tripStart             DateTime?
+  tripEnd               DateTime?
+  // Where they're staying: an ETA listing, a partner property, or just a town.
+  stayName              String?
+  stayCity              City?
+  stayAccommodationId   String?
+  // The hotel/villa partner whose code or QR brought them in (lib/partners.ts).
+  partnerPropertyId     String?
+  partnerJoinedAt       DateTime?
+  partnerProperty       PartnerProperty? @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  // When the "planning your next trip?" nudge last went out (one per trip).
+  homeNudgeSentAt       DateTime?
 
   redemptions             Redemption[]
   dealClaims              FlashDealClaim[]
@@ -164,6 +186,10 @@ model User {
   alertSubscriptions AlertSubscription[]
   hiddenGems         HiddenGem[]         @relation("GemSubmitter")
   gemConfirmations   GemConfirmation[]
+  instagramMentions  InstagramMention[]
+  tripRecaps         TripRecap[]
+
+  @@index([instagramHandle])
 }
 
 model Vendor {
@@ -205,6 +231,10 @@ model Vendor {
   // What the vendor is pushing today: { name, price, imageUrl, videoUrl?, prepMinutes? }.
   dishOfDay            Json?
   acceptsReservations  Boolean        @default(false)
+  // "Fair price, same as locals": the vendor confirms tourists pay what
+  // locals pay. Set from the vendor app; the date is when they confirmed.
+  fairPrice            Boolean        @default(false)
+  fairPriceConfirmedAt DateTime?
   // Placeholder listing from the seed, not a real vetted vendor.
   // scripts/remove-mock-data.ts deletes everything flagged this way.
   isMock               Boolean        @default(false)
@@ -229,6 +259,9 @@ model Vendor {
   discoveries         Discovery[]
   flashDeals          FlashDeal[]
   tripStops           TripStop[]
+  instagramMentions   InstagramMention[]
+  taggedStories       Story[]              @relation("StoryPlace")
+  qrCard              VendorQrCard?
 }
 
 model Accommodation {
@@ -306,6 +339,9 @@ model Experience {
   accessibilityNotes String?
   // Languages the guide speaks, e.g. ["English", "Patois", "Spanish"].
   guideLanguages     String[] @default([])
+  // Rain-sensitive (Plan B, lib/plan-b.ts). Null = worked out from the stops:
+  // beach, activity and photo-spot stops count as outdoor.
+  outdoor            Boolean?
   isMock             Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -422,6 +458,13 @@ model Story {
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
   userId   String?
   user     User?   @relation(fields: [userId], references: [id])
+
+  // Where a traveler story was taken, for its "Go here" button. Vendor
+  // stories use vendorId; an event story points at the event ("Book this").
+  placeVendorId String?
+  placeVendor   Vendor? @relation("StoryPlace", fields: [placeVendorId], references: [id], onDelete: SetNull)
+  eventId       String?
+  event         Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
 }
 
 model Booking {
@@ -496,6 +539,12 @@ model CheckIn {
   points    Int      @default(0)
   lat       Float?
   lng       Float?
+  // "qr" = scanned the vendor's QR card on site (the vendor's proof of
+  // visit); "gps" = location-only check-in (photo spots).
+  method    String   @default("gps")
+  accuracy  Float?
+  // Distance from the place when checking in, metres.
+  distanceM Int?
 
   userId      String
   user        User       @relation(fields: [userId], references: [id])
@@ -503,6 +552,11 @@ model CheckIn {
   vendor      Vendor?    @relation(fields: [vendorId], references: [id])
   photoSpotId String?
   photoSpot   PhotoSpot? @relation(fields: [photoSpotId], references: [id])
+
+  instagramMentions InstagramMention[]
+
+  @@index([vendorId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Transaction {
@@ -892,6 +946,7 @@ model Event {
 
   tickets   Ticket[]
   interests EventInterest[]
+  stories   Story[]
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -1205,22 +1260,29 @@ model MenuItem {
 
 // The reward catalog. id is a stable slug (Redemption.rewardId).
 model Reward {
-  id          String   @id
-  name        String
-  description String
-  cost        Int
-  icon        String
-  minTier     String?
-  validDays   Int
+  id            String   @id
+  name          String
+  description   String
+  cost          Int
+  icon          String
+  minTier       String?
+  validDays     Int
   // Null = available everywhere in Jamaica.
-  city        City?
-  active      Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  isMock      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  city          City?
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  // "catalog" = bought with points in Rewards. "welcome" = free, once per
+  // traveler, handed out by the arrival moment or a partner property code
+  // (lib/welcome.ts); cost is ignored. Configure these as data.
+  kind          String   @default("catalog")
+  // Locked until the traveler has QR-scanned at one of the reward's vendors.
+  requiresVisit Boolean  @default(false)
+  isMock        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  vendors RewardVendor[]
+  vendors           RewardVendor[]
+  partnerProperties PartnerProperty[]
 }
 
 // Which vendors honour a reward.
@@ -1284,4 +1346,94 @@ model ExchangeRate {
   rate      Float
   source    String
   fetchedAt DateTime
+}
+
+// ---------- Growth: partners, Instagram, trip recaps ----------
+
+enum PartnerKind {
+  HOTEL
+  VILLA
+}
+
+// A hotel or villa that hands guests an ETA code (or its QR). Entering it
+// presets the region, can hand out a welcome reward, and records the
+// property as the guest's referrer (User.partnerPropertyId).
+model PartnerProperty {
+  id        String      @id @default(cuid())
+  name      String
+  // What guests type or scan, e.g. "SEASPLASH". Stored uppercase.
+  code      String      @unique
+  kind      PartnerKind @default(HOTEL)
+  city      City
+  lat       Float?
+  lng       Float?
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // The perk guests get: a welcome reward (Reward.kind = "welcome").
+  welcomeRewardId String?
+  welcomeReward   Reward? @relation(fields: [welcomeRewardId], references: [id], onDelete: SetNull)
+  guests          User[]
+}
+
+enum MentionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// An Instagram story that mentioned @ETA, matched to a vendor the poster
+// QR-scanned at shortly before (lib/instagram.ts). Only the Instagram media
+// URL is kept, never the media itself; it shows in the vendor's ETA story
+// once the vendor approves it, until expiresAt (24 h after it arrived).
+model InstagramMention {
+  id          String        @id @default(cuid())
+  // Instagram-scoped id of the sender, from the webhook.
+  igSenderId  String
+  igUsername  String
+  // The story's media URL on Instagram's CDN.
+  mediaUrl    String
+  mediaType   String        @default("image")
+  // De-duplicates webhook retries (the message id).
+  igMessageId String?       @unique
+  status      MentionStatus @default(PENDING)
+  receivedAt  DateTime      @default(now())
+  expiresAt   DateTime
+  decidedAt   DateTime?
+  decidedById String?
+
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkInId String?
+  checkIn   CheckIn? @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  @@index([vendorId, status, expiresAt])
+}
+
+// A shareable trip recap: everywhere they went between two dates. The
+// token is the public link; the dates fix what it shows.
+model TripRecap {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  start     DateTime
+  end       DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, start, end])
+}
+
+// The secret on a vendor's printed QR card (lib/vendor-qr.ts). Scanning it
+// on site is the proof of visit. Kept off the Vendor row so no vendor
+// include or listing can ever send it to a traveler's app.
+model VendorQrCard {
+  vendorId String   @id
+  vendor   Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  token    String   @unique
+  issuedAt DateTime @default(now())
 }

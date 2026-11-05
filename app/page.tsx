@@ -1,10 +1,14 @@
 // app/page.tsx — Home. Everything here is for the selected region and is
-// filtered on the server: Featured (B.O.N vendors with video), Right now,
-// events, vibes → experiences, and the nearest vendors.
+// filtered on the server: search, the region selector (the one location
+// changer in the app), trip mode, stories, Featured (B.O.N vendors with
+// video), Parties & Happenings, vibes → experiences, and the nearest vendors.
+// First open goes through onboarding; at an airport or hotel the arrival
+// moment takes over.
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import VendorCard from '@/components/VendorCard'
 import Icon from '@/lib/icons'
@@ -18,12 +22,16 @@ import EventsSection from '@/components/EventsSection'
 import ExperienceCard from '@/components/ExperienceCard'
 import RegionSelector from '@/components/RegionSelector'
 import RegionMismatchPrompt from '@/components/RegionMismatchPrompt'
-import RightNowStrip from '@/components/RightNowStrip'
 import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
 import StoriesRow from '@/components/StoriesRow'
-import ContextTip from '@/components/ContextTip'
 import NotificationBell from '@/components/NotificationBell'
+import SearchBar from '@/components/SearchBar'
+import ArrivalMoment from '@/components/ArrivalMoment'
+import PlanBCard from '@/components/PlanBCard'
+import { TripDayChip, TripEndCards } from '@/components/TripStatus'
+import { needsOnboarding } from '@/lib/onboarding'
+import QrScanSheet from '@/components/QrScanSheet'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import SmartVideo from '@/components/SmartVideo'
 import Img from '@/components/Img'
@@ -118,12 +126,17 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [firstName, setFirstName] = useState<string | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
   const featuredScrollRef = useRef<HTMLDivElement>(null)
   const moodPickerRef = useRef<HTMLDivElement>(null)
   const isTouchingRef = useRef(false)
   const vibeAppliedRef = useRef(false)
   const { city, town, ready } = useRegion()
   const { t } = useLang()
+  const router = useRouter()
+
+  // First open: the three-tap onboarding (dates, stay, vibe) comes first.
+  useEffect(() => { if (needsOnboarding()) router.replace('/onboarding') }, [router])
 
   // Pause the Featured auto-advance while a touch is active anywhere on the
   // page, so it doesn't fight the user mid-swipe, then resume on release.
@@ -273,6 +286,9 @@ export default function HomePage() {
       <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
       <div className="content-fade-in">
+        <div style={{ padding: '12px 16px 0' }}>
+          <SearchBar />
+        </div>
         <RegionSelector />
         <RegionMismatchPrompt />
 
@@ -280,9 +296,10 @@ export default function HomePage() {
         <div style={{ padding: '16px 16px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 className="greeting-text" style={{ flex: 1, minWidth: 0 }}>{t('m.home.greeting', { name: firstName ? `, ${firstName}` : '' })}</h1>
-            <Link href="/search" aria-label={t('m.search.open')} className="heart-btn" style={{ background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', color: 'var(--label-primary)' }}>
-              <Icon name="search" size={18} />
-            </Link>
+            <TripDayChip />
+            <button onClick={() => { triggerHaptic('light'); setScanOpen(true) }} aria-label={t('m.scan.title')} className="heart-btn" style={{ background: 'var(--system-bg-elevated)', boxShadow: 'var(--shadow-card)', color: 'var(--label-primary)' }}>
+              <Icon name="qr" size={18} />
+            </button>
             <NotificationBell />
           </div>
         </div>
@@ -300,9 +317,10 @@ export default function HomePage() {
           </div>
         )}
 
-        <StoriesRow />
+        <PlanBCard />
+        <TripEndCards location={userLocation} />
 
-        <ContextTip />
+        <StoriesRow />
 
         <div className="divider-faded" />
 
@@ -359,9 +377,7 @@ export default function HomePage() {
           </div>
         )}
 
-        <RightNowStrip />
-
-        {/* This Week's Events */}
+        {/* Parties & happenings */}
         <EventsSection />
 
         <div className="divider-faded" style={{ marginBottom: '48px' }} />
@@ -416,6 +432,8 @@ export default function HomePage() {
         )}
       </div>
 
+      <ArrivalMoment location={userLocation} />
+      <QrScanSheet open={scanOpen} onClose={() => setScanOpen(false)} />
       <Dock />
     </main>
   )

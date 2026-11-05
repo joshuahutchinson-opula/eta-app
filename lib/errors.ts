@@ -25,7 +25,15 @@ const BY_CODE: Record<string, DictKey> = {
   TRIP_FORBIDDEN: 'm.err.tripForbidden',
   SLOT_UNAVAILABLE: 'm.err.slot',
   TOKEN_EXPIRED: 'm.err.linkExpired',
-  NETWORK: 'm.err.network'
+  NETWORK: 'm.err.network',
+  QR_INVALID: 'm.scan.invalid',
+  TOO_FAR: 'm.scan.tooFar',
+  ALREADY_TODAY: 'm.scan.already',
+  GPS_FUZZY: 'm.scan.fuzzy',
+  USE_QR: 'm.scan.useQr',
+  VISIT_REQUIRED: 'm.rewards.visitRequired',
+  PARTNER_NOT_FOUND: 'm.partner.notFound',
+  NO_TRIP: 'm.recap.noTrip'
 }
 
 const BY_STATUS: Record<number, DictKey> = {

@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth-server'
 import { httpsUrl, lat, lng, parseBody, text, z } from '@/lib/validate'
 import { CITY_CODES } from '@/lib/regions'
 import { popularTimes } from '@/lib/popular-times'
+import { approvedMentionStories } from '@/lib/instagram'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +36,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Experiences whose route stops here (each listed once).
     const { experienceStops, ...rest } = vendor
     const experiences = Array.from(new Map(experienceStops.map(s => [s.experience.id, s.experience])).values())
+    const igStories = await approvedMentionStories({ vendorId: vendor.id })
     return NextResponse.json({
       ...rest,
+      stories: [...rest.stories, ...igStories],
       reviews: rest.reviews.map(r => ({ ...r, user: { name: r.user.name.split(' ')[0], avatarUrl: r.user.avatarUrl } })),
       experiences,
       rating,

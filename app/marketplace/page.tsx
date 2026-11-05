@@ -14,13 +14,12 @@ import { syncAlerts } from '@/lib/alerts-client'
 import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
 import { useLang } from '@/lib/i18n-client'
 import { hapticSaved } from '@/lib/haptics'
-import EventsSection from '@/components/EventsSection'
+import SearchBar from '@/components/SearchBar'
 import Price from '@/components/Price'
 import { useRegion } from '@/components/RegionProvider'
 import ErrorState from '@/components/ErrorState'
 import { moodCategories } from '@/lib/mood-profiles'
 import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
-import { RegionPill } from '@/components/RegionSelector'
 import { useLabels } from '@/lib/labels'
 import SmartVideo from '@/components/SmartVideo'
 import Img from '@/components/Img'
@@ -203,7 +202,7 @@ export default function MarketplacePage() {
     return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
   }
 
-  // Dish of the Day: whatever vendors in this region have set (Vendor.dishOfDay).
+  // Dishes of the Day: whatever vendors in this region have set (Vendor.dishOfDay), one each.
   const dishesOfDay = vendors.filter(v => v.city === city && v.dishOfDay?.name)
   const premiumVendors = vendors.filter(v => v.isPremium && v.city === city)
   const regionFlashDeals = flashDeals.filter(fd => fd.vendor.city === city)
@@ -262,25 +261,7 @@ export default function MarketplacePage() {
           marginBottom: '12px',
           minHeight: '44px'
         }}>
-          <RegionPill />
-          <div className="card" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            padding: '10px 12px',
-            flex: 1,
-            minWidth: 0,
-            minHeight: '44px'
-          }}>
-            <Icon name="search" size={16} style={{ color: 'var(--label-secondary)', flexShrink: 0 }} />
-            <input
-              type="text"
-              placeholder={t('m.market.search')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', color: 'var(--label-primary)', fontSize: '17px', outline: 'none', fontFamily: 'inherit' }}
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder={t('m.market.search')} style={{ flex: 1 }} />
           <button
             onClick={() => setViewMode('list')}
             style={{ 
@@ -383,13 +364,13 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Dish Of The Day */}
+        {/* Dishes of the Day: one per vendor that's set one today, side by side */}
         {dishesOfDay.length > 0 && viewMode === 'list' && !showSavedOnly && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
               <div className="section-heading">
                 <span className="section-eyebrow">{t('m.market.todaysPick')}</span>
-                <span className="section-title">{t('m.market.dishOfDay')}</span>
+                <span className="section-title">{t('m.market.dishesOfDay')}</span>
               </div>
             </div>
             <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
@@ -397,21 +378,20 @@ export default function MarketplacePage() {
                 const dish = v.dishOfDay!
                 const image = dish.imageUrl || v.images[0] || ''
                 return (
-                  <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: dishesOfDay.length > 1 ? '85%' : '100%' }}>
-                    <div className="card" style={{ position: 'relative', height: '200px' }}>
-                      {dish.videoUrl ? (
-                        <div style={{ position: 'absolute', inset: 0 }}><SmartVideo src={dish.videoUrl} poster={image} alt={dish.name} /></div>
-                      ) : image ? (
-                        <Img src={image} alt={dish.name} width={800} height={600} style={{ position: 'absolute', inset: 0 }} />
-                      ) : null}
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.8))' }} />
-                      <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '16px', color: 'white' }}>
-                        <p style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', color: 'rgba(255,255,255,0.75)' }}>{v.name}</p>
-                        <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{dish.name}</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {dish.price != null && <Price usd={dish.price} style={{ fontSize: '17px', fontWeight: 700, color: '#FFB4A3' }} />}
-                          {dish.prepMinutes ? <span className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>{dish.prepMinutes} min</span> : null}
-                        </div>
+                  <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '170px' }}>
+                    <div className="card" style={{ height: '100%' }}>
+                      <div className="card-image" style={{ height: '130px', position: 'relative' }}>
+                        {dish.videoUrl ? (
+                          <div style={{ position: 'absolute', inset: 0 }}><SmartVideo src={dish.videoUrl} poster={image} alt={dish.name} /></div>
+                        ) : image ? (
+                          <Img src={image} alt={dish.name} width={340} height={260} sizes="170px" />
+                        ) : null}
+                        {dish.prepMinutes ? <div className="card-badge num-font"><Icon name="clock" size={11} /> {dish.prepMinutes} min</div> : null}
+                      </div>
+                      <div className="card-content" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dish.name}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--label-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</p>
+                        {dish.price != null && <Price usd={dish.price} className="card-price" />}
                       </div>
                     </div>
                   </Link>
@@ -422,9 +402,6 @@ export default function MarketplacePage() {
         )}
 
         {/* Flash Deals */}
-        {/* This Week's Events */}
-        {viewMode === 'list' && !showSavedOnly && <EventsSection padded={false} />}
-
         {regionFlashDeals.length > 0 && viewMode === 'list' && (
           <div style={{ marginBottom: '24px' }}>
             <div className="section-header">
