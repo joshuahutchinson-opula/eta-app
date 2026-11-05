@@ -142,7 +142,10 @@ model User {
   // The hotel/villa partner whose code or QR brought them in (lib/partners.ts).
   partnerPropertyId     String?
   partnerJoinedAt       DateTime?
-  partnerProperty       PartnerProperty? @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  partnerProperty       PartnerProperty? @relation("PartnerGuests", fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  // A dropped pin, when the stay isn't listed (arrival flow).
+  stayLat               Float?
+  stayLng               Float?
   // When the "planning your next trip?" nudge last went out (one per trip).
   homeNudgeSentAt       DateTime?
 
@@ -188,12 +191,13 @@ model User {
   gemConfirmations   GemConfirmation[]
   instagramMentions  InstagramMention[]
   tripRecaps         TripRecap[]
+  ownedProperties    PartnerProperty[]   @relation("PartnerOwner")
 
   @@index([instagramHandle])
 }
 
 model Vendor {
-  id                   String         @id @default(cuid())
+  id                   String           @id @default(cuid())
   name                 String
   category             VendorCategory
   neighborhood         String
@@ -206,22 +210,22 @@ model Vendor {
   website              String?
   images               String[]
   videos               String[]
-  open                 Boolean        @default(false)
-  live                 Boolean        @default(false)
-  isPremium            Boolean        @default(false)
+  open                 Boolean          @default(false)
+  live                 Boolean          @default(false)
+  isPremium            Boolean          @default(false)
   // A local spot: cook shop, jerk centre or street food. Drives the
   // "Most local" badge on generated routes (lib/plan.ts).
-  localSpot            Boolean        @default(false)
-  isTransport          Boolean        @default(false)
-  visibleInMarketplace Boolean        @default(true)
-  visibleOnMap         Boolean        @default(true)
+  localSpot            Boolean          @default(false)
+  isTransport          Boolean          @default(false)
+  visibleInMarketplace Boolean          @default(true)
+  visibleOnMap         Boolean          @default(true)
   menu                 Json?
-  whoThere             Int            @default(0)
-  tipsJar              Boolean        @default(false)
-  payItForward         Boolean        @default(false)
+  whoThere             Int              @default(0)
+  tipsJar              Boolean          @default(false)
+  payItForward         Boolean          @default(false)
   // Mobility/accessibility features the vendor has confirmed, as keys from
   // lib/accessibility.ts (e.g. WHEELCHAIR_ACCESSIBLE). Empty = not yet verified.
-  accessibility        String[]       @default([])
+  accessibility        String[]         @default([])
   // Weekly opening hours, Jamaica time: { mon: [["09:00","17:00"]], ... }.
   // A missing day means closed that day; a null value means hours not listed.
   hours                Json?
@@ -230,18 +234,22 @@ model Vendor {
   whatsapp             String?
   // What the vendor is pushing today: { name, price, imageUrl, videoUrl?, prepMinutes? }.
   dishOfDay            Json?
-  acceptsReservations  Boolean        @default(false)
+  acceptsReservations  Boolean          @default(false)
+  // The partner property this vendor belongs to (its own restaurant, bar,
+  // spa, activities). Guests paying here in the app is ETA's only cut.
+  partnerPropertyId    String?
+  partnerProperty      PartnerProperty? @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
   // "Fair price, same as locals": the vendor confirms tourists pay what
   // locals pay. Set from the vendor app; the date is when they confirmed.
-  fairPrice            Boolean        @default(false)
+  fairPrice            Boolean          @default(false)
   fairPriceConfirmedAt DateTime?
   // Placeholder listing from the seed, not a real vetted vendor.
   // scripts/remove-mock-data.ts deletes everything flagged this way.
-  isMock               Boolean        @default(false)
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  isMock               Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
   ownerId              String?
-  owner                User?          @relation(fields: [ownerId], references: [id])
+  owner                User?            @relation(fields: [ownerId], references: [id])
 
   menuItems            MenuItem[]
   rewardVendors        RewardVendor[]
@@ -262,6 +270,8 @@ model Vendor {
   instagramMentions   InstagramMention[]
   taggedStories       Story[]              @relation("StoryPlace")
   qrCard              VendorQrCard?
+  hostPicks           HostPick[]
+  transferServices    TransferService[]
 }
 
 model Accommodation {
@@ -279,8 +289,14 @@ model Accommodation {
   hostName         String?
   media            Json
   roomViews        String[]
-  // USD per night. Null = not listed yet; booking is disabled without it.
+  // USD per night, shown as a guide. Stays are listings only: guests book
+  // directly with the property (bookingUrl / phone / whatsapp / email).
   nightlyPrice     Float?
+  bookingUrl       String?
+  phone            String?
+  // Digits only with country code, for wa.me links.
+  whatsapp         String?
+  email            String?
   maxGuests        Int?
   // Refund rules key from lib/cancellation.ts.
   cancellationTier String            @default("standard")
@@ -288,9 +304,11 @@ model Accommodation {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
+  // Bookings made before stays became listings only, kept as history.
   bookings     Booking[]
   bundles      Bundle[]
   blockedDates AccommodationBlockedDate[]
+  partner      PartnerProperty?
 }
 
 // A night the property can't be booked (owner block or sold out elsewhere).
@@ -356,6 +374,7 @@ model Experience {
   moods     Mood[]
   trips     Trip[]
   tripStops TripStop[]
+  hostPicks HostPick[]
 }
 
 enum StopType {
@@ -499,6 +518,12 @@ model Booking {
   accommodationId String?
   accommodation   Accommodation? @relation(fields: [accommodationId], references: [id])
   trip            Trip?
+
+  // Airport transfers (arrival flow): the service and the ride.
+  transferServiceId String?
+  transferService   TransferService? @relation(fields: [transferServiceId], references: [id], onDelete: SetNull)
+  pickup            String?
+  dropoff           String?
 }
 
 model Discovery {
@@ -947,10 +972,15 @@ model Event {
   tickets   Ticket[]
   interests EventInterest[]
   stories   Story[]
+  hostPicks HostPick[]
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
   vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Posted by a partner property (vendor app); shown to its guests first.
+  partnerPropertyId String?
+  partnerProperty   PartnerProperty? @relation(fields: [partnerPropertyId], references: [id], onDelete: SetNull)
 
   @@index([city, startAt])
 }
@@ -1374,7 +1404,64 @@ model PartnerProperty {
   // The perk guests get: a welcome reward (Reward.kind = "welcome").
   welcomeRewardId String?
   welcomeReward   Reward? @relation(fields: [welcomeRewardId], references: [id], onDelete: SetNull)
-  guests          User[]
+  guests          User[]  @relation("PartnerGuests")
+
+  // Its stay listing, when it has one (photos, amenities, book-direct links).
+  accommodationId String?        @unique
+  accommodation   Accommodation? @relation(fields: [accommodationId], references: [id], onDelete: SetNull)
+  // Who runs it in the vendor app (a VENDOR-role user); admins can too.
+  ownerId         String?
+  owner           User?          @relation("PartnerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  imageUrl        String?
+
+  vendors   Vendor[]
+  events    Event[]
+  hostPicks HostPick[]
+}
+
+// "Host's picks": what a partner property recommends to its guests, in its
+// own order. Each pick is one vendor, experience or event, with a note.
+model HostPick {
+  id        String   @id @default(cuid())
+  note      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  partnerPropertyId String
+  partnerProperty   PartnerProperty @relation(fields: [partnerPropertyId], references: [id], onDelete: Cascade)
+  vendorId          String?
+  vendor            Vendor?         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  experienceId      String?
+  experience        Experience?     @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  eventId           String?
+  event             Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([partnerPropertyId, sortOrder])
+}
+
+// A vetted transfer a transport vendor offers from an airport (arrival flow).
+// Fixed price: baseFare + perKm × the distance to the stay.
+model TransferService {
+  id           String   @id @default(cuid())
+  // Airport code it serves (MBJ, KIN, OCJ, NEG).
+  airport      String
+  vehicle      String
+  seats        Int
+  baseFare     Float
+  perKm        Float    @default(0)
+  // How soon it can leave once booked.
+  readyMinutes Int      @default(15)
+  driverName   String?
+  driverPhoto  String?
+  active       Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  vendorId String
+  vendor   Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([airport, active])
 }
 
 enum MentionStatus {

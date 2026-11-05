@@ -1395,3 +1395,71 @@ textarea::placeholder {
 
 /* Planner vibe tiles: the ring is the selection, so focus gets its own outline. */
 .planner-mood:focus-visible { outline: 2px solid var(--label-primary); outline-offset: 4px; }
+
+/* ---------- Arrival flow (app/arrival) ---------- */
+.arrival-bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0A1628, #1B2A4A, #6E1A0C, #B82010, #FF7F5C, #0A1628);
+  background-size: 400% 400%;
+  animation: arrivalShift 24s ease-in-out infinite;
+}
+.arrival-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 35%, rgba(255, 200, 120, 0.16), transparent 60%), linear-gradient(180deg, rgba(10, 22, 40, 0.1), rgba(10, 22, 40, 0.55));
+}
+@keyframes arrivalShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.arrival-screen { animation: arrivalIn 0.5s var(--spring-standard, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+@keyframes arrivalIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.arrival-sheet { animation: arrivalSheetIn 0.45s var(--spring-standard, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+@keyframes arrivalSheetIn {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.arrival-rise { animation: arrivalIn 0.6s ease-out both; }
+.arrival-rise-2 { animation: arrivalIn 0.6s ease-out 0.15s both; }
+.arrival-rise-3 { animation: arrivalIn 0.6s ease-out 0.3s both; }
+
+.gift-stage { position: relative; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.gift-glow {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 196, 64, 0.55), rgba(255, 196, 64, 0) 70%);
+  filter: blur(8px);
+  animation: giftGlow 2.8s ease-in-out infinite;
+}
+@keyframes giftGlow {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+.gift-float { position: relative; animation: giftFloat 3.6s ease-in-out infinite; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.35)); }
+@keyframes giftFloat {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-12px) rotate(1.5deg); }
+}
+.gift-shine { animation: giftShine 3.2s ease-in-out infinite; }
+@keyframes giftShine {
+  0%, 55% { transform: skewX(-20deg) translateX(0); }
+  100% { transform: skewX(-20deg) translateX(320px); }
+}
+.gift-sparkle { position: absolute; animation: giftTwinkle 2.2s ease-in-out infinite; }
+@keyframes giftTwinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-bg, .arrival-screen, .arrival-sheet, .arrival-rise, .arrival-rise-2, .arrival-rise-3,
+  .gift-glow, .gift-float, .gift-shine, .gift-sparkle { animation: none !important; }
+  .gift-sparkle { opacity: 0.8; }
+}

@@ -27,6 +27,7 @@ export interface EventItem {
   city: string
   vendorId?: string | null
   vendor?: { id: string; name: string; images: string[] } | null
+  partnerProperty?: { code: string; name: string } | null
 }
 
 const TZ = 'America/Jamaica'

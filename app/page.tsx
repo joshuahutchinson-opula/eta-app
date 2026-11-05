@@ -1,12 +1,13 @@
 // app/page.tsx — Home. Everything here is for the selected region and is
-// filtered on the server: search, the region selector (the one location
-// changer in the app), trip mode, stories, Featured (B.O.N vendors with
-// video), Parties & Happenings, vibes → experiences, and the nearest vendors.
-// First open goes through onboarding; at an airport or hotel the arrival
-// moment takes over.
+// filtered on the server: the region selector (the one location changer in
+// the app), trip mode, "At your stay" for partner guests, stories, Featured
+// (B.O.N vendors with video), Parties & Happenings, vibes → experiences, and
+// the nearest vendors. At a partner property, recommendations lean toward
+// what it doesn't offer (lib/host-lean.ts). First open at an airport or
+// hotel goes to the arrival flow (app/arrival); otherwise to onboarding.
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
@@ -26,8 +27,10 @@ import { useRegion } from '@/components/RegionProvider'
 import { useLang } from '@/lib/i18n-client'
 import StoriesRow from '@/components/StoriesRow'
 import NotificationBell from '@/components/NotificationBell'
-import SearchBar from '@/components/SearchBar'
-import ArrivalMoment from '@/components/ArrivalMoment'
+import AtYourStay from '@/components/AtYourStay'
+import { useAtStay } from '@/lib/at-stay-client'
+import { leanExperiences, leanVendors } from '@/lib/host-lean'
+import { checkArrivalOnce } from '@/lib/arrival-client'
 import PlanBCard from '@/components/PlanBCard'
 import { TripDayChip, TripEndCards } from '@/components/TripStatus'
 import { needsOnboarding } from '@/lib/onboarding'
@@ -114,7 +117,7 @@ const MOOD_ICONS: Record<string, string> = {
 }
 
 export default function HomePage() {
-  const [featured, setFeatured] = useState<Vendor[]>([])
+  const [featuredAll, setFeatured] = useState<Vendor[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
@@ -135,8 +138,20 @@ export default function HomePage() {
   const { t } = useLang()
   const router = useRouter()
 
-  // First open: the three-tap onboarding (dates, stay, vibe) comes first.
-  useEffect(() => { if (needsOnboarding()) router.replace('/onboarding') }, [router])
+  const { stay: atStay, host } = useAtStay()
+  const featured = useMemo(() => leanVendors(featuredAll, host), [featuredAll, host])
+
+  // First open: at an airport or hotel, the arrival flow; otherwise the
+  // three-tap onboarding (dates, stay, vibe).
+  useEffect(() => {
+    let cancelled = false
+    checkArrivalOnce().then(r => {
+      if (cancelled) return
+      if (r === 'arrival') router.replace('/arrival')
+      else if (needsOnboarding()) router.replace('/onboarding')
+    })
+    return () => { cancelled = true }
+  }, [router])
 
   // Pause the Featured auto-advance while a touch is active anywhere on the
   // page, so it doesn't fight the user mid-swipe, then resume on release.
@@ -251,16 +266,16 @@ export default function HomePage() {
     pill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }
 
-  const filteredExperiences = selectedMood
+  const filteredExperiences = leanExperiences(selectedMood
     ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
-    : experiences
+    : experiences, host)
 
   // A mood maps to the vendor categories it's about (lib/mood-profiles.ts),
   // the same mapping the route generator uses.
   const moodCats = moods.find(m => m.id === selectedMood)?.categories ?? []
   const moodVendors = selectedMood ? vendors.filter(v => moodCats.includes(v.category)) : vendors
   // Near You Now: nearest first by real distance; no coordinates → last.
-  const filteredVendors = sortByDistance(moodVendors, userLocation)
+  const filteredVendors = leanVendors(sortByDistance(moodVendors, userLocation), host)
 
   if (loading) {
     return (
@@ -286,9 +301,6 @@ export default function HomePage() {
       <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
       <div className="content-fade-in">
-        <div style={{ padding: '12px 16px 0' }}>
-          <SearchBar />
-        </div>
         <RegionSelector />
         <RegionMismatchPrompt />
 
@@ -305,6 +317,8 @@ export default function HomePage() {
         </div>
 
         <VerifyEmailBanner />
+
+        <AtYourStay stay={atStay} />
 
         {activeBooking && (
           <div style={{ paddingTop: '12px' }}>
@@ -432,7 +446,6 @@ export default function HomePage() {
         )}
       </div>
 
-      <ArrivalMoment location={userLocation} />
       <QrScanSheet open={scanOpen} onClose={() => setScanOpen(false)} />
       <Dock />
     </main>

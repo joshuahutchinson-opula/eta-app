@@ -1,9 +1,9 @@
 // GET /api/arrival?lat=&lng= — is this first open an arrival? Returns the
 // airport or stay the device is at (null when neither), the town to switch
-// to, vetted transfers (from airports) and the welcome reward on offer
-// there. Claiming the reward is POST /api/welcome.
+// to and the welcome gift on offer there. The arrival flow (app/arrival)
+// takes it from here: stay search, transfers (/api/transfers), check-in.
 import { NextResponse } from 'next/server'
-import { arrivalPlace, transfersFor } from '@/lib/arrival'
+import { arrivalPlace } from '@/lib/arrival'
 import { welcomeRewardFor } from '@/lib/welcome'
 
 export const dynamic = 'force-dynamic'
@@ -18,11 +18,8 @@ export async function GET(request: Request) {
   try {
     const place = await arrivalPlace({ lat, lng })
     if (!place) return NextResponse.json({ place: null })
-    const [transfers, reward] = await Promise.all([
-      place.kind === 'airport' ? transfersFor(place.city) : Promise.resolve([]),
-      welcomeRewardFor(place.city, place.welcomeRewardId)
-    ])
-    return NextResponse.json({ place, city: place.city, transfers, reward })
+    const reward = await welcomeRewardFor(place.city, place.welcomeRewardId)
+    return NextResponse.json({ place, city: place.city, reward })
   } catch (error) {
     console.error('Arrival check failed:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

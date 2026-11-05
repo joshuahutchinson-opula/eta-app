@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma'
 
 export const WELCOME_KIND = 'welcome'
 
-const INCLUDE = { vendors: { include: { vendor: { select: { id: true, name: true, neighborhood: true } } } } } satisfies Prisma.RewardInclude
+const INCLUDE = { vendors: { include: { vendor: { select: { id: true, name: true, neighborhood: true, lat: true, lng: true } } } } } satisfies Prisma.RewardInclude
 
 export interface WelcomeReward {
   id: string
@@ -17,7 +17,7 @@ export interface WelcomeReward {
   description: string
   icon: string
   validDays: number
-  vendors: Array<{ id: string; name: string; neighborhood: string }>
+  vendors: Array<{ id: string; name: string; neighborhood: string; lat: number; lng: number }>
 }
 
 function shape(r: Prisma.RewardGetPayload<{ include: typeof INCLUDE }>): WelcomeReward {

@@ -15,6 +15,7 @@ import { addDays, jamaicaDayKey } from '@/lib/trip-dates'
 import { markOnboarded } from '@/lib/onboarding'
 import { isCityCode, townFor, type CityCode } from '@/lib/regions'
 import { apiJson } from '@/lib/api-client'
+import { arrivalDone } from '@/lib/arrival-client'
 import { triggerHaptic } from '@/lib/haptics'
 
 type Step = 'dates' | 'stay' | 'vibe'
@@ -55,9 +56,13 @@ export default function OnboardingPage() {
     setStay({ name: saved.stayName ?? '', city: isCityCode(saved.stayCity) ? saved.stayCity : null })
   }, [])
 
+  // The arrival flow already asked where they're staying.
   const next = () => {
     triggerHaptic('light')
-    setIndex(i => Math.min(STEPS.length - 1, i + 1))
+    setIndex(i => {
+      const n = Math.min(STEPS.length - 1, i + 1)
+      return STEPS[n] === 'stay' && arrivalDone() ? n + 1 : n
+    })
   }
 
   const saveDates = async (skip = false) => {
