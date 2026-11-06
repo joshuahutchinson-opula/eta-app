@@ -53,7 +53,8 @@ export const LIMITS = {
   // Road geometry for maps (each call can fan out to OSRM per leg).
   route: { limit: 240, windowMs: 10 * 60000 },
   // Explore mode position fixes (one every ~15 s while walking).
-  explorePing: { limit: 120, windowMs: 10 * 60000 }
+  explorePing: { limit: 120, windowMs: 10 * 60000 },
+  gemConfirm: { limit: 20, windowMs: 10 * 60000 }
 } as const
 
 export type LimitName = keyof typeof LIMITS

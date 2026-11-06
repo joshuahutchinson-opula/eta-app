@@ -1,5 +1,7 @@
 // app/api/gems/[id]/confirm/route.ts — "I found it."
 // Geofenced: the caller's GPS fix must be within REVEAL_RADIUS_M of the gem.
+// Out of range, the reply never says how far (no distance oracle); calls are
+// rate-limited.
 // Awards discovery points once per user per gem (none if Explore mode
 // already revealed it to them); for a pending gem it also
 // counts toward verification, and the confirmation that crosses the threshold
@@ -8,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'
+import { rateLimit } from '@/lib/rate-limit'
 import {
   GEM_DISCOVERY_POINTS, GEM_SUBMITTER_BONUS, MAX_GPS_ACCURACY_M, REVEAL_RADIUS_M, VERIFY_THRESHOLD,
   distanceM, parseCoord
@@ -23,6 +26,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const auth = await requireUser(request, { message: 'Log in to confirm a find' })
   if (!auth.ok) return auth.response
   const userId = auth.user.id
+  const limited = rateLimit('gemConfirm', userId)
+  if (limited) return limited
 
   const parsed = await parseBody(request, schema)
   if (!parsed.ok) return NextResponse.json({ error: 'We need your live location to confirm' }, { status: 400 })
@@ -40,9 +45,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!gem || gem.status === 'REJECTED') return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     if (gem.submittedByUserId === userId) return NextResponse.json({ error: 'You found this one first — others have to confirm it' }, { status: 403 })
 
-    const dist = Math.round(distanceM({ lat, lng }, gem))
-    if (dist > REVEAL_RADIUS_M) {
-      return NextResponse.json({ error: `You’re ${dist} m away — get within ${REVEAL_RADIUS_M} m to confirm`, distanceM: dist }, { status: 403 })
+    // Never say how far off the caller is: a distance from a few made-up
+    // positions would pinpoint the spot without anyone going there.
+    if (distanceM({ lat, lng }, gem) > REVEAL_RADIUS_M) {
+      return NextResponse.json({ error: `Get within ${REVEAL_RADIUS_M} m of it to confirm`, code: 'TOO_FAR' }, { status: 403 })
     }
 
     // Walking into range in Explore mode already counted the find (lib/explore.ts).

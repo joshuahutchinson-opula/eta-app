@@ -1,17 +1,15 @@
 // app/api/gems/route.ts — Hidden Gems (Explore mode's secret spots).
-// GET  ?lat=&lng=  → gems within REVEAL_RADIUS_M of that position and the
-//                    caller's own submissions; nothing about the rest (rough
-//                    zones come from /api/explore, see lib/hidden-gems.ts).
-// POST multipart   → submit a new gem (signed in; at least one photo).
+// POST multipart → submit a new gem (signed in; at least one photo).
+// There is deliberately no GET: a gem's name and exact location only ever
+// reach the phone through Explore mode's proximity reveal (POST
+// /api/explore/ping, checked on the server within REVEAL_RADIUS_M) or, for
+// the person who submitted it, in /api/explore's state.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireUser, userIdFromRequest } from '@/lib/auth-server'
+import { requireUser } from '@/lib/auth-server'
 import { rateLimit } from '@/lib/rate-limit'
 import { isAcceptableImage, uploadImage } from '@/lib/cloudinary-upload'
-import {
-  GEM_CATEGORIES, MAX_SUBMISSIONS_PER_DAY, REVEAL_RADIUS_M, VERIFY_THRESHOLD,
-  distanceM, parseCoord, type GemCategoryKey
-} from '@/lib/hidden-gems'
+import { GEM_CATEGORIES, MAX_SUBMISSIONS_PER_DAY, VERIFY_THRESHOLD, type GemCategoryKey } from '@/lib/hidden-gems'
 
 import { z } from '@/lib/validate'
 
@@ -38,43 +36,6 @@ export interface GemView {
   threshold: number
   isMine: boolean
   confirmedByMe: boolean
-  /** Metres from the position in the request; null when no position was sent. */
-  distanceM: number | null
-}
-
-export async function GET(request: Request) {
-  const url = new URL(request.url)
-  const lat = parseCoord(url.searchParams.get('lat'), -90, 90)
-  const lng = parseCoord(url.searchParams.get('lng'), -180, 180)
-  const here = lat !== null && lng !== null ? { lat, lng } : null
-  const userId = userIdFromRequest(request)
-
-  try {
-    const gems = await prisma.hiddenGem.findMany({
-      where: { status: { not: 'REJECTED' }, hidden: false },
-      include: userId ? { confirmations: { where: { userId }, select: { id: true } } } : undefined
-    })
-
-    const revealed: GemView[] = []
-    for (const g of gems) {
-      const isMine = g.submittedByUserId === userId
-      const dist = here ? Math.round(distanceM(here, g)) : null
-      const inRange = dist !== null && dist <= REVEAL_RADIUS_M
-      if (isMine || inRange) {
-        const confirmations = (g as typeof g & { confirmations?: unknown[] }).confirmations ?? []
-        revealed.push({
-          id: g.id, name: g.name, category: g.category, description: g.description, lat: g.lat, lng: g.lng,
-          photos: g.photos, status: g.status, confirmationCount: g.confirmationCount, threshold: VERIFY_THRESHOLD,
-          isMine, confirmedByMe: confirmations.length > 0, distanceM: dist
-        })
-      }
-    }
-
-    return NextResponse.json({ revealed, revealRadiusM: REVEAL_RADIUS_M })
-  } catch (error) {
-    console.error('Error fetching gems:', error)
-    return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
-  }
 }
 
 export async function POST(request: Request) {
@@ -116,7 +77,7 @@ export async function POST(request: Request) {
     const view: GemView = {
       id: gem.id, name: gem.name, category: gem.category, description: gem.description, lat: gem.lat, lng: gem.lng,
       photos: gem.photos, status: gem.status, confirmationCount: 0, threshold: VERIFY_THRESHOLD,
-      isMine: true, confirmedByMe: false, distanceM: null
+      isMine: true, confirmedByMe: false
     }
     return NextResponse.json({ gem: view }, { status: 201 })
   } catch (error) {
