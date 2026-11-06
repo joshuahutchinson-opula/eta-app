@@ -1,10 +1,14 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import './home.css'
 import LaunchScreen from '@/components/LaunchScreen'
 import SessionGuard from '@/components/SessionGuard'
 import { RegionProvider } from '@/components/RegionProvider'
 import HapticFallback from '@/components/HapticFallback'
+import ThemeAuto from '@/components/ThemeAuto'
+import ReviewPrompt from '@/components/ReviewPrompt'
+import PlanTripSheet from '@/components/PlanTripSheet'
 
 import { siteUrl } from '@/lib/site-url'
 
@@ -33,10 +37,11 @@ export default function RootLayout({
             just Profile, where the preference is set) — otherwise the choice
             only "took" on whichever page set it and reverted on every
             navigation, reload, or direct link. Light is the default; dark
-            applies only when the user has chosen it. */}
+            applies when the user has chosen it, and Auto is dark between the
+            selected town's last saved sunset and sunrise (lib/theme.ts). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try { var t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#000000'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es|de|fr)/); if (l) document.documentElement.setAttribute('lang', l[1]); } catch (e) {}`
+            __html: `try { var t = localStorage.getItem('theme'); var d = t === 'dark'; if (t === 'auto') { var n = Date.now(), h = (new Date().getUTCHours() + 19) % 24; try { var sun = JSON.parse(localStorage.getItem('eta_sun') || 'null'); var r = Date.parse(sun.rise), st = Date.parse(sun.set); d = n - r > 864e5 ? (h >= 18 || h < 6) : (n < r || n >= st); } catch (e) { d = h >= 18 || h < 6; } } if (d) { document.documentElement.setAttribute('data-theme', 'dark'); var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', '#000000'); } var l = document.cookie.match(/(?:^|; )eta_lang=(es|de|fr)/); if (l) document.documentElement.setAttribute('lang', l[1]); } catch (e) {}`
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -58,7 +63,12 @@ export default function RootLayout({
           paddingTop: 0,
           margin: 0
         }}>
-          <RegionProvider>{children}</RegionProvider>
+          <RegionProvider>
+            <ThemeAuto />
+            {children}
+            <ReviewPrompt />
+            <PlanTripSheet />
+          </RegionProvider>
         </main>
       </body>
     </html>

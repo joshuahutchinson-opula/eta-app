@@ -35,6 +35,11 @@ export interface CurrentUser {
   stayCity?: string | null
   stayAccommodationId?: string | null
   partnerPropertyId?: string | null
+  travelerType?: 'LOCAL' | 'VISITOR' | null
+  stagePromptSnoozedUntil?: string | null
+  cruisePort?: string | null
+  cruiseDay?: string | null
+  cruiseAllAboardAt?: string | null
 }
 
 const TOKEN_KEY = 'eta_token'
@@ -83,7 +88,7 @@ export function tokenExpiry(token: string): number | null {
 
 // What belongs to the person, not the device: removed on log-out. Theme,
 // language, currency, region and low-data mode stay.
-const USER_KEYS = [TOKEN_KEY, USER_KEY, 'eta_my_trips', 'eta_active_trip', 'savedVendors', 'savedBundles', 'savedEvents', 'eta_saved_synced', 'eta_recent_searches', 'eta_vibe', 'alertPrefs', 'eta_offline_bookings']
+const USER_KEYS = [TOKEN_KEY, USER_KEY, 'eta_travel_trips', 'eta_my_trips', 'eta_active_trip', 'savedVendors', 'savedBundles', 'savedEvents', 'eta_saved_synced', 'eta_recent_searches', 'eta_vibe', 'alertPrefs', 'eta_offline_bookings']
 const USER_PREFIXES = ['eta_trip_member_', 'eta_trip_cache_', 'eta_offline_']
 
 function clearLocalSession() {

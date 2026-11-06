@@ -1,6 +1,7 @@
 // components/StoriesRow.tsx — Home's story rings for the selected region,
 // from /api/stories?city=. Rings with stories the viewer hasn't seen get the
-// colour ring; seen ones go grey (seen state is stored on the account).
+// colour ring (vendors' pulse a rum-red glow); seen ones go grey and stop
+// (seen state is stored on the account).
 // "Your Story" posts a photo or short video with an optional caption for
 // 24 hours, tagged with the current region and (optionally) the place it was
 // taken, which gives the story its "Go here" button. Without a pick, the
@@ -35,6 +36,8 @@ interface Ring {
   image: string
   bon: boolean
   unseen: boolean
+  /** A vendor's ring: unseen ones pulse a rum-red glow (app/home.css). */
+  vendor: boolean
 }
 
 export default function StoriesRow() {
@@ -62,7 +65,7 @@ export default function StoriesRow() {
       let own: Ring | null = null
       for (const s of Array.isArray(data) ? data : []) {
         const key = s.vendorId || s.userId || s.id
-        const ring = { key, name: s.vendor?.name || s.user?.name || 'ETA', image: s.vendor?.images?.[0] || s.user?.avatarUrl || s.imageUrl, bon: Boolean(s.vendor?.isPremium), unseen: !s.seen }
+        const ring = { key, name: s.vendor?.name || s.user?.name || 'ETA', image: s.vendor?.images?.[0] || s.user?.avatarUrl || s.imageUrl, bon: Boolean(s.vendor?.isPremium), unseen: !s.seen, vendor: Boolean(s.vendorId) }
         if (s.userId && s.userId === me) { own = own ?? { ...ring, image: s.imageUrl, unseen: false }; continue }
         const prev = groups.get(key)
         if (!prev) groups.set(key, ring)
@@ -150,7 +153,7 @@ export default function StoriesRow() {
           [0, 1, 2, 3].map(i => <div key={i} className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', flexShrink: 0 }}><div className="skeleton-image" style={{ height: '100%' }} /></div>)
         ) : rings.map(r => (
           <Link key={r.key} href={`/stories?start=${r.key}`} onClick={() => triggerHaptic('light')} style={{ textDecoration: 'none', textAlign: 'center', flexShrink: 0 }} aria-label={t('m.stories.open', { name: r.name })}>
-            <div className={`story-ring ${r.bon ? 'premium' : 'standard'} ${r.unseen ? 'unseen' : 'seen'}`}>
+            <div className={`story-ring ${r.bon ? 'premium' : 'standard'} ${r.unseen ? 'unseen' : 'seen'} ${r.vendor ? 'vendor' : ''}`}>
               <img src={r.image} alt="" loading="lazy" />
             </div>
             {label(r.name)}

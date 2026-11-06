@@ -19,15 +19,9 @@ export interface ArrivalPlace {
   welcomeRewardId?: string | null
 }
 
-/** Airports, with the town most arrivals there head for. */
-export const AIRPORTS: Array<{ code: string; name: string; lat: number; lng: number; city: CityCode }> = [
-  { code: 'MBJ', name: 'Sangster International (MBJ)', lat: 18.5037, lng: -77.9134, city: 'MONTEGO_BAY' },
-  { code: 'KIN', name: 'Norman Manley International (KIN)', lat: 17.9357, lng: -76.7875, city: 'KINGSTON' },
-  { code: 'OCJ', name: 'Ian Fleming International (OCJ)', lat: 18.4047, lng: -76.9690, city: 'ORACABESSA' },
-  { code: 'NEG', name: 'Negril Aerodrome', lat: 18.3428, lng: -78.3356, city: 'NEGRIL' }
-]
+export { AIRPORTS } from '@/lib/places-geo'
+import { AIRPORTS, AIRPORT_RADIUS_M } from '@/lib/places-geo'
 
-const AIRPORT_RADIUS_M = 2500
 const STAY_RADIUS_M = 250
 
 export async function arrivalPlace(pos: { lat: number; lng: number }): Promise<ArrivalPlace | null> {

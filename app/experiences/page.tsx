@@ -1,9 +1,10 @@
 // app/experiences/page.tsx — the Experiences tab. Home (plan my day, your
 // trip, tonight's events, moods) → Quick planner → Results (three options) →
+// (Home's mood tiles open /experiences?mood=<id>, straight to its results) →
 // route detail; plus the Discover map, crew trip planning and the active trip.
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
@@ -400,6 +401,21 @@ export default function ExperiencesPage() {
   }
 
   const runMood = (m: MoodItem) => runPlan({ ...defaultPlan({ id: m.id, name: m.name }), crew: plan.crew, transport: plan.transport })
+
+  // Home's Choose The Vibe: /experiences?mood=<id> goes straight to the
+  // results for that mood (the planner pre-picked with it).
+  const moodParamDone = useRef(false)
+  useEffect(() => {
+    if (moodParamDone.current || !moods.length) return
+    const id = new URLSearchParams(window.location.search).get('mood')
+    if (!id) return
+    moodParamDone.current = true
+    const m = moods.find(x => x.id === id)
+    if (!m) return
+    setPlan(p => ({ ...p, mood: { id: m.id, name: m.name } }))
+    window.history.replaceState(null, '', '/experiences')
+    runMood(m)
+  }, [moods]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Curated experiences are linked by id; generated routes become the trip's stops.
   const tripInputFor = (exp: Experience) => exp.generated

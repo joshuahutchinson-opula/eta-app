@@ -8,6 +8,8 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export const WELCOME_KIND = 'welcome'
+/** Returning travelers: a gift each trip they come back (lib/travel-trips.ts). */
+export const WELCOME_BACK_KIND = 'welcome_back'
 
 const INCLUDE = { vendors: { include: { vendor: { select: { id: true, name: true, neighborhood: true, lat: true, lng: true } } } } } satisfies Prisma.RewardInclude
 
@@ -25,13 +27,13 @@ function shape(r: Prisma.RewardGetPayload<{ include: typeof INCLUDE }>): Welcome
 }
 
 /** The welcome reward for a town: a specific one if asked for, else the town's own, else an island-wide one. */
-export async function welcomeRewardFor(city: string, rewardId?: string | null): Promise<WelcomeReward | null> {
+export async function welcomeRewardFor(city: string, rewardId?: string | null, kind: string = WELCOME_KIND): Promise<WelcomeReward | null> {
   if (rewardId) {
-    const r = await prisma.reward.findFirst({ where: { id: rewardId, active: true, kind: WELCOME_KIND }, include: INCLUDE })
+    const r = await prisma.reward.findFirst({ where: { id: rewardId, active: true, kind }, include: INCLUDE })
     if (r) return shape(r)
   }
   const rows = await prisma.reward.findMany({
-    where: { active: true, kind: WELCOME_KIND, OR: [{ city: city as never }, { city: null }] },
+    where: { active: true, kind, OR: [{ city: city as never }, { city: null }] },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     include: INCLUDE
   })
@@ -57,5 +59,35 @@ export async function claimWelcome(userId: string, rewardId: string) {
       expiresAt: new Date(Date.now() + reward.validDays * 86400000)
     }
   })
+  return { redemption, alreadyClaimed: false }
+}
+
+/** The welcome-back gift for a returning traveler's trip: a specific one, or the town's, or island-wide. */
+export function welcomeBackRewardFor(city: string, rewardId?: string | null) {
+  return welcomeRewardFor(city, rewardId, WELCOME_BACK_KIND)
+}
+
+/** One welcome-back voucher per trip: claiming again on the same trip returns the same one. */
+export async function claimWelcomeBack(userId: string, tripId: string, rewardId?: string | null) {
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] }, select: { id: true, city: true, ownerId: true, welcomeBackRedemptionId: true } })
+  if (!trip) throw new WelcomeError('Nuttin nuh go suh')
+  if (trip.welcomeBackRedemptionId && trip.ownerId === userId) {
+    const existing = await prisma.redemption.findUnique({ where: { id: trip.welcomeBackRedemptionId } })
+    if (existing) return { redemption: existing, alreadyClaimed: true }
+  }
+  const reward = await welcomeBackRewardFor(trip.city, rewardId)
+  if (!reward) throw new WelcomeError('No welcome-back gift on right now')
+  const full = await prisma.reward.findUnique({ where: { id: reward.id } })
+  const redemption = await prisma.redemption.create({
+    data: {
+      userId,
+      rewardId: reward.id,
+      rewardName: reward.name,
+      pointCost: 0,
+      code: `ETA-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+      expiresAt: new Date(Date.now() + (full?.validDays ?? 7) * 86400000)
+    }
+  })
+  if (trip.ownerId === userId) await prisma.travelTrip.update({ where: { id: trip.id }, data: { welcomeBackRedemptionId: redemption.id } })
   return { redemption, alreadyClaimed: false }
 }

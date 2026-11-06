@@ -103,56 +103,66 @@ model User {
 
   // Null until the user opens the link in their verification email.
   // Unverified users can browse but not book, review or post.
-  emailVerifiedAt       DateTime?
+  emailVerifiedAt         DateTime?
   // Bumped on log-out and account deletion; tokens carry the version they
   // were issued with, so older ones stop working (lib/auth-server.ts).
-  tokenVersion          Int              @default(0)
+  tokenVersion            Int              @default(0)
   // Set when the user deletes their account; personal fields are wiped then.
-  deletedAt             DateTime?
+  deletedAt               DateTime?
   // Which terms/privacy version the user agreed to at sign-up (lib/legal.ts).
-  termsVersion          String?
-  termsAcceptedAt       DateTime?
+  termsVersion            String?
+  termsAcceptedAt         DateTime?
   // Who "I feel unsafe" shares the live location link with (Safety screen).
-  emergencyContactName  String?
-  emergencyContactPhone String?
+  emergencyContactName    String?
+  emergencyContactPhone   String?
   // Shown on the monthly leaderboard as first name + initial only.
-  leaderboardOptIn      Boolean          @default(false)
+  leaderboardOptIn        Boolean          @default(false)
   // Notification preferences per type, respected by every sender (lib/notify.ts).
-  notifyBookings        Boolean          @default(true)
-  notifyEvents          Boolean          @default(true)
-  notifyDeals           Boolean          @default(true)
-  notifyLive            Boolean          @default(true)
-  notifyCrew            Boolean          @default(true)
+  notifyBookings          Boolean          @default(true)
+  notifyEvents            Boolean          @default(true)
+  notifyDeals             Boolean          @default(true)
+  notifyLive              Boolean          @default(true)
+  notifyCrew              Boolean          @default(true)
   // Trip tips and the "planning your next trip?" nudge once they're home.
-  notifyTrips           Boolean          @default(true)
+  notifyTrips             Boolean          @default(true)
   // WhatsApp copies of booking confirmations, reminders, receipts and crew
   // messages (lib/whatsapp.ts). Opt-in: WhatsApp requires it.
-  whatsappNumber        String?
-  notifyWhatsapp        Boolean          @default(false)
+  whatsappNumber          String?
+  notifyWhatsapp          Boolean          @default(false)
   // Instagram username, lowercase without the @. Story mentions of @ETA from
   // this account are matched to the vendor they QR-scanned at (lib/instagram.ts).
-  instagramHandle       String?
+  instagramHandle         String?
   // Trip mode: the dates of the current (or last) trip, Jamaica days.
-  tripStart             DateTime?
-  tripEnd               DateTime?
+  tripStart               DateTime?
+  tripEnd                 DateTime?
   // Where they're staying: an ETA listing, a partner property, or just a town.
-  stayName              String?
-  stayCity              City?
-  stayAccommodationId   String?
+  stayName                String?
+  stayCity                City?
+  stayAccommodationId     String?
   // The hotel/villa partner whose code or QR brought them in (lib/partners.ts).
-  partnerPropertyId     String?
-  partnerJoinedAt       DateTime?
-  partnerProperty       PartnerProperty? @relation("PartnerGuests", fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  partnerPropertyId       String?
+  partnerJoinedAt         DateTime?
+  partnerProperty         PartnerProperty? @relation("PartnerGuests", fields: [partnerPropertyId], references: [id], onDelete: SetNull)
   // A dropped pin, when the stay isn't listed (arrival flow).
-  stayLat               Float?
-  stayLng               Float?
+  stayLat                 Float?
+  stayLng                 Float?
   // When the "planning your next trip?" nudge last went out (one per trip).
-  homeNudgeSentAt       DateTime?
+  homeNudgeSentAt         DateTime?
   // The last Explore mode position fix (lib/explore.ts): explorer-only perks
   // unlock when the QR scan follows an Explore session near that vendor.
-  exploreLastAt         DateTime?
-  exploreLastLat        Float?
-  exploreLastLng        Float?
+  exploreLastAt           DateTime?
+  exploreLastLat          Float?
+  exploreLastLng          Float?
+  // Trip stages (lib/stage.ts): "LOCAL" (lives in Jamaica) or "VISITOR";
+  // null until onboarding asks. The stage itself is inferred from this,
+  // the travel trips and where the phone is.
+  travelerType            String?
+  // "Looks like you're in Jamaica! Starting your trip?" -> Not now: quiet until then.
+  stagePromptSnoozedUntil DateTime?
+  // Cruise day: the port, the Jamaica day and the all-aboard time they entered.
+  cruisePort              City?
+  cruiseDay               String?
+  cruiseAllAboardAt       DateTime?
 
   redemptions             Redemption[]
   dealClaims              FlashDealClaim[]
@@ -200,6 +210,13 @@ model User {
   questProgress      QuestProgress[]
   questsCreated      Quest[]             @relation("QuestCreator")
   todayStories       TodayStory[]        @relation("TodayStoryAuthor")
+  townMedia          TownMedia[]         @relation("TownMediaAuthor")
+  travelTrips        TravelTrip[]        @relation("TravelTripOwner")
+  travelTripMembers  TravelTripMember[]
+  travelTripChanges  TravelTripChange[]
+  reviewPrompts      ReviewPrompt[]
+  eventInvites       EventInvite[]
+  claimedVisits      PendingVisit[]
 
   @@index([instagramHandle])
 }
@@ -293,6 +310,8 @@ model Vendor {
   questCheckpoints    QuestCheckpoint[]
   transferServices    TransferService[]
   todayStories        TodayStory[]
+  reviewPrompts       ReviewPrompt[]
+  pendingVisits       PendingVisit[]
 }
 
 model Accommodation {
@@ -1001,11 +1020,16 @@ model Event {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  tickets   Ticket[]
-  interests EventInterest[]
-  stories   Story[]
-  hostPicks HostPick[]
+  tickets      Ticket[]
+  interests    EventInterest[]
+  stories      Story[]
+  hostPicks    HostPick[]
   todayStories TodayStory[]
+  invites      EventInvite[]
+
+  // A big night in town: Home's hero shows this event (its video) tonight.
+  // Events with lots of interest count too (lib/home.ts partyNight).
+  bigNight Boolean @default(false)
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -1486,6 +1510,10 @@ model TransferService {
   readyMinutes Int      @default(15)
   driverName   String?
   driverPhoto  String?
+  // For the arrival's "Your driver is waiting" screen.
+  driverPhone  String?
+  plate        String?
+  meetPoint    String?
   active       Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
@@ -1646,26 +1674,202 @@ model QuestCheckpointHit {
 // { type: "quote", text, by? }. Without one for today, Home builds a story
 // from a featured vendor (lib/today-story.ts).
 model TodayStory {
-  id          String   @id @default(cuid())
-  city        City
+  id         String   @id @default(cuid())
+  city       City
   // "YYYY-MM-DD", Jamaica time.
-  publishOn   String
-  eyebrow     String?
-  title       String
-  dek         String
-  coverImage  String
-  coverVideo  String?
-  body        Json
-  published   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  publishOn  String
+  eyebrow    String?
+  title      String
+  dek        String
+  coverImage String
+  coverVideo String?
+  body       Json
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   vendorId    String?
-  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendor      Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   eventId     String?
-  event       Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  event       Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
   createdById String?
-  createdBy   User?    @relation("TodayStoryAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?   @relation("TodayStoryAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([city, publishOn])
+}
+
+// ---------- Home: the hero's media per town and daypart ----------
+
+// Photos and short muted loops of a town for each daypart (morning,
+// afternoon, golden, night - lib/daypart.ts), uploaded by ETA admins in the
+// vendor app (/api/vendor-app/town-media). Home's hero picks one for the
+// selected town right now; without one it falls back to the town's best
+// vendor photo.
+model TownMedia {
+  id        String   @id @default(cuid())
+  city      City
+  daypart   String
+  // "photo" or "video".
+  kind      String   @default("photo")
+  url       String
+  // The poster frame for a video.
+  poster    String?
+  credit    String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("TownMediaAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([city, daypart, active])
+}
+
+// ---------- Trip stages: the traveler's trips to Jamaica ----------
+
+// A trip: dates (Jamaica days), where they're staying and the town(s).
+// "VISIT" flies in (countdown -> arrival -> on trip -> between trips);
+// "GETAWAY" is a local's trip to another town (countdown and trip
+// features, no airport or arrival screens). Status moves on only with a
+// tap: UPCOMING -> ACTIVE (arrived) -> ENDED, or CANCELLED (deleted).
+model TravelTrip {
+  id                      String    @id @default(cuid())
+  kind                    String    @default("VISIT")
+  status                  String    @default("UPCOMING")
+  city                    City
+  startDate               DateTime
+  endDate                 DateTime
+  stayName                String?
+  stayCity                City?
+  stayAccommodationId     String?
+  stayLat                 Float?
+  stayLng                 Float?
+  partnerPropertyId       String?
+  // The airport they fly into (MBJ, KIN, OCJ, NEG), for the pre-booked ride.
+  arrivalAirport          String?
+  arrivedAt               DateTime?
+  endedAt                 DateTime?
+  // The welcome-back gift claimed for this trip (one per trip).
+  welcomeBackRedemptionId String?
+  // Friends join with this (the trip's invite link copies its dates and town).
+  inviteCode              String    @unique
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  ownerId String
+  owner   User   @relation("TravelTripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  legs    TravelTripLeg[]
+  members TravelTripMember[]
+  changes TravelTripChange[]
+
+  @@index([ownerId, startDate])
+}
+
+// Multi-town trips: each leg is a town and its dates; the location pill
+// follows the current leg.
+model TravelTripLeg {
+  id        String   @id @default(cuid())
+  city      City
+  startDate DateTime
+  endDate   DateTime
+  order     Int      @default(0)
+
+  tripId String
+  trip   TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+}
+
+// Group trips: members share the dates and the stage.
+model TravelTripMember {
+  id       String   @id @default(cuid())
+  joinedAt DateTime @default(now())
+
+  tripId String
+  trip   TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+}
+
+// A date change on a group trip waits until every other member confirms it.
+model TravelTripChange {
+  id         String    @id @default(cuid())
+  startDate  DateTime
+  endDate    DateTime
+  // pending | applied | declined
+  status     String    @default("pending")
+  approvedBy String[]  @default([])
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  tripId       String
+  trip         TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  proposedById String
+  proposedBy   User       @relation(fields: [proposedById], references: [id], onDelete: Cascade)
+
+  @@index([tripId, status])
+}
+
+// ---------- Review at the right moment ----------
+
+// Right after a QR visit or an in-app payment: "How was <vendor>?" One per
+// vendor per Jamaica day. Skipped -> one reminder later that day.
+model ReviewPrompt {
+  id         String    @id @default(cuid())
+  // "visit" or "payment".
+  source     String
+  sourceId   String?
+  day        String
+  createdAt  DateTime  @default(now())
+  shownAt    DateTime?
+  skippedAt  DateTime?
+  remindedAt DateTime?
+  doneAt     DateTime?
+
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId, day])
+  @@index([userId, day])
+}
+
+// ---------- "I'm going, come with me" ----------
+
+model EventInvite {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  eventId   String
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inviterId String
+  inviter   User   @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, inviterId])
+}
+
+// ---------- Vendor QR scanned without the app ----------
+
+// The phone camera opened a vendor's QR on the web without an account: the
+// visit is held here and credited if they sign up within 24 hours
+// (lib/pending-visits.ts).
+model PendingVisit {
+  id         String    @id @default(cuid())
+  claimToken String    @unique
+  lat        Float?
+  lng        Float?
+  distanceM  Int?
+  createdAt  DateTime  @default(now())
+  claimedAt  DateTime?
+
+  vendorId    String
+  vendor      Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  claimedById String?
+  claimedBy   User?   @relation(fields: [claimedById], references: [id], onDelete: SetNull)
 }
