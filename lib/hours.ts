@@ -61,3 +61,23 @@ export function formatTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 || h === 24 ? 'AM' : 'PM'}`
 }
+
+// Open now, or opening within the next 90 minutes (Home, the Vibe feed).
+const SOON_MIN = 90
+
+export type OpenNow = { state: 'open'; closes: string | null } | { state: 'soon'; opens: string } | { state: 'closed' } | { state: 'unknown' }
+
+/** Open now, opening within 90 minutes, closed, or no hours listed. */
+export function openNow(hours: unknown, now = new Date()): OpenNow {
+  const h = parseHours(hours)
+  if (!h) return { state: 'unknown' }
+  const s = openState(h, now)
+  if (s.open) return { state: 'open', closes: s.detail?.time ?? null }
+  if (s.detail?.kind === 'opens' && s.detail.dayOffset === 0) {
+    const local = new Date(now.getTime() - 5 * 3600000)
+    const mins = local.getUTCHours() * 60 + local.getUTCMinutes()
+    const [hh, mm] = s.detail.time.split(':').map(Number)
+    if (hh * 60 + mm - mins <= SOON_MIN) return { state: 'soon', opens: s.detail.time }
+  }
+  return { state: 'closed' }
+}

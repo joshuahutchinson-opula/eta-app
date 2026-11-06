@@ -11,7 +11,7 @@ import { useRegion } from '@/components/RegionProvider'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
 
-function RegionPicker({ onDone }: { onDone: () => void }) {
+export function RegionPicker({ onDone }: { onDone: () => void }) {
   const { city, setCity, locateMe } = useRegion()
   const { t } = useLang()
   const errorText = useErrorText()
