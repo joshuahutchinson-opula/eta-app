@@ -1,5 +1,7 @@
-// GET /api/home/day (signed in) — Home's "Your day": the next booking,
-// ticket or trip stop today, and the one after (lib/home.ts yourDay).
+// GET /api/home/day (signed in) — Home's "Your Day" (lib/home.ts yourDay):
+// everything on today in order (bookings, rides, tickets, trip stops, with
+// photos, QR and crew), what's still to come, and today's check-ins for the
+// night recap.
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/auth-server'
 import { yourDay } from '@/lib/home'

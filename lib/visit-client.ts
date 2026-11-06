@@ -34,5 +34,8 @@ export async function submitVisit(code: string, via?: 'explore'): Promise<VisitR
   const u = getCurrentUser()
   if (u) setCurrentUser({ ...u, points: result.totalPoints })
   hapticRewardRedeemed()
+  // Home's points pill counts up; "How was <vendor>?" comes up shortly after.
+  window.dispatchEvent(new CustomEvent('eta-points-change'))
+  setTimeout(() => window.dispatchEvent(new CustomEvent('eta-review-check')), 4000)
   return result
 }

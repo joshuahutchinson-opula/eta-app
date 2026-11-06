@@ -10,7 +10,7 @@
 //      log-out (CLEAR_USER).
 // Everything else passes straight through to the network.
 
-const TRIP_CACHE = 'eta-trip-v1'
+const TRIP_CACHE = 'eta-trip-v1' // also the arrival flow, cached during the countdown
 const USER_CACHE = 'eta-user-v1'
 const STATIC_CACHE = 'eta-static-v1'
 const STATIC_LIMIT = 200
@@ -94,7 +94,7 @@ async function trimStatic() {
 }
 
 function isTripPage(url) {
-  return url.pathname === '/experiences' || url.pathname.startsWith('/trip/')
+  return url.pathname === '/experiences' || url.pathname === '/arrival' || url.pathname.startsWith('/trip/')
 }
 
 function isUserPage(url) {

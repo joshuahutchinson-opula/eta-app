@@ -1,15 +1,23 @@
-// app/page.tsx — Home: "today in <town>". A living postcard of the selected
-// town right now (components/home/LivingHero: the real sun, sky and sea)
-// with a content sheet over it. One job: what's good here, today, for me.
-// Sheet order is fixed: Stories → Your day → Today story → Featured →
-// Parties & Happenings → Choose The Vibe. The daypart (lib/daypart.ts) from
-// the town's real sun times drives the sky, the tagline and what leads
-// Featured and the moods; all of it comes from /api/home (lib/home.ts).
-// Experiences live in their tab and "Near You" in Market.
-// On scroll the hero drifts and fades and a slim bar keeps the region pill
-// and bell. Pull to refresh washes a wave across the hero and re-reads the
-// sky. First open at an airport or hotel goes to the arrival flow
-// (app/arrival); otherwise to onboarding.
+// app/page.tsx — Home: "today in <town>". Top to bottom, always:
+//   Hero → Stories → Your Day → rum-red separator → Featured · Destinations
+//   → Parties & Happenings · This Week → Moods · Choose The Vibe → Dock
+// The hero is a real photo or short muted loop of the selected town for the
+// daypart (from the town's real sun times), or tonight's big event on a
+// party night; over it the location pill (the one location changer) and
+// the points pill, and bottom-left "Wah Gwan, <name>" with "<Daypart> In
+// <Town> · Sunset <time>". Data comes from /api/home (lib/home.ts).
+//
+// One Home, different states (lib/stage.ts): the trip stage changes only
+// the top — the hero's words, a card or prompt above the stories, and what
+// sits in Your Day's place (the countdown, Your Last Trip, the cruise day's
+// rides back). Big switches are always confirmed first.
+//
+// Feel: pull down to stretch the hero, then a refresh wave and a "What's
+// new" toast; past the hero the pills tuck into a slim frosted bar; the
+// Home tab turns into an up arrow when scrolled; changing town crossfades
+// the hero and staggers the sections back in. Everything respects reduce
+// motion. First open at an airport or hotel goes to the arrival flow
+// (app/arrival); otherwise onboarding asks the first question.
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -17,22 +25,20 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import Img from '@/components/Img'
-import FloatingPill from '@/components/FloatingPill'
-import EventsSection from '@/components/EventsSection'
 import RegionMismatchPrompt from '@/components/RegionMismatchPrompt'
 import StoriesRow from '@/components/StoriesRow'
-import NotificationBell from '@/components/NotificationBell'
 import AtYourStay from '@/components/AtYourStay'
 import PlanBCard from '@/components/PlanBCard'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import ErrorState from '@/components/ErrorState'
-import { TripDayChip, TripEndCards } from '@/components/TripStatus'
-import LivingHero from '@/components/home/LivingHero'
+import HomeHero, { HERO_HEIGHT } from '@/components/home/HomeHero'
 import RegionPill from '@/components/home/RegionPill'
+import PointsPill from '@/components/home/PointsPill'
 import YourDay from '@/components/home/YourDay'
-import TodayStory from '@/components/home/TodayStory'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import HomeEvents from '@/components/home/HomeEvents'
+import QuickPreview, { type PreviewTarget } from '@/components/home/QuickPreview'
+import { BrowsingCard, CountdownBlock, CruiseBlock, GuestCard, LastTripCard, StagePrompts, useAboard, useHeroLines } from '@/components/home/StageBlocks'
 import { Reveal, SectionHead } from '@/components/home/bits'
 import { useRegion } from '@/components/RegionProvider'
 import { useAtStay } from '@/lib/at-stay-client'
@@ -41,20 +47,23 @@ import { checkArrivalOnce } from '@/lib/arrival-client'
 import { needsOnboarding } from '@/lib/onboarding'
 import { getCurrentUser, AUTH_EVENT } from '@/lib/auth-client'
 import { useLang } from '@/lib/i18n-client'
-import { useUserLocation } from '@/lib/geo'
 import { triggerHaptic } from '@/lib/haptics'
 import { useReducedMotion } from '@/lib/motion'
 import { DAYPART_LEAN, sunInfo, type Daypart } from '@/lib/daypart'
 import { vibeMoodNames } from '@/lib/vibes'
-import type { FeaturedItem, TodayStoryView } from '@/lib/home'
+import { useLegFollower, useStage, type TripView } from '@/lib/stage-client'
+import { cruisePortFor } from '@/lib/places-geo'
+import type { FeaturedItem, HeroMedia, PartyNight } from '@/lib/home'
+import type { EventItem } from '@/lib/events'
 import type { DictKey } from '@/lib/i18n'
 
 interface Mood { id: string; name: string; icon: string; description: string; coverImage: string }
 interface HomeData {
   town: { city: string; name: string }
-  sun: { daypart: Daypart }
+  sun: { daypart: Daypart; sunset: string }
+  hero: HeroMedia | null
+  party: (Omit<PartyNight, 'startAt'> & { startAt: string }) | null
   featured: FeaturedItem[]
-  story: TodayStoryView | null
   moods: Mood[]
   feed: { enabled: boolean; count: number }
 }
@@ -63,33 +72,46 @@ const MOOD_ICONS: Record<string, string> = {
   'R&R': 'spa', 'Just The Two Of Us': 'heart', 'Party Time': 'party', 'Sunset Chaser': 'sun', 'Water Life': 'wave',
   'Street Food Crawl': 'food', 'Hangover Cures': 'recharge', 'Solo Missions': 'user', 'Family Day': 'users', 'Rum & Bass': 'glass'
 }
+/** Each mood's colour: the icon in that colour on a tinted square. */
+const MOOD_TONES: Record<string, string> = {
+  spa: '#13A89E', heart: '#E0457B', party: '#8E44D9', sun: '#F08A00', wave: '#1C7ED6',
+  food: '#B82010', recharge: '#2F9E44', user: '#4C6EF5', users: '#D9480F', glass: '#C79100'
+}
 const MOOD_NAMES: Record<string, string> = { 'Out Til Sunrise': 'Party Time', 'Golden Hour': 'Sunset Chaser' }
 
-const PULL_TRIGGER = 64
-const PULL_MAX = 96
+const PULL_TRIGGER = 70
+const PULL_MAX = 110
+const TZ = 'America/Jamaica'
 
 export default function HomePage() {
   const router = useRouter()
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const locale = lang === 'en' ? 'en-US' : lang
   const { city, town, ready } = useRegion()
   const reduce = useReducedMotion()
-  const location = useUserLocation()
+  const stage = useStage()
+  useLegFollower(stage)
+  const { result, position } = stage
   const { stay: atStay, host } = useAtStay()
   const [data, setData] = useState<HomeData | null>(null)
   const [failed, setFailed] = useState(false)
-  const [user, setUser] = useState<{ firstName: string | null; points: number } | null>(null)
-  const [now, setNow] = useState(() => new Date())
+  const [firstName, setFirstName] = useState<string | null>(null)
+  const [signedIn, setSignedIn] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const [refreshKey, setRefreshKey] = useState(0)
   const [washKey, setWashKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [pull, setPull] = useState(0)
   const [barOn, setBarOn] = useState(false)
-  const heroRef = useRef<HTMLDivElement>(null)
-  const layerRef = useRef<HTMLDivElement>(null)
+  const [hasDay, setHasDay] = useState(false)
+  const [preview, setPreview] = useState<PreviewTarget | null>(null)
+  const [toast, setToast] = useState<{ stories: number; events: number } | null>(null)
   const pullStart = useRef<number | null>(null)
+  const loadedAt = useRef<string>(new Date().toISOString())
+  const storiesRef = useRef<HTMLDivElement>(null)
+  const eventsRef = useRef<HTMLDivElement>(null)
 
-  // First open: at an airport or hotel, the arrival flow; otherwise the
-  // three-tap onboarding (dates, stay, vibe).
+  // First open: at an airport or hotel, the arrival flow; otherwise onboarding.
   useEffect(() => {
     let cancelled = false
     checkArrivalOnce().then(r => {
@@ -101,77 +123,78 @@ export default function HomePage() {
   }, [router])
 
   useEffect(() => {
-    const read = () => {
-      const u = getCurrentUser()
-      setUser(u ? { firstName: u.name?.split(' ')[0] ?? null, points: u.points ?? 0 } : null)
-    }
+    const read = () => { const u = getCurrentUser(); setFirstName(u?.name?.split(' ')[0] ?? null); setSignedIn(Boolean(u)) }
     read()
     window.addEventListener(AUTH_EVENT, read)
     return () => window.removeEventListener(AUTH_EVENT, read)
   }, [])
 
+  const cruise = result.stage === 'cruise' ? stage.cruise : null
+  const cruisePort = cruise?.port ?? null
+  const cruiseBack = cruise?.allAboardAt ?? null
   const load = useCallback(async () => {
     setFailed(false)
     try {
-      const res = await fetch(`/api/home?city=${city}`)
+      const port = cruisePort ? cruisePortFor(cruisePort) : null
+      const res = await fetch(`/api/home?city=${city}${port && cruiseBack ? `&port=${cruisePort}&backBy=${encodeURIComponent(cruiseBack)}` : ''}`)
       if (!res.ok) throw new Error('home')
       setData(await res.json())
+      loadedAt.current = new Date().toISOString()
     } catch {
       setFailed(true)
     }
-  }, [city])
+  }, [city, cruisePort, cruiseBack])
 
-  useEffect(() => { if (ready) { setData(null); load() } }, [ready, load])
+  useEffect(() => { if (ready) load() }, [ready, load])
 
-  // The daypart moves on by itself (sky, tagline); reload when it changes.
+  // The daypart moves on by itself; reload when it changes.
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60000)
+    const id = setInterval(() => setNow(Date.now()), 60000)
     return () => clearInterval(id)
   }, [])
-  const daypart = useMemo(() => sunInfo(town.lat, town.lng, now).daypart, [town.lat, town.lng, now])
+  const sun = useMemo(() => sunInfo(town.lat, town.lng, new Date(now)), [town.lat, town.lng, now])
+  const daypart = sun.daypart
   const lastPart = useRef(daypart)
   useEffect(() => {
     if (lastPart.current !== daypart) { lastPart.current = daypart; load() }
   }, [daypart, load])
 
-  // Hero parallax + fade, and the slim bar once the hero has gone.
+  // The slim frosted bar once the hero has gone.
   useEffect(() => {
     let raf = 0
-    const update = () => {
-      raf = 0
-      const y = window.scrollY
-      const h = heroRef.current?.offsetHeight ?? 400
-      setBarOn(y > h - 110)
-      if (reduce || !layerRef.current) return
-      const k = Math.max(0, Math.min(1, y / (h * 0.75)))
-      layerRef.current.style.transform = `translate3d(0, ${y * 0.35}px, 0)`
-      layerRef.current.style.opacity = String(1 - k)
-      const canvas = heroRef.current?.querySelector('canvas')
-      if (canvas) canvas.style.transform = `translate3d(0, ${y * 0.5}px, 0) scale(${1 + Math.max(0, -y) / 600})`
-    }
+    const update = () => { raf = 0; setBarOn(window.scrollY > HERO_HEIGHT - 70) }
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [reduce])
+  }, [])
 
   const refresh = useCallback(async () => {
     setRefreshing(true)
     triggerHaptic('medium')
     setWashKey(k => k + 1)
-    setNow(new Date())
+    const since = loadedAt.current
+    setNow(Date.now())
     await load()
     setRefreshKey(k => k + 1)
     setRefreshing(false)
-  }, [load])
+    const fresh = await fetch(`/api/home/fresh?city=${city}&since=${encodeURIComponent(since)}`).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    if (fresh && (fresh.stories > 0 || fresh.events > 0)) setToast(fresh)
+  }, [load, city])
 
-  // Pull to refresh from the top of the page.
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), 6000)
+    return () => clearTimeout(id)
+  }, [toast])
+
+  // Pull down at the top: the hero stretches and zooms, then the wave.
   const onTouchStart = (e: React.TouchEvent) => { pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null }
   const onTouchMove = (e: React.TouchEvent) => {
     if (pullStart.current === null) return
     const d = e.touches[0].clientY - pullStart.current
     if (d <= 0 || window.scrollY > 0) { if (pull) setPull(0); return }
-    const next = Math.min(PULL_MAX, d * 0.45)
+    const next = Math.min(PULL_MAX, d * 0.5)
     if (pull < PULL_TRIGGER && next >= PULL_TRIGGER) triggerHaptic('selection')
     setPull(next)
   }
@@ -183,7 +206,6 @@ export default function HomePage() {
 
   const featured = useMemo(() => leanVendors(data?.featured ?? [], host), [data, host])
   const moods = useMemo(() => {
-    // The server puts the daypart's moods first; the onboarding vibe's come next.
     const leadNames = data ? DAYPART_LEAN[data.sun.daypart].moods : []
     const vibe = vibeMoodNames()
     const all = data?.moods ?? []
@@ -191,88 +213,128 @@ export default function HomePage() {
     const rest = all.filter(m => !leadNames.includes(m.name))
     return [...leads, ...rest.filter(m => vibe.includes(MOOD_NAMES[m.name] ?? m.name)), ...rest.filter(m => !vibe.includes(MOOD_NAMES[m.name] ?? m.name))]
       .map(m => ({ ...m, name: MOOD_NAMES[m.name] ?? m.name }))
+      .slice(0, 6)
   }, [data])
   const loading = !data && !failed
-  const feedOn = Boolean(data?.feed.enabled)
+
+  // The hero's words: the stage's, or tonight's big event.
+  const sunset = sun.sunset.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: TZ })
+  const daypartLine = t('m.h2.line', { daypart: t(`m.h2.dp.${daypart}` as DictKey), town: town.name, time: sunset })
+  const lines = useHeroLines(result, firstName, daypartLine, now)
+  const aboard = useAboard(cruise?.allAboardAt ?? null)
+  const party = result.stage !== 'countdown' && data?.party ? data.party : null
+  const heroMedia = party ? (party.video ? { kind: 'video' as const, url: party.video, poster: party.image } : party.image ? { kind: 'photo' as const, url: party.image, poster: null } : data?.hero ?? null) : data?.hero ?? null
+  const trip = result.trip as TripView | null
+
+  const yourDayPlace =
+    result.stage === 'countdown' && trip ? 'countdown'
+      : result.stage === 'between' && trip ? 'between'
+      : result.stage === 'cruise' && cruise ? 'cruise'
+      : 'day'
+  const showSeparator = yourDayPlace !== 'day' || hasDay
+  const onDayState = useCallback((has: boolean) => setHasDay(has), [])
+
+  const topBar = (solid: boolean) => (
+    <div className="home-pills">
+      <RegionPill />
+      <PointsPill solid={solid} />
+    </div>
+  )
+
+  const openEventPreview = useCallback((ev: EventItem) => setPreview({ kind: 'event', id: ev.id, name: ev.title, images: [ev.imageUrl, ...(ev.vendor?.images ?? [])].filter((u): u is string => Boolean(u)), lat: ev.lat, lng: ev.lng, startAt: ev.startAt, endAt: ev.endAt, venue: ev.venueName, bookable: Boolean(ev.inAppTickets || ev.ticketUrl) }), [])
+  const openVendorPreview = useCallback((v: FeaturedItem) => setPreview({ kind: 'vendor', id: v.id, name: v.name, images: v.images.length ? v.images : v.image ? [v.image] : [], lat: v.lat, lng: v.lng, subtitle: v.neighborhood }), [])
+
+  const jump = (ref: React.RefObject<HTMLDivElement>) => {
+    setToast(null)
+    ref.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+  }
+
+  let section = 0
+  const stagger = (node: React.ReactNode, key: string) => (
+    <div key={`${city}-${key}`} className="stagger-in" style={{ '--i': section++ } as React.CSSProperties}>{node}</div>
+  )
 
   return (
     <main className="home" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <FloatingPill />
+      {/* Slim frosted bar once the hero is gone */}
+      <div className={`home-bar ${barOn ? 'on' : ''}`} aria-hidden={!barOn}>{topBar(true)}</div>
 
-      {/* Slim bar once the hero is gone */}
-      <div className={`home-bar ${barOn ? 'on' : ''}`} aria-hidden={!barOn}>
-        <RegionPill />
-        <NotificationBell />
-      </div>
-
-      <div ref={heroRef} style={{ transform: pull ? `translateY(${pull * 0.5}px)` : undefined, transition: pull ? 'none' : 'transform 0.5s var(--spring-standard)' }}>
-        <LivingHero lat={town.lat} lng={town.lng} sceneKey={city} washKey={washKey}>
-          <div ref={layerRef} className="home-hero-layer">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <RegionPill />
-              <NotificationBell glass />
-            </div>
-            {(refreshing || pull > 0) && (
-              <p role="status" className="glass-pill" style={{ alignSelf: 'center', marginTop: '10px', minHeight: '30px', fontSize: '13px', opacity: refreshing ? 1 : Math.min(1, pull / PULL_TRIGGER) }}>
-                <Icon name="wave" size={14} /> {refreshing ? t('m.home.refreshing') : pull >= PULL_TRIGGER ? t('m.refresh.release') : t('m.refresh.pull')}
-              </p>
+      <HomeHero
+        media={heroMedia}
+        sceneKey={party ? `party-${party.id}` : city}
+        pull={pull}
+        washKey={washKey}
+        topBar={<>
+          {topBar(false)}
+          {(refreshing || pull > 0) && (
+            <p role="status" className="glass-pill home-refresh-pill" style={{ opacity: refreshing ? 1 : Math.min(1, pull / PULL_TRIGGER) }}>
+              <Icon name="wave" size={14} /> {refreshing ? t('m.home.refreshing') : pull >= PULL_TRIGGER ? t('m.refresh.release') : t('m.refresh.pull')}
+            </p>
+          )}
+        </>}
+      >
+        {party ? (
+          <>
+            <p className="home-hero-over">{t('m.h2.tonight', { title: party.title, time: new Date(party.startAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: TZ }) })}</p>
+            <h1 className="home-greeting">{lines.title}</h1>
+            <Link href={`/events/${party.id}`} onClick={() => triggerHaptic('medium')} className="home-watch press" style={{ marginTop: '12px' }}>
+              <Icon name="ticket" size={15} /> {t('m.events.getTickets')}
+            </Link>
+          </>
+        ) : (
+          <>
+            {lines.over && <p className="home-hero-over">{lines.over}</p>}
+            <h1 className="home-greeting">{lines.title}</h1>
+            <p className="home-tagline">
+              {result.stage === 'cruise' && aboard ? <><Icon name="ship" size={14} /> <span className="num-font">{aboard}</span></> : lines.line}
+            </p>
+            {result.stage === 'trip' && result.day && (
+              <Link href="/trips" className="glass-pill press home-day-chip num-font"><Icon name="calendar" size={12} /> {t('m.trip.dayOf', { day: result.day.n, total: result.day.total })}</Link>
             )}
-            <div style={{ marginTop: 'auto' }}>
-              <h1 className="home-greeting">{t('m.home.greeting', { name: user?.firstName ? `, ${user.firstName}` : '' })}</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '10px 0 12px' }}>
-                <TripDayChip glass />
-                {user && (
-                  <Link href="/rewards" className="glass-pill press" style={{ minHeight: '32px', padding: '0 12px', fontSize: '13px', fontWeight: 700 }}>
-                    <Icon name="star" size={12} style={{ color: 'var(--gold)' }} />
-                    <span className="num-font">{t('m.home.pointsPill', { n: user.points.toLocaleString() })}</span>
-                  </Link>
-                )}
-              </div>
-              <p className="home-tagline">{t(`m.home.tag.${daypart}` as DictKey, { town: town.name })}</p>
-              {feedOn && (
-                <Link href="/vibe" onClick={() => triggerHaptic('medium')} className="home-watch press" style={{ marginTop: '14px' }}>
-                  {t('m.home.watch', { town: town.name })} <Icon name="play" size={13} />
-                </Link>
-              )}
-            </div>
-          </div>
-        </LivingHero>
-      </div>
+          </>
+        )}
+      </HomeHero>
 
       <div className="home-sheet">
         <RegionMismatchPrompt />
         <VerifyEmailBanner />
 
-        {/* 1. Stories */}
-        <StoriesRow key={`stories-${refreshKey}`} />
+        {/* The stage's top: confirm-first prompts and its card */}
+        {stage.ready && (
+          <div className="stage-top">
+            <StagePrompts result={result} trips={stage.trips} legCity={result.legCity} />
+            {!signedIn && <GuestCard />}
+            {result.stage === 'browsing' && <BrowsingCard />}
+          </div>
+        )}
 
-        {/* 2. Your day */}
-        <section className="home-section" aria-label={t('m.home.yourDay')}>
-          <SectionHead eyebrow={t('m.home.today')} title={t('m.home.yourDay')} />
-          <YourDay refreshKey={refreshKey} />
-          <PlanBCard />
-          <AtYourStay stay={atStay} />
-          <TripEndCards location={location} />
-        </section>
+        {/* 1. Stories */}
+        <div ref={storiesRef}>{stagger(<StoriesRow key={`stories-${refreshKey}`} />, 'stories')}</div>
+
+        {/* 2. Your Day (or what the stage puts in its place) */}
+        {yourDayPlace === 'countdown' && trip && stagger(<CountdownBlock trip={trip} />, 'countdown')}
+        {yourDayPlace === 'between' && trip && stagger(<LastTripCard trip={trip} />, 'between')}
+        {yourDayPlace === 'cruise' && cruise && stagger(<CruiseBlock port={cruise.port} allAboardAt={cruise.allAboardAt} />, 'cruise')}
+        {yourDayPlace === 'day' && stagger(
+          <>
+            <YourDay refreshKey={refreshKey} day={result.day} location={position} onState={onDayState} />
+            {hasDay && <PlanBCard />}
+            {hasDay && <AtYourStay stay={atStay} />}
+          </>, 'day')}
+
+        {/* 3. The separator, only when there's something above it */}
+        {showSeparator && <div className="rum-sep" role="separator" aria-hidden><span /></div>}
 
         {failed && <div className="home-section"><ErrorState onRetry={refresh} /></div>}
 
-        {/* 3. Today story */}
-        {(loading || data?.story) && (
-          <Reveal className="home-section" style={{ padding: '0 20px' }}>
-            {data?.story ? <TodayStory story={data.story} /> : <div className="home-skel" style={{ height: '440px' }} aria-hidden />}
-          </Reveal>
-        )}
-
-        {/* 4. Featured */}
-        {(loading || featured.length > 0) && (
+        {/* 4. Featured · Destinations */}
+        {(loading || featured.length > 0) && stagger(
           <Reveal className="home-section">
-            <SectionHead eyebrow={t('m.home.featured')} title={t('m.home.featuredTitle')} />
-            {loading ? <div className="home-skel" style={{ height: '420px', margin: '4px 20px 30px' }} aria-hidden /> : <FeaturedCarousel items={featured} />}
-          </Reveal>
-        )}
+            <SectionHead eyebrow={t('m.home.featured')} title={t('m.home.destinations')} />
+            {loading ? <div className="home-skel" style={{ height: '420px', margin: '4px 20px 30px' }} aria-hidden /> : <FeaturedCarousel items={featured} onPreview={openVendorPreview} />}
+          </Reveal>, 'featured')}
 
-        {data && !data.story && featured.length === 0 && (
+        {data && featured.length === 0 && (
           <div className="empty-state home-section" style={{ padding: '0 20px' }}>
             <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.region.emptyTitle', { town: town.name })}</p>
@@ -280,29 +342,38 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 5. Parties & Happenings */}
-        <Reveal className="home-section home-events">
-          <EventsSection key={`events-${refreshKey}`} />
-        </Reveal>
+        {/* 5. Parties & Happenings · This Week */}
+        <div ref={eventsRef}>{stagger(<Reveal className="home-section"><HomeEvents key={`events-${refreshKey}`} onPreview={openEventPreview} /></Reveal>, 'events')}</div>
 
-        {/* 6. Choose The Vibe */}
-        {(loading || moods.length > 0) && (
+        {/* 6. Moods · Choose The Vibe */}
+        {(loading || moods.length > 0) && stagger(
           <Reveal className="home-section">
             <SectionHead eyebrow={t('m.home.vibeEyebrow')} title={t('m.home.chooseVibe')} />
-            <div className="vibe-grid">
+            <div className="mood-grid">
               {loading
-                ? [0, 1, 2, 3, 4].map(i => <div key={i} className="home-skel" style={{ height: i === 0 ? '150px' : '120px', gridColumn: i === 0 ? 'span 2' : undefined }} aria-hidden />)
-                : moods.map((m, i) => (
-                  <Link key={m.id} href={`/mood/${m.id}`} onClick={() => triggerHaptic('light')} className={`vibe-tile press ${i === 0 ? 'lead' : ''}`}>
-                    {m.coverImage && <Img src={m.coverImage} alt="" width={i === 0 ? 900 : 480} height={i === 0 ? 300 : 240} sizes={i === 0 ? '100vw' : '50vw'} />}
-                    <span><Icon name={MOOD_ICONS[m.name] ?? m.icon} size={18} /> {m.name}</span>
-                  </Link>
-                ))}
+                ? [0, 1, 2, 3, 4, 5].map(i => <div key={i} className="home-skel" style={{ height: '104px' }} aria-hidden />)
+                : moods.map(m => {
+                  const icon = MOOD_ICONS[m.name] ?? m.icon
+                  const tone = MOOD_TONES[icon] ?? 'var(--rum)'
+                  return (
+                    <Link key={m.id} href={`/experiences?mood=${m.id}`} onClick={() => triggerHaptic('light')} className="mood-tile press" style={{ '--tone': tone } as React.CSSProperties}>
+                      <span className="mood-tile-icon" aria-hidden><Icon name={icon} size={20} /></span>
+                      <span className="mood-tile-name">{m.name}</span>
+                    </Link>
+                  )
+                })}
             </div>
-          </Reveal>
-        )}
+          </Reveal>, 'moods')}
       </div>
 
+      {toast && (
+        <button className="whats-new press" onClick={() => jump(toast.stories > 0 ? storiesRef : eventsRef)} role="status">
+          <Icon name="sparkle" size={14} />
+          {[toast.stories > 0 ? (toast.stories === 1 ? t('m.h2.newStory') : t('m.h2.newStories', { n: toast.stories })) : null, toast.events > 0 ? (toast.events === 1 ? t('m.h2.newEvent') : t('m.h2.newEvents', { n: toast.events })) : null].filter(Boolean).join(' · ')}
+        </button>
+      )}
+
+      <QuickPreview target={preview} location={position} onClose={() => setPreview(null)} />
       <Dock />
     </main>
   )

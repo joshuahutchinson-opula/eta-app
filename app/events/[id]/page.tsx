@@ -1,6 +1,9 @@
 // app/events/[id]/page.tsx — one promoter event: save it, mark interest,
 // add it to your calendar, and get tickets in the app (or through the
-// promoter's link when the event doesn't sell tickets on ETA).
+// promoter's link when the event doesn't sell tickets on ETA). "I'm going,
+// come with me" shares an invite link (/api/events/:id/invite); opened from
+// one (?inv=), the page says who invited them, with Interested and Get
+// Tickets right there.
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -41,6 +44,34 @@ export default function EventDetailPage() {
   const [interestBusy, setInterestBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [ticketsOpen, setTicketsOpen] = useState(false)
+  const [inviter, setInviter] = useState<{ name: string; avatarUrl: string | null } | null>(null)
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+  const [inviting, setInviting] = useState(false)
+
+  useEffect(() => {
+    const inv = new URLSearchParams(window.location.search).get('inv')
+    if (!inv) return
+    fetch(`/api/event-invites/${encodeURIComponent(inv)}`).then(r => (r.ok ? r.json() : null)).then(d => { if (d?.eventId === id) setInviter(d.inviter) }).catch(() => {})
+  }, [id])
+
+  // "I'm going, come with me": a personal invite link.
+  const inviteFriends = async () => {
+    if (!event) return
+    if (!getCurrentUser()) { setNotice(t('m.inv.login')); return }
+    setInviting(true)
+    setInviteMsg(null)
+    try {
+      const { url } = await apiJson<{ url: string }>(`/api/events/${id}/invite`, { method: 'POST' })
+      const first = getCurrentUser()?.name.split(' ')[0] ?? ''
+      const result = await shareOrCopy({ title: event.title, text: t('m.inv.shareText', { name: first, title: event.title, venue: event.venueName }), url })
+      if (result === 'copied') setInviteMsg(t('m.events.linkCopied'))
+      triggerHaptic('medium')
+    } catch (e) {
+      setInviteMsg(errorText(e))
+    } finally {
+      setInviting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -144,6 +175,12 @@ export default function EventDetailPage() {
       </div>
 
       <div style={{ padding: '20px 16px' }}>
+        {inviter && (
+          <div className="invite-banner">
+            {inviter.avatarUrl ? <img src={inviter.avatarUrl} alt="" /> : <span className="invite-initial">{inviter.name.charAt(0)}</span>}
+            <span style={{ flex: 1, fontSize: '15px', fontWeight: 600 }}>{t('m.inv.banner', { name: inviter.name })}</span>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <button className={`chip ${event.interested ? 'active' : ''}`} aria-pressed={Boolean(event.interested)} onClick={toggleInterest} disabled={interestBusy}>
             <Icon name="star" size={14} /> {event.interested ? t('m.events.interestedOn') : t('m.events.interested')}
@@ -151,7 +188,11 @@ export default function EventDetailPage() {
           {event.interestedCount ? (
             <span style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{event.interestedCount === 1 ? t('m.events.oneInterested') : t('m.events.interestedCount', { n: event.interestedCount })}</span>
           ) : null}
+          <button className="chip" onClick={inviteFriends} disabled={inviting} style={{ marginLeft: 'auto', background: 'var(--rum)', color: 'white' }}>
+            <Icon name="users" size={14} /> {inviting ? '…' : t('m.inv.cta')}
+          </button>
         </div>
+        {inviteMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{inviteMsg}</p>}
         {notice && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '12px' }}>{notice} {!getCurrentUser() && <Link href={`/login?next=/events/${id}`} style={{ color: 'var(--rum-text)', fontWeight: 600 }}>{t('m.profile.login')}</Link>}</p>}
 
         <div className="card" style={{ padding: '4px 16px', marginBottom: '16px', cursor: 'default' }}>

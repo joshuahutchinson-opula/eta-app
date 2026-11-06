@@ -421,6 +421,35 @@ export default function Icon({ name, size = 20, className = '', style, onClick }
         <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" />
       </svg>
     ),
+    walk: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="13" cy="4" r="2" />
+        <path d="M9 21l2-6 3 3v3M7 12l2-4 4 1 3 3h3M11 15l-1-5" />
+      </svg>
+    ),
+    car: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M5 17h14M3 17v-4l2-5a2 2 0 012-1h10a2 2 0 012 1l2 5v4" />
+        <circle cx="7.5" cy="17" r="1.8" />
+        <circle cx="16.5" cy="17" r="1.8" />
+        <path d="M3 13h18" />
+      </svg>
+    ),
+    arrowUp: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    ),
+    message: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M21 12a8.5 8.5 0 01-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1121 12z" />
+      </svg>
+    ),
+    ship: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 18c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M5 15l-1-4h16l-1 4M8 11V7h8v4M12 7V4" />
+      </svg>
+    ),
   }
 
   return (

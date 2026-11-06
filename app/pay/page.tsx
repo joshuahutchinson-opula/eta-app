@@ -165,6 +165,8 @@ export default function ScanAndPayPage() {
       setCurrentUser(updated)
       setUser(updated)
       hapticBookingConfirmed()
+      // "How was <vendor>?" comes up over the receipt.
+      setTimeout(() => window.dispatchEvent(new CustomEvent('eta-review-check')), 2500)
       router.push(`/receipt/${data.transactionId}`)
     } catch (e) {
       setPayError(e instanceof ApiError || e instanceof Error ? errorText(e) : patois.errorPaymentFailed)

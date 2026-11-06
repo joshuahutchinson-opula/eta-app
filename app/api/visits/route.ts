@@ -17,6 +17,7 @@ import { startOfJamaicaDay } from '@/lib/booking-counts'
 import { parseScanned } from '@/lib/vendor-qr'
 import { rateLimit } from '@/lib/rate-limit'
 import { onExploreScan } from '@/lib/explore'
+import { promptReview } from '@/lib/review-prompts'
 import { lat, lng, parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
@@ -82,6 +83,8 @@ export async function POST(request: Request) {
     })
     const challenges = await evaluateChallenges(userId).catch(err => { console.error('Challenge check failed:', err); return [] })
     const explore = await onExploreScan(userId, vendor, parsed.data.via ?? null).catch(err => { console.error('Explore scan failed:', err); return { quests: [], perks: [] } })
+    // "How was <vendor>?" right after the visit.
+    await promptReview(userId, vendor.id, 'visit', result.visitId).catch(err => console.error('Review prompt failed:', err))
     return NextResponse.json({ ...result, vendor: { id: vendor.id, name: vendor.name }, unlockedRewards: unlocked, challengesCompleted: challenges, explore }, { status: 201 })
   } catch (error) {
     console.error('Error logging visit:', error)

@@ -3,8 +3,12 @@
 // to ask their CDN for that width, auto format (WebP/AVIF) and auto quality,
 // so nothing runs through the Next.js optimizer on our server. Other hosts
 // load as-is.
+// Blur-up: while the photo loads, a tiny copy of it (its own colours,
+// softly blurred) fills the box, and the sharp image fades in over it.
+// Hosts we can't resize get the rum-tinted shimmer instead.
 'use client'
 
+import { useState } from 'react'
 import Image, { type ImageLoader } from 'next/image'
 
 const CLOUDINARY = /^https:\/\/res\.cloudinary\.com\/[^/]+\/(image|video)\/upload\//
@@ -53,18 +57,25 @@ interface Props {
 
 export default function Img({ src, alt, width, height, sizes = '100vw', priority, style, className }: Props) {
   const known = isOptimizable(src)
+  const [loaded, setLoaded] = useState(false)
+  const tiny = known ? loader({ src, width: 24, quality: 30 }) : null
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      sizes={sizes}
-      priority={priority}
-      loader={known ? loader : undefined}
-      unoptimized={!known}
-      className={className}
-      style={{ width: '100%', height: '100%', objectFit: 'cover', ...style }}
-    />
+    <span className={`img-blur ${loaded ? 'loaded' : ''}`}>
+      {!loaded && (tiny ? <span aria-hidden className="img-blur-ph" style={{ backgroundImage: `url("${tiny}")` }} /> : <span aria-hidden className="img-blur-ph shimmer" />)}
+      <Image
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        sizes={sizes}
+        priority={priority}
+        loader={known ? loader : undefined}
+        unoptimized={!known}
+        className={className}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', ...style }}
+      />
+    </span>
   )
 }

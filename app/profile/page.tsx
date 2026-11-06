@@ -1,6 +1,8 @@
 // app/profile/page.tsx — the traveler's profile: Bookings, Saved, Rewards
-// (points, vouchers, discoveries and wallet in one hub) and Settings, with
-// Safety always one tap away in the corner.
+// (points, vouchers, discoveries and wallet in one hub), Trips (app/trips),
+// Notifications and Settings, with Safety always one tap away in the corner.
+// The theme is Light, Dark or Auto (dark at the selected town's real
+// sunset, lib/theme.ts).
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -21,8 +23,8 @@ import { LANGS, LANG_NAMES } from '@/lib/i18n'
 import Price from '@/components/Price'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import { absoluteUrl } from '@/lib/site-url'
-import { useTripMode } from '@/lib/trip-mode'
-import { CITY_CODES, cityName } from '@/lib/regions'
+import { useRegion } from '@/components/RegionProvider'
+import { readTheme, setTheme, type ThemeMode } from '@/lib/theme'
 
 const NOTIFY_TYPES = ['bookings', 'events', 'deals', 'live', 'crew', 'trips'] as const
 type NotifyType = (typeof NOTIFY_TYPES)[number]
@@ -41,7 +43,8 @@ export default function ProfilePage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<CurrentUser | null>(null)
-  const [darkMode, setDarkMode] = useState(false)
+  const [theme, setThemeMode] = useState<ThemeMode>('light')
+  const { town } = useRegion()
   const [notifications, setNotifications] = useState(false)
   const [alertPrefs, setAlertPrefs] = useState({ liveAlerts: true, dealAlerts: true })
   const [alertsBusy, setAlertsBusy] = useState(false)
@@ -52,9 +55,6 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ name: '', bio: '', homeCountry: '', instagramHandle: '' })
   const [whatsapp, setWhatsapp] = useState({ number: '', on: false })
   const [whatsappMsg, setWhatsappMsg] = useState<string | null>(null)
-  const { trip, save: saveTrip } = useTripMode()
-  const [tripForm, setTripForm] = useState({ start: '', end: '', stayName: '', stayCity: '' })
-  const [tripMsg, setTripMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const { currency, setCurrency } = useCurrency()
@@ -99,11 +99,8 @@ export default function ProfilePage() {
         .catch(() => {})
     }
 
-    // Light is the default; dark applies only when the user has chosen it.
-    const savedTheme = localStorage.getItem('theme')
-    const isDark = savedTheme === 'dark'
-    setDarkMode(isDark)
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+    // Light is the default; dark or Auto (dark after sunset) when chosen.
+    setThemeMode(readTheme())
 
     // Alerts are real push subscriptions now, so the toggle reflects the
     // browser's actual state rather than a stored flag.
@@ -127,16 +124,9 @@ export default function ProfilePage() {
     setMounted(true)
   }, [])
 
-  const toggleDarkMode = () => {
-    const newMode = !darkMode
-    setDarkMode(newMode)
-    document.documentElement.setAttribute('data-theme', newMode ? 'dark' : 'light')
-    localStorage.setItem('theme', newMode ? 'dark' : 'light')
-
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) {
-      meta.setAttribute('content', newMode ? '#000000' : '#F2F2F7')
-    }
+  const chooseTheme = (mode: ThemeMode) => {
+    setThemeMode(mode)
+    setTheme(mode, town)
   }
 
   const toggleNotifications = async () => {
@@ -271,22 +261,7 @@ export default function ProfilePage() {
     }
   }
 
-  const openSettings = () => {
-    setTripForm({ start: trip.start ?? '', end: trip.end ?? '', stayName: trip.stayName ?? '', stayCity: trip.stayCity ?? '' })
-    setTripMsg(null)
-    setShowSettingsSheet(true)
-  }
-
-  const saveTripSettings = async () => {
-    setTripMsg(null)
-    if (tripForm.start && tripForm.end && tripForm.end < tripForm.start) { setTripMsg(t('m.onb.datesOrder')); return }
-    try {
-      await saveTrip({ start: tripForm.start || null, end: tripForm.end || null, stayName: tripForm.stayName.trim() || null, stayCity: tripForm.stayCity || null })
-      setTripMsg(t('m.profile.saved2'))
-    } catch (e) {
-      setTripMsg(errorText(e))
-    }
-  }
+  const openSettings = () => setShowSettingsSheet(true)
 
   const downloadData = async () => {
     try {
@@ -326,6 +301,8 @@ export default function ProfilePage() {
 
   const menuItems: { label: string; icon: string; href?: string; onClick?: () => void }[] = [
     { label: t('m.profile.bookings'), icon: 'clock', href: '/bookings' },
+    { label: t('m.trips.title'), icon: 'plane', href: '/trips' },
+    { label: t('m.profile.notifications'), icon: 'bell', href: '/notifications' },
     { label: t('m.profile.saved'), icon: 'heart', href: '/saved' },
     { label: t('m.profile.rewards'), icon: 'gift', href: '/rewards' },
     { label: t('m.profile.settings'), icon: 'settings', onClick: openSettings }
@@ -538,23 +515,16 @@ export default function ProfilePage() {
             <p className="num-font" style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.rate', { rate: rate ?? '—' })}</p>
           </div>
 
-          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
-            <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
-              <Icon name="calendar" size={20} style={{ color: 'var(--label-secondary)' }} /> {t('m.profile.tripTitle')}
-            </p>
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', margin: '2px 0 8px 32px' }}>{t('m.profile.tripSub')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.onb.arrive')}<input type="date" value={tripForm.start} onChange={e => setTripForm({ ...tripForm, start: e.target.value })} style={{ ...fieldStyle, marginTop: '4px' }} /></label>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--label-secondary)' }}>{t('m.onb.leave')}<input type="date" value={tripForm.end} min={tripForm.start || undefined} onChange={e => setTripForm({ ...tripForm, end: e.target.value })} style={{ ...fieldStyle, marginTop: '4px' }} /></label>
-            </div>
-            <input value={tripForm.stayName} maxLength={120} onChange={e => setTripForm({ ...tripForm, stayName: e.target.value })} placeholder={t('m.onb.stayPlaceholder')} aria-label={t('m.onb.stayTitle')} style={fieldStyle} />
-            <select value={tripForm.stayCity} onChange={e => setTripForm({ ...tripForm, stayCity: e.target.value })} aria-label={t('m.onb.stayTown')} style={fieldStyle}>
-              <option value="">{t('m.onb.stayTown')}</option>
-              {CITY_CODES.map(c => <option key={c} value={c}>{cityName(c)}</option>)}
-            </select>
-            <button className="btn btn-secondary" onClick={saveTripSettings} style={{ width: '100%' }}>{t('m.profile.save')}</button>
-            {tripMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-primary)', marginTop: '6px' }}>{tripMsg}</p>}
-          </div>
+          <Link href="/trips" className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', textDecoration: 'none' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Icon name="calendar" size={20} style={{ color: 'var(--label-secondary)' }} />
+              <span>
+                <span style={{ display: 'block', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.tripTitle')}</span>
+                <span style={{ display: 'block', fontSize: '12px', color: 'var(--label-secondary)' }}>{t('m.profile.tripSub')}</span>
+              </span>
+            </span>
+            <Icon name="chevronRight" size={16} style={{ color: 'var(--label-tertiary)' }} />
+          </Link>
 
           <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
             <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>
@@ -570,47 +540,22 @@ export default function ProfilePage() {
             {whatsappMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-primary)', marginTop: '6px' }}>{whatsappMsg}</p>}
           </div>
 
-          <button
-            className="card"
-            role="switch"
-            aria-checked={darkMode}
-            style={{
-              width: '100%',
-              border: 'none',
-              fontFamily: 'inherit',
-              padding: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              marginBottom: '12px'
-            }}
-            onClick={toggleDarkMode}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Icon name="moon" size={20} style={{ color: 'var(--label-secondary)' }} />
-              <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.darkMode')}</span>
+          <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Icon name="moon" size={20} style={{ color: 'var(--label-secondary)' }} />
+                <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.profile.theme')}</span>
+              </span>
+              <div role="radiogroup" aria-label={t('m.profile.theme')} style={{ display: 'flex', gap: '4px' }}>
+                {(['light', 'dark', 'auto'] as const).map(mode => (
+                  <button key={mode} role="radio" aria-checked={theme === mode} onClick={() => chooseTheme(mode)} className={`chip ${theme === mode ? 'active' : ''}`} style={{ minHeight: '36px', padding: '4px 12px' }}>
+                    {t(`m.profile.theme.${mode}` as 'm.profile.theme.auto')}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div style={{
-              width: '48px',
-              height: '28px',
-              borderRadius: '999px',
-              background: darkMode ? 'var(--rum)' : 'var(--separator)',
-              position: 'relative',
-              transition: 'background 0.2s ease'
-            }}>
-              <div style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                background: 'white',
-                position: 'absolute',
-                top: '3px',
-                left: darkMode ? '23px' : '3px',
-                transition: 'left 0.2s ease'
-              }} />
-            </div>
-          </button>
+            {theme === 'auto' && <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginTop: '6px' }}>{t('m.profile.themeAutoSub', { town: town.name })}</p>}
+          </div>
 
           <div className="card" style={{ padding: '12px 16px', marginBottom: '12px', cursor: 'default' }}>
             <p style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>

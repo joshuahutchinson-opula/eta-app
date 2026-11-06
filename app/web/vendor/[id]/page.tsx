@@ -1,4 +1,5 @@
-// app/web/vendor/[id]/page.tsx — A4 Vendor detail
+// app/web/vendor/[id]/page.tsx — A4 Vendor detail. Also where a vendor's QR
+// lands when scanned without ETA (?collect=1): "Get ETA to collect your points".
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +7,7 @@ import MediaGallery from '@/components/web/MediaGallery'
 import VendorCard from '@/components/web/VendorCard'
 import Icon from '@/lib/icons'
 import EtaMap from '@/components/map/EtaMap'
+import CollectPointsBanner from '@/components/web/CollectPointsBanner'
 import { getVendorDetail, formatCity } from '@/lib/web-data'
 import { queryVendors, CATEGORY_LABELS } from '@/lib/vendor-query'
 import { areaLabel } from '@/lib/areas'
@@ -58,6 +60,9 @@ export default async function VendorDetailPage({ params }: { params: { id: strin
         {' / '}
         <span>{vendor.name}</span>
       </nav>
+
+      {/* Scanned their QR with the phone camera, without ETA (app/v/[token]). */}
+      <CollectPointsBanner vendorName={vendor.name} />
 
       <div className="w-detail">
         <div>

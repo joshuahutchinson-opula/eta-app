@@ -10,6 +10,7 @@ import { requireUser } from '@/lib/auth-server'
 import { payFromWallet, WalletError } from '@/lib/wallet-pay'
 import { sendReceipt } from '@/lib/booking-notify'
 import { id, parseBody, z } from '@/lib/validate'
+import { promptReview } from '@/lib/review-prompts'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
       return row
     })
     sendReceipt(tx.id).catch(err => console.error('Receipt failed:', err))
+    if (vendor) await promptReview(userId, vendor.id, 'payment', tx.id).catch(err => console.error('Review prompt failed:', err))
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true, walletBalance: true } })
     return NextResponse.json({ transactionId: tx.id, points: user?.points ?? null, walletBalance: user?.walletBalance ?? null }, { status: 201 })
   } catch (error) {

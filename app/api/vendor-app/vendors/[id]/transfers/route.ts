@@ -2,7 +2,9 @@
 // transfers, offered in the arrival flow's "Need a ride?" (lib/transfers.ts).
 // GET → its services.
 // PUT { services: [{ airport, vehicle, seats, baseFare, perKm?, readyMinutes?,
-//       driverName?, driverPhoto?, active? }] } → replaces the list, in order.
+//       driverName?, driverPhoto?, driverPhone?, plate?, meetPoint?, active? }] }
+//     → replaces the list, in order. Driver phone, plate and meeting point
+//     show on the arrival's "Your Driver Is Waiting" screen.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireVendorAccess } from '@/lib/vendor-app'
@@ -20,6 +22,9 @@ const service = z.object({
   readyMinutes: z.number().int().min(0).max(240).optional(),
   driverName: text(60).nullable().optional(),
   driverPhoto: httpsUrl.nullable().optional(),
+  driverPhone: z.string().trim().max(24).nullable().optional(),
+  plate: text(16).nullable().optional(),
+  meetPoint: text(160).nullable().optional(),
   active: z.boolean().optional()
 })
 
@@ -41,7 +46,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     await prisma.$transaction([
       prisma.transferService.updateMany({ where: { vendorId: access.vendor.id }, data: { active: false, sortOrder: 999 } }),
       prisma.transferService.createMany({
-        data: parsed.data.services.map((s, i) => ({ vendorId: access.vendor.id, airport: s.airport, vehicle: s.vehicle, seats: s.seats, baseFare: s.baseFare, perKm: s.perKm ?? 0, readyMinutes: s.readyMinutes ?? 15, driverName: s.driverName ?? null, driverPhoto: s.driverPhoto ?? null, active: s.active ?? true, sortOrder: i }))
+        data: parsed.data.services.map((s, i) => ({ vendorId: access.vendor.id, airport: s.airport, vehicle: s.vehicle, seats: s.seats, baseFare: s.baseFare, perKm: s.perKm ?? 0, readyMinutes: s.readyMinutes ?? 15, driverName: s.driverName ?? null, driverPhoto: s.driverPhoto ?? null, driverPhone: s.driverPhone ?? null, plate: s.plate ?? null, meetPoint: s.meetPoint ?? null, active: s.active ?? true, sortOrder: i }))
       })
     ])
     return NextResponse.json({ services: await prisma.transferService.findMany({ where: { vendorId: access.vendor.id, sortOrder: { lt: 999 } }, orderBy: { sortOrder: 'asc' } }) })

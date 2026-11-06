@@ -4,7 +4,9 @@
 //          emergencyContactPhone?, leaderboardOptIn?, notify*?,
 //          instagramHandle?, whatsappNumber?, notifyWhatsapp?,
 //          tripStart?, tripEnd? (YYYY-MM-DD, Jamaica days),
-//          stayName?, stayCity?, stayAccommodationId?, stayLat?, stayLng? } → updated user.
+//          stayName?, stayCity?, stayAccommodationId?, stayLat?, stayLng?,
+//          travelerType? ("LOCAL" | "VISITOR"), stagePromptSnoozedUntil?,
+//          cruisePort?, cruiseDay?, cruiseAllAboardAt? (lib/stage.ts) } → updated user.
 // DELETE { confirm: "DELETE" } → delete the account: personal data is
 //          removed or anonymised (see lib/account.ts) and every session ends.
 import { NextResponse } from 'next/server'
@@ -16,6 +18,14 @@ import { CITY_CODES } from '@/lib/regions'
 import { normalizeHandle } from '@/lib/instagram'
 import { normalizePhone } from '@/lib/whatsapp'
 import { jamaicaDayStart } from '@/lib/trip-dates'
+import { createTrip, updateTrip } from '@/lib/travel-trips'
+
+/** The current (upcoming or on) trip gets the new dates; without one, a new trip. */
+async function bridgeTrip(userId: string, t: { start: string; end: string; city: string; stayName?: string | null }) {
+  const current = await prisma.travelTrip.findFirst({ where: { ownerId: userId, status: { in: ['UPCOMING', 'ACTIVE'] } }, orderBy: { startDate: 'asc' }, select: { id: true } })
+  if (current) await updateTrip(userId, current.id, { start: t.start, end: t.end, ...(t.stayName !== undefined ? { stayName: t.stayName } : {}) })
+  else await createTrip(userId, { city: t.city, start: t.start, end: t.end, stayName: t.stayName ?? null })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +71,12 @@ const schema = z.object({
   stayCity: z.enum(CITY_CODES as [string, ...string[]]).nullable(),
   stayAccommodationId: z.string().max(64).nullable(),
   stayLat: z.number().finite().min(-90).max(90).nullable(),
-  stayLng: z.number().finite().min(-180).max(180).nullable()
+  stayLng: z.number().finite().min(-180).max(180).nullable(),
+  travelerType: z.enum(['LOCAL', 'VISITOR']).nullable(),
+  stagePromptSnoozedUntil: z.string().datetime().nullable(),
+  cruisePort: z.enum(['OCHO_RIOS', 'FALMOUTH', 'MONTEGO_BAY']).nullable(),
+  cruiseDay: dateOnly.nullable(),
+  cruiseAllAboardAt: z.string().datetime().nullable()
 }).partial()
 
 export async function PUT(request: Request) {
@@ -69,7 +84,7 @@ export async function PUT(request: Request) {
   if (!auth.ok) return auth.response
   const parsed = await parseBody(request, schema)
   if (!parsed.ok) return parsed.response
-  const { tripStart, tripEnd, stayCity, ...rest } = parsed.data
+  const { tripStart, tripEnd, stayCity, cruisePort, stagePromptSnoozedUntil, cruiseAllAboardAt, ...rest } = parsed.data
   const start = tripStart === undefined ? undefined : tripStart ? jamaicaDayStart(tripStart) : null
   const end = tripEnd === undefined ? undefined : tripEnd ? jamaicaDayStart(tripEnd) : null
   if (start && end && end < start) return NextResponse.json({ error: 'The trip can’t end before it starts', code: 'INVALID_BODY' }, { status: 400 })
@@ -85,10 +100,18 @@ export async function PUT(request: Request) {
       ...(start !== undefined ? { tripStart: start } : {}),
       ...(end !== undefined ? { tripEnd: end } : {}),
       ...(stayCity !== undefined ? { stayCity: stayCity as never } : {}),
+      ...(cruisePort !== undefined ? { cruisePort: cruisePort as never } : {}),
+      ...(stagePromptSnoozedUntil !== undefined ? { stagePromptSnoozedUntil: stagePromptSnoozedUntil ? new Date(stagePromptSnoozedUntil) : null } : {}),
+      ...(cruiseAllAboardAt !== undefined ? { cruiseAllAboardAt: cruiseAllAboardAt ? new Date(cruiseAllAboardAt) : null } : {}),
       // A new trip gets its own "planning your next trip?" nudge later.
       ...(datesChanged ? { homeNudgeSentAt: null } : {})
     }
-    const user = await prisma.user.update({ where: { id: auth.user.id }, data })
+    let user = await prisma.user.update({ where: { id: auth.user.id }, data })
+    // Older screens send trip dates here: keep the travel trip in step.
+    if (tripStart && tripEnd) {
+      await bridgeTrip(auth.user.id, { start: tripStart, end: tripEnd, city: (stayCity as string | null | undefined) ?? user.stayCity ?? user.city, stayName: rest.stayName })
+      user = (await prisma.user.findUnique({ where: { id: auth.user.id } })) ?? user
+    }
     return NextResponse.json({ user: publicUser(user) })
   } catch (error) {
     console.error('Error updating profile:', error)

@@ -120,7 +120,9 @@ export async function syncTripToAccount(): Promise<void> {
     && (u.tripEnd ? jamaicaDayKey(new Date(u.tripEnd)) : null) === local.end
     && (u.stayName ?? null) === (local.stayName ?? null)
     && (u.stayCity ?? null) === (local.stayCity ?? null)
-  if (!same) await pushTripToAccount({ ...EMPTY, ...local }).catch(() => {})
+  // Only fills an account with no trip yet: trips on the account (lib/travel-trips)
+  // win over this older device copy.
+  if (!same && !u.tripStart) await pushTripToAccount({ ...EMPTY, ...local }).catch(() => {})
   const code = local.partnerCode
   try { if (!code || localStorage.getItem(PARTNER_CLAIMED_KEY) === code) return } catch { return }
   try {

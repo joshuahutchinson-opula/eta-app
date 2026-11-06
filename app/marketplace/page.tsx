@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
+import { triggerHaptic } from '@/lib/haptics'
 import { usePatois } from '@/lib/i18n-client'
 import BrandedRefresh from '@/components/BrandedRefresh'
 import VendorCard from '@/components/VendorCard'
@@ -334,6 +335,13 @@ export default function MarketplacePage() {
             )}
           </button>
         </div>
+
+        {/* The Vibe feed (/vibe): the town's fresh short videos, full screen. */}
+        <Link href="/vibe" onClick={() => triggerHaptic('medium')} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '12px', textDecoration: 'none' }}>
+          <span style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--rum)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="play" size={16} /></span>
+          <span style={{ flex: 1, fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{t('m.home.watch', { town: town.name })}</span>
+          <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
+        </Link>
 
         {/* Map view */}
         {viewMode === 'map' && (

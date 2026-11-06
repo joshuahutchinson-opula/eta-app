@@ -1,6 +1,8 @@
 // app/p/[code]/page.tsx — where a hotel or villa partner's QR (or link) lands:
-// presets the region and stay, shows the welcome perk, and claims it once
-// the guest is signed in. The property is recorded as their referrer.
+// presets the region and stay, shows the welcome perk, and after a quick
+// sign-up (the hotel already filled in as the stay) goes to the arrival's
+// Checked In screen with the hotel's gift. The property is recorded as
+// their referrer, and the trip starts today with the hotel as the stay.
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -16,6 +18,10 @@ import { saveTrip } from '@/lib/trip-mode'
 import { isCityCode, townFor } from '@/lib/regions'
 import { hapticRewardRedeemed } from '@/lib/haptics'
 import { markOnboarded } from '@/lib/onboarding'
+import { handToArrival } from '@/lib/arrival-client'
+import { addTrip, allTrips, refreshTrips, setTravelerType, updateTrip } from '@/lib/stage-client'
+import { addDays, jamaicaDayKey } from '@/lib/trip-dates'
+import type { CityCode } from '@/lib/regions'
 
 interface Preview { code: string; name: string; kind: 'HOTEL' | 'VILLA'; city: string; perk: { id: string; name: string; description: string } | null }
 
@@ -30,6 +36,8 @@ export default function PartnerLanding() {
   const [voucher, setVoucher] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const signedIn = typeof window !== 'undefined' && Boolean(getCurrentUser())
+  const [autoGo, setAutoGo] = useState(false)
+  useEffect(() => { setAutoGo(new URLSearchParams(window.location.search).get('go') === '1') }, [])
 
   useEffect(() => {
     apiJson<Preview>(`/api/partners/${encodeURIComponent(code)}`)
@@ -41,6 +49,27 @@ export default function PartnerLanding() {
       .catch(e => setError(errorText(e)))
   }, [code, setCity, errorText])
 
+  // The hotel is the stay, the trip starts today: on to Checked In.
+  const checkIn = async () => {
+    if (!preview) return
+    const today = jamaicaDayKey()
+    await setTravelerType('VISITOR').catch(() => {})
+    await refreshTrips()
+    const current = allTrips().find(x => x.status !== 'ENDED' && x.start <= addDays(today, 2) && x.end >= today)
+    const stay = { stayName: preview.name, stayCity: preview.city as CityCode }
+    const trip = current
+      ? (await updateTrip(current.id, { ...stay, status: 'ACTIVE' }).catch(() => ({ trip: current }))).trip ?? current
+      : await addTrip({ city: preview.city as CityCode, start: today, end: addDays(today, 6), status: 'ACTIVE', ...stay }).catch(() => null)
+    handToArrival({
+      place: { kind: 'hotel', name: preview.name, city: preview.city as CityCode, partnerCode: preview.code },
+      city: preview.city,
+      reward: null,
+      trip: trip ? { tripId: trip.id, kind: 'VISIT', returning: Boolean(trip.returning), stay: { name: preview.name, city: preview.city, lat: null, lng: null, partnerCode: preview.code }, ride: null, end: trip.end } : undefined
+    })
+    markOnboarded()
+    router.push('/arrival?step=checkin')
+  }
+
   const claim = async () => {
     setBusy(true)
     setError(null)
@@ -49,13 +78,17 @@ export default function PartnerLanding() {
       try { localStorage.setItem('eta_partner_claimed', preview?.code ?? code) } catch {}
       hapticRewardRedeemed()
       if (joined.redemption) setVoucher(joined.redemption.code)
-      else router.push('/')
+      await checkIn()
     } catch (e) {
       setError(errorText(e))
     } finally {
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (autoGo && preview && signedIn && !busy && !voucher) { setAutoGo(false); claim() }
+  }, [autoGo, preview, signedIn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', padding: '24px 16px' }}>
@@ -98,8 +131,8 @@ export default function PartnerLanding() {
               <button className="btn btn-primary" style={{ width: '100%' }} onClick={claim} disabled={busy}>{busy ? '…' : preview.perk ? t('m.arrival.claim') : t('m.partner.continue')}</button>
             ) : (
               <>
-                <Link href={`/register?next=${encodeURIComponent(`/p/${preview.code}`)}`} className="btn btn-primary" style={{ width: '100%', textDecoration: 'none' }}>{preview.perk ? t('m.arrival.loginToClaim') : t('m.partner.continue')}</Link>
-                <Link href={`/login?next=${encodeURIComponent(`/p/${preview.code}`)}`} className="btn btn-tertiary" style={{ width: '100%', textDecoration: 'none' }}>{t('m.profile.login')}</Link>
+                <Link href={`/register?next=${encodeURIComponent(`/p/${preview.code}?go=1`)}`} className="btn btn-primary" style={{ width: '100%', textDecoration: 'none' }}>{preview.perk ? t('m.arrival.loginToClaim') : t('m.partner.continue')}</Link>
+                <Link href={`/login?next=${encodeURIComponent(`/p/${preview.code}?go=1`)}`} className="btn btn-tertiary" style={{ width: '100%', textDecoration: 'none' }}>{t('m.profile.login')}</Link>
               </>
             )}
           </>
