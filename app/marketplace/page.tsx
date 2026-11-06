@@ -228,7 +228,9 @@ export default function MarketplacePage() {
   // Distance: real distance from you (or the town centre until location is allowed); no coordinates → last.
   const sortedVendors = sortBy === 'Distance' ? sortByDistance(filteredVendors, userLocation) : filteredVendors
 
-  const activeFilterCount = [selectedMood, showSavedOnly || null].filter(Boolean).length + selectedAccess.length
+  const nearYou = sortByDistance(vendors.filter(v => v.city === city && (!selectedMood || moodCategories(selectedMood).includes(v.category))), userLocation).slice(0, 5)
+
+  const activeFilterCount =[selectedMood, showSavedOnly || null].filter(Boolean).length + selectedAccess.length
 
   const filteredAccommodations = accommodations.filter(a =>
     a.city === city && (!accommodationType || a.type === accommodationType)
@@ -427,6 +429,31 @@ export default function MarketplacePage() {
                     </div>
                   </div>
                 </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Near You Now (moved here from Home): nearest first by real distance,
+            or from the town centre until location is allowed; no coordinates → last. */}
+        {nearYou.length > 0 && viewMode === 'list' && !showSavedOnly && !search && (
+          <div style={{ marginBottom: '24px' }}>
+            <div className="section-header">
+              <div className="section-heading">
+                <span className="section-eyebrow">{t('m.home.closeBy')}</span>
+                <span className="section-title">{t('m.home.nearYou')}</span>
+              </div>
+              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {nearYou.map(v => (
+                <VendorCard
+                  key={v.id}
+                  vendor={v}
+                  distanceKm={distanceFrom(realLocation, v)}
+                  saved={savedVendors.includes(v.id)}
+                  onToggleSave={() => toggleSaveVendor(v.id)}
+                />
               ))}
             </div>
           </div>

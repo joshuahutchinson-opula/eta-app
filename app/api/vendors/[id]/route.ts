@@ -79,7 +79,9 @@ const schema = z.object({
   phone: text(40).nullable(),
   whatsapp: z.string().regex(/^\d{7,15}$/).nullable(),
   acceptsReservations: z.boolean(),
-  isMock: z.boolean()
+  isMock: z.boolean(),
+  // Paid placement in Home's Featured carousel ("Promoted") until this time; null ends it.
+  promotedUntil: z.string().datetime().nullable()
 }).partial()
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -88,8 +90,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   const parsed = await parseBody(request, schema)
   if (!parsed.ok) return parsed.response
   try {
-    const { accessibility, hours, city, ...rest } = parsed.data
-    const before = await prisma.vendor.findUnique({ where: { id: params.id }, select: { live: true } })
+    const { accessibility, hours, city, promotedUntil, ...rest } = parsed.data
+    const before = await prisma.vendor.findUnique({ where: { id: params.id }, select: { live: true, videos: true } })
     if (!before) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     const vendor = await prisma.vendor.update({
       where: { id: params.id },
@@ -97,7 +99,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         ...rest,
         ...(city ? { city: city as never } : {}),
         ...(accessibility ? { accessibility: sanitizeAccessibility(accessibility) } : {}),
-        ...(hours !== undefined ? { hours: hours ?? undefined } : {})
+        ...(hours !== undefined ? { hours: hours ?? undefined } : {}),
+        ...(promotedUntil !== undefined ? { promotedUntil: promotedUntil ? new Date(promotedUntil) : null } : {}),
+        // New videos are fresh for the Vibe feed (lib/vibe-feed.ts).
+        ...(rest.videos && rest.videos.some(v => !before.videos.includes(v)) ? { videosUpdatedAt: new Date() } : {})
       }
     })
     // Going live is the moment saved-vendor alerts exist for (B4).

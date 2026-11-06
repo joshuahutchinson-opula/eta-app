@@ -17,12 +17,12 @@ export function inJamaica(p: LatLng): boolean {
   return p.lat > 17.6 && p.lat < 18.6 && p.lng > -78.5 && p.lng < -76.1
 }
 
-export function TripDayChip() {
+export function TripDayChip({ glass = false }: { glass?: boolean }) {
   const { t } = useLang()
   const { progress } = useTripMode()
   if (!progress || progress.phase === 'after') return null
   return (
-    <Link href="/experiences" className="chip" style={{ minHeight: '32px', padding: '4px 10px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', background: 'var(--rum-tint)', color: 'var(--rum-text)', flexShrink: 0 }}>
+    <Link href="/experiences" className={glass ? 'glass-pill press' : 'chip'} style={glass ? { minHeight: '32px', padding: '0 12px', fontSize: '13px', fontWeight: 700, flexShrink: 0 } : { minHeight: '32px', padding: '4px 10px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', background: 'var(--rum-tint)', color: 'var(--rum-text)', flexShrink: 0 }}>
       <Icon name="calendar" size={12} />
       <span className="num-font">
         {progress.phase === 'during' ? t('m.trip.dayOf', { day: progress.day, total: progress.total }) : t('m.trip.startsIn', { n: progress.daysUntil })}

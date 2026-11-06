@@ -1,143 +1,92 @@
-// app/page.tsx — Home. Everything here is for the selected region and is
-// filtered on the server: the region selector (the one location changer in
-// the app), trip mode, "At your stay" for partner guests, stories, Featured
-// (B.O.N vendors with video), Parties & Happenings, vibes → experiences, and
-// the nearest vendors. At a partner property, recommendations lean toward
-// what it doesn't offer (lib/host-lean.ts). First open at an airport or
-// hotel goes to the arrival flow (app/arrival); otherwise to onboarding.
+// app/page.tsx — Home: "today in <town>". A living postcard of the selected
+// town right now (components/home/LivingHero: the real sun, sky and sea)
+// with a content sheet over it. One job: what's good here, today, for me.
+// Sheet order is fixed: Stories → Your day → Today story → Featured →
+// Parties & Happenings → Choose The Vibe. The daypart (lib/daypart.ts) from
+// the town's real sun times drives the sky, the tagline and what leads
+// Featured and the moods; all of it comes from /api/home (lib/home.ts).
+// Experiences live in their tab and "Near You" in Market.
+// On scroll the hero drifts and fades and a slim bar keeps the region pill
+// and bell. Pull to refresh washes a wave across the hero and re-reads the
+// sky. First open at an airport or hotel goes to the arrival flow
+// (app/arrival); otherwise to onboarding.
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Dock from '@/components/Dock'
-import VendorCard from '@/components/VendorCard'
 import Icon from '@/lib/icons'
-import BrandedRefresh from '@/components/BrandedRefresh'
+import Img from '@/components/Img'
 import FloatingPill from '@/components/FloatingPill'
-import ActiveTripBanner from '@/components/ActiveTripBanner'
-import { triggerHaptic } from '@/lib/haptics'
-import { getCurrentUser } from '@/lib/auth-client'
-import { authHeaders } from '@/lib/api-client'
 import EventsSection from '@/components/EventsSection'
-import ExperienceCard from '@/components/ExperienceCard'
-import RegionSelector from '@/components/RegionSelector'
 import RegionMismatchPrompt from '@/components/RegionMismatchPrompt'
-import { useRegion } from '@/components/RegionProvider'
-import { useLang } from '@/lib/i18n-client'
 import StoriesRow from '@/components/StoriesRow'
 import NotificationBell from '@/components/NotificationBell'
 import AtYourStay from '@/components/AtYourStay'
-import { useAtStay } from '@/lib/at-stay-client'
-import { leanExperiences, leanVendors } from '@/lib/host-lean'
-import { checkArrivalOnce } from '@/lib/arrival-client'
 import PlanBCard from '@/components/PlanBCard'
-import { TripDayChip, TripEndCards } from '@/components/TripStatus'
-import { needsOnboarding } from '@/lib/onboarding'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
-import SmartVideo from '@/components/SmartVideo'
-import Img from '@/components/Img'
-import { vibeMoodNames } from '@/lib/vibes'
 import ErrorState from '@/components/ErrorState'
-import { moodCategories } from '@/lib/mood-profiles'
-import { categoryStyle } from '@/lib/vendor-style'
-import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
+import { TripDayChip, TripEndCards } from '@/components/TripStatus'
+import LivingHero from '@/components/home/LivingHero'
+import RegionPill from '@/components/home/RegionPill'
+import YourDay from '@/components/home/YourDay'
+import TodayStory from '@/components/home/TodayStory'
+import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import { Reveal, SectionHead } from '@/components/home/bits'
+import { useRegion } from '@/components/RegionProvider'
+import { useAtStay } from '@/lib/at-stay-client'
+import { leanVendors } from '@/lib/host-lean'
+import { checkArrivalOnce } from '@/lib/arrival-client'
+import { needsOnboarding } from '@/lib/onboarding'
+import { getCurrentUser, AUTH_EVENT } from '@/lib/auth-client'
+import { useLang } from '@/lib/i18n-client'
+import { useUserLocation } from '@/lib/geo'
+import { triggerHaptic } from '@/lib/haptics'
+import { useReducedMotion } from '@/lib/motion'
+import { DAYPART_LEAN, sunInfo, type Daypart } from '@/lib/daypart'
+import { vibeMoodNames } from '@/lib/vibes'
+import type { FeaturedItem, TodayStoryView } from '@/lib/home'
+import type { DictKey } from '@/lib/i18n'
 
-interface Vendor {
-  id: string
-  name: string
-  category: string
-  neighborhood: string
-  city: string
-  priceRange: string
-  description: string
-  images: string[]
-  videos: string[]
-  open: boolean
-  live: boolean
-  isPremium: boolean
-  whoThere: number
-  lat?: number | null
-  lng?: number | null
-  rating?: number
-  reviewCount?: number
-}
-
-interface Experience {
-  id: string
-  name: string
-  tagline: string
-  price: number
-  imageUrl: string
-  videoUrl?: string | null
-  city: string
-  startLocation: string
-  travelTime: number
-  travelMode: string
-  totalDuration?: number | null
-  bookedToday?: number
-  stops?: Array<{ id: string; name: string; type: string }>
-  vendor?: { name: string; isPremium?: boolean }
-  moods?: Array<{ id: string; name: string; icon: string }>
-  rating?: number
-  reviewCount?: number
-}
-
-interface Mood {
-  id: string
-  name: string
-  icon: string
-  description: string
-  coverImage: string
-  categories?: string[]
-}
-
-interface Booking {
-  id: string
-  status: string
-  date: string
-  experience?: { name: string } | null
-  vendor?: { name: string } | null
-  accommodation?: { name: string } | null
-  trip?: { slug: string; status: string; name: string } | null
+interface Mood { id: string; name: string; icon: string; description: string; coverImage: string }
+interface HomeData {
+  town: { city: string; name: string }
+  sun: { daypart: Daypart }
+  featured: FeaturedItem[]
+  story: TodayStoryView | null
+  moods: Mood[]
+  feed: { enabled: boolean; count: number }
 }
 
 const MOOD_ICONS: Record<string, string> = {
-  'R&R': 'spa',
-  'Just The Two Of Us': 'heart',
-  'Party Time': 'party',
-  'Sunset Chaser': 'sun',
-  'Water Life': 'wave',
-  'Street Food Crawl': 'food',
-  'Hangover Cures': 'recharge',
-  'Solo Missions': 'user',
-  'Family Day': 'users',
-  'Rum & Bass': 'glass'
+  'R&R': 'spa', 'Just The Two Of Us': 'heart', 'Party Time': 'party', 'Sunset Chaser': 'sun', 'Water Life': 'wave',
+  'Street Food Crawl': 'food', 'Hangover Cures': 'recharge', 'Solo Missions': 'user', 'Family Day': 'users', 'Rum & Bass': 'glass'
 }
+const MOOD_NAMES: Record<string, string> = { 'Out Til Sunrise': 'Party Time', 'Golden Hour': 'Sunset Chaser' }
+
+const PULL_TRIGGER = 64
+const PULL_MAX = 96
 
 export default function HomePage() {
-  const [featuredAll, setFeatured] = useState<Vendor[]>([])
-  const [vendors, setVendors] = useState<Vendor[]>([])
-  const [experiences, setExperiences] = useState<Experience[]>([])
-  const [moods, setMoods] = useState<Mood[]>([])
-  const [activeBooking, setActiveBooking] = useState<Booking | null>(null)
-  const [selectedMood, setSelectedMood] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadFailed, setLoadFailed] = useState(false)
-  const userLocation = useUserLocation()
-  const [refreshing, setRefreshing] = useState(false)
-  const [featuredIndex, setFeaturedIndex] = useState(0)
-  const [firstName, setFirstName] = useState<string | null>(null)
-  const featuredScrollRef = useRef<HTMLDivElement>(null)
-  const moodPickerRef = useRef<HTMLDivElement>(null)
-  const isTouchingRef = useRef(false)
-  const vibeAppliedRef = useRef(false)
-  const { city, town, ready } = useRegion()
-  const { t } = useLang()
   const router = useRouter()
-
+  const { t } = useLang()
+  const { city, town, ready } = useRegion()
+  const reduce = useReducedMotion()
+  const location = useUserLocation()
   const { stay: atStay, host } = useAtStay()
-  const featured = useMemo(() => leanVendors(featuredAll, host), [featuredAll, host])
+  const [data, setData] = useState<HomeData | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [user, setUser] = useState<{ firstName: string | null; points: number } | null>(null)
+  const [now, setNow] = useState(() => new Date())
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [washKey, setWashKey] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const [pull, setPull] = useState(0)
+  const [barOn, setBarOn] = useState(false)
+  const heroRef = useRef<HTMLDivElement>(null)
+  const layerRef = useRef<HTMLDivElement>(null)
+  const pullStart = useRef<number | null>(null)
 
   // First open: at an airport or hotel, the arrival flow; otherwise the
   // three-tap onboarding (dates, stay, vibe).
@@ -151,293 +100,206 @@ export default function HomePage() {
     return () => { cancelled = true }
   }, [router])
 
-  // Pause the Featured auto-advance while a touch is active anywhere on the
-  // page, so it doesn't fight the user mid-swipe, then resume on release.
   useEffect(() => {
-    const handleTouchStart = () => { isTouchingRef.current = true }
-    const handleTouchEnd = () => { isTouchingRef.current = false }
-    document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchend', handleTouchEnd, { passive: true })
-    document.addEventListener('touchcancel', handleTouchEnd, { passive: true })
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart)
-      document.removeEventListener('touchend', handleTouchEnd)
-      document.removeEventListener('touchcancel', handleTouchEnd)
+    const read = () => {
+      const u = getCurrentUser()
+      setUser(u ? { firstName: u.name?.split(' ')[0] ?? null, points: u.points ?? 0 } : null)
     }
+    read()
+    window.addEventListener(AUTH_EVENT, read)
+    return () => window.removeEventListener(AUTH_EVENT, read)
   }, [])
 
-  useEffect(() => {
-    setFeaturedIndex(0)
-    featuredScrollRef.current?.scrollTo({ left: 0 })
-    if (featured.length <= 1) return
-    const autoScroll = setInterval(() => {
-      if (isTouchingRef.current) return
-      setFeaturedIndex(prevIndex => {
-        const nextIndex = (prevIndex + 1) % featured.length
-        featuredScrollRef.current?.scrollTo({ left: nextIndex * featuredScrollRef.current.clientWidth, behavior: 'smooth' })
-        return nextIndex
-      })
-    }, 5000)
-    return () => clearInterval(autoScroll)
-  }, [featured])
-
-  const fetchAll = useCallback(async () => {
+  const load = useCallback(async () => {
+    setFailed(false)
     try {
-      const signedIn = Boolean(getCurrentUser())
-      const [featuredRes, vendorsRes, experiencesRes, moodsRes, bookingsRes] = await Promise.allSettled([
-        fetch(`/api/vendors?city=${city}&featured=1&limit=8`),
-        fetch(`/api/vendors?city=${city}&limit=40`),
-        fetch(`/api/experiences?city=${city}&limit=30`),
-        fetch('/api/moods'),
-        signedIn ? fetch('/api/bookings', { headers: authHeaders() }) : Promise.reject(new Error('signed out'))
-      ])
-      const ok = (r: PromiseSettledResult<Response>): r is PromiseFulfilledResult<Response> => r.status === 'fulfilled' && r.value.ok
-      setLoadFailed(!ok(vendorsRes) && !ok(experiencesRes))
-      if (ok(featuredRes)) { const d = await featuredRes.value.json(); setFeatured(Array.isArray(d) ? d : []) }
-      if (ok(vendorsRes)) { const d = await vendorsRes.value.json(); setVendors(Array.isArray(d) ? d : []) }
-      if (ok(experiencesRes)) { const d = await experiencesRes.value.json(); setExperiences(Array.isArray(d) ? d : []) }
-      if (ok(moodsRes)) {
-        const data = await moodsRes.value.json()
-        const mappedMoods = data.map((mood: Mood) => {
-          let name = mood.name
-          if (name === 'Out Til Sunrise') name = 'Party Time'
-          if (name === 'Golden Hour') name = 'Sunset Chaser'
-          return { ...mood, name, icon: MOOD_ICONS[name] || mood.icon, categories: moodCategories(mood.name, mood.icon) }
-        })
-        // The onboarding vibe puts its moods first and preselects the top one
-        // (once — after that the traveler's own pick wins).
-        const vibeNames = vibeMoodNames()
-        const ordered = vibeNames.length
-          ? [...mappedMoods.filter((m: Mood) => vibeNames.includes(m.name)), ...mappedMoods.filter((m: Mood) => !vibeNames.includes(m.name))]
-          : mappedMoods
-        setMoods(ordered)
-        const first = ordered.find((m: Mood) => vibeNames.includes(m.name))
-        if (first && !vibeAppliedRef.current) setSelectedMood(first.id)
-        vibeAppliedRef.current = true
-      }
-      if (ok(bookingsRes)) {
-        const data: Booking[] = await bookingsRes.value.json()
-        const now = Date.now()
-        const active = data
-          .filter(b => b.status === 'CONFIRMED')
-          .filter(b => {
-            const start = new Date(b.date).getTime()
-            return start >= now - 3 * 3600000 && start <= now + 6 * 3600000
-          })
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
-        setActiveBooking(active || null)
-      } else {
-        setActiveBooking(null)
-      }
-    } catch (error) {
-      console.error('Fetch error:', error)
-      setLoadFailed(true)
-    } finally {
-      setLoading(false)
+      const res = await fetch(`/api/home?city=${city}`)
+      if (!res.ok) throw new Error('home')
+      setData(await res.json())
+    } catch {
+      setFailed(true)
     }
   }, [city])
 
+  useEffect(() => { if (ready) { setData(null); load() } }, [ready, load])
+
+  // The daypart moves on by itself (sky, tagline); reload when it changes.
   useEffect(() => {
-    const user = getCurrentUser()
-    if (user?.name) setFirstName(user.name.split(' ')[0])
+    const id = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(id)
   }, [])
+  const daypart = useMemo(() => sunInfo(town.lat, town.lng, now).daypart, [town.lat, town.lng, now])
+  const lastPart = useRef(daypart)
+  useEffect(() => {
+    if (lastPart.current !== daypart) { lastPart.current = daypart; load() }
+  }, [daypart, load])
 
-  useEffect(() => { if (ready) fetchAll() }, [ready, fetchAll])
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await fetchAll()
-    setRefreshing(false)
-  }
-
-  const handleFeaturedScroll = () => {
-    if (featuredScrollRef.current) {
-      const newIndex = Math.round(featuredScrollRef.current.scrollLeft / featuredScrollRef.current.clientWidth)
-      setFeaturedIndex(Math.min(newIndex, featured.length - 1))
+  // Hero parallax + fade, and the slim bar once the hero has gone.
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const y = window.scrollY
+      const h = heroRef.current?.offsetHeight ?? 400
+      setBarOn(y > h - 110)
+      if (reduce || !layerRef.current) return
+      const k = Math.max(0, Math.min(1, y / (h * 0.75)))
+      layerRef.current.style.transform = `translate3d(0, ${y * 0.35}px, 0)`
+      layerRef.current.style.opacity = String(1 - k)
+      const canvas = heroRef.current?.querySelector('canvas')
+      if (canvas) canvas.style.transform = `translate3d(0, ${y * 0.5}px, 0) scale(${1 + Math.max(0, -y) / 600})`
     }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
+  }, [reduce])
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    triggerHaptic('medium')
+    setWashKey(k => k + 1)
+    setNow(new Date())
+    await load()
+    setRefreshKey(k => k + 1)
+    setRefreshing(false)
+  }, [load])
+
+  // Pull to refresh from the top of the page.
+  const onTouchStart = (e: React.TouchEvent) => { pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null }
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (pullStart.current === null) return
+    const d = e.touches[0].clientY - pullStart.current
+    if (d <= 0 || window.scrollY > 0) { if (pull) setPull(0); return }
+    const next = Math.min(PULL_MAX, d * 0.45)
+    if (pull < PULL_TRIGGER && next >= PULL_TRIGGER) triggerHaptic('selection')
+    setPull(next)
+  }
+  const onTouchEnd = () => {
+    if (pull >= PULL_TRIGGER) refresh()
+    setPull(0)
+    pullStart.current = null
   }
 
-  const snapMoodToCentre = (moodId: string) => {
-    triggerHaptic('selection')
-    setSelectedMood(selectedMood === moodId ? null : moodId)
-    const pill = moodPickerRef.current?.querySelector(`[data-mood="${moodId}"]`)
-    pill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  }
-
-  const filteredExperiences = leanExperiences(selectedMood
-    ? experiences.filter(e => e.moods?.some(m => m.id === selectedMood || m.name === selectedMood))
-    : experiences, host)
-
-  // A mood maps to the vendor categories it's about (lib/mood-profiles.ts),
-  // the same mapping the route generator uses.
-  const moodCats = moods.find(m => m.id === selectedMood)?.categories ?? []
-  const moodVendors = selectedMood ? vendors.filter(v => moodCats.includes(v.category)) : vendors
-  // Near You Now: nearest first by real distance; no coordinates → last.
-  const filteredVendors = leanVendors(sortByDistance(moodVendors, userLocation), host)
-
-  if (loading) {
-    return (
-      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
-        <div style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px', paddingBottom: '100px' }}>
-          <div className="skeleton-card" style={{ width: '64px', height: '64px', borderRadius: '50%', marginBottom: '16px' }}>
-            <div className="skeleton-image" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '380px', marginBottom: '24px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-        </div>
-        <Dock />
-      </main>
-    )
-  }
-
-  const bookingTitle = activeBooking ? activeBooking.experience?.name || activeBooking.accommodation?.name || activeBooking.trip?.name || activeBooking.vendor?.name || t('m.home.yourTrip') : ''
+  const featured = useMemo(() => leanVendors(data?.featured ?? [], host), [data, host])
+  const moods = useMemo(() => {
+    // The server puts the daypart's moods first; the onboarding vibe's come next.
+    const leadNames = data ? DAYPART_LEAN[data.sun.daypart].moods : []
+    const vibe = vibeMoodNames()
+    const all = data?.moods ?? []
+    const leads = all.filter(m => leadNames.includes(m.name))
+    const rest = all.filter(m => !leadNames.includes(m.name))
+    return [...leads, ...rest.filter(m => vibe.includes(MOOD_NAMES[m.name] ?? m.name)), ...rest.filter(m => !vibe.includes(MOOD_NAMES[m.name] ?? m.name))]
+      .map(m => ({ ...m, name: MOOD_NAMES[m.name] ?? m.name }))
+  }, [data])
+  const loading = !data && !failed
+  const feedOn = Boolean(data?.feed.enabled)
 
   return (
-    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
+    <main className="home" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <FloatingPill />
-      <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
 
-      <div className="content-fade-in">
-        <RegionSelector />
-        <RegionMismatchPrompt />
+      {/* Slim bar once the hero is gone */}
+      <div className={`home-bar ${barOn ? 'on' : ''}`} aria-hidden={!barOn}>
+        <RegionPill />
+        <NotificationBell />
+      </div>
 
-        {/* Greeting */}
-        <div style={{ padding: '16px 16px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 className="greeting-text" style={{ flex: 1, minWidth: 0 }}>{t('m.home.greeting', { name: firstName ? `, ${firstName}` : '' })}</h1>
-            <TripDayChip />
-            <NotificationBell />
+      <div ref={heroRef} style={{ transform: pull ? `translateY(${pull * 0.5}px)` : undefined, transition: pull ? 'none' : 'transform 0.5s var(--spring-standard)' }}>
+        <LivingHero lat={town.lat} lng={town.lng} sceneKey={city} washKey={washKey}>
+          <div ref={layerRef} className="home-hero-layer">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <RegionPill />
+              <NotificationBell glass />
+            </div>
+            {(refreshing || pull > 0) && (
+              <p role="status" className="glass-pill" style={{ alignSelf: 'center', marginTop: '10px', minHeight: '30px', fontSize: '13px', opacity: refreshing ? 1 : Math.min(1, pull / PULL_TRIGGER) }}>
+                <Icon name="wave" size={14} /> {refreshing ? t('m.home.refreshing') : pull >= PULL_TRIGGER ? t('m.refresh.release') : t('m.refresh.pull')}
+              </p>
+            )}
+            <div style={{ marginTop: 'auto' }}>
+              <h1 className="home-greeting">{t('m.home.greeting', { name: user?.firstName ? `, ${user.firstName}` : '' })}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', margin: '10px 0 12px' }}>
+                <TripDayChip glass />
+                {user && (
+                  <Link href="/rewards" className="glass-pill press" style={{ minHeight: '32px', padding: '0 12px', fontSize: '13px', fontWeight: 700 }}>
+                    <Icon name="star" size={12} style={{ color: 'var(--gold)' }} />
+                    <span className="num-font">{t('m.home.pointsPill', { n: user.points.toLocaleString() })}</span>
+                  </Link>
+                )}
+              </div>
+              <p className="home-tagline">{t(`m.home.tag.${daypart}` as DictKey, { town: town.name })}</p>
+              {feedOn && (
+                <Link href="/vibe" onClick={() => triggerHaptic('medium')} className="home-watch press" style={{ marginTop: '14px' }}>
+                  {t('m.home.watch', { town: town.name })} <Icon name="play" size={13} />
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
+        </LivingHero>
+      </div>
 
+      <div className="home-sheet">
+        <RegionMismatchPrompt />
         <VerifyEmailBanner />
 
-        <AtYourStay stay={atStay} />
+        {/* 1. Stories */}
+        <StoriesRow key={`stories-${refreshKey}`} />
 
-        {activeBooking && (
-          <div style={{ paddingTop: '12px' }}>
-            <ActiveTripBanner
-              title={bookingTitle}
-              start={activeBooking.date}
-              tripSlug={activeBooking.trip?.status === 'BOOKED' ? activeBooking.trip.slug : null}
-              href={activeBooking.trip?.status === 'BOOKED' ? `/experiences?trip=${activeBooking.trip.slug}` : '/bookings'}
-            />
-          </div>
+        {/* 2. Your day */}
+        <section className="home-section" aria-label={t('m.home.yourDay')}>
+          <SectionHead eyebrow={t('m.home.today')} title={t('m.home.yourDay')} />
+          <YourDay refreshKey={refreshKey} />
+          <PlanBCard />
+          <AtYourStay stay={atStay} />
+          <TripEndCards location={location} />
+        </section>
+
+        {failed && <div className="home-section"><ErrorState onRetry={refresh} /></div>}
+
+        {/* 3. Today story */}
+        {(loading || data?.story) && (
+          <Reveal className="home-section" style={{ padding: '0 20px' }}>
+            {data?.story ? <TodayStory story={data.story} /> : <div className="home-skel" style={{ height: '440px' }} aria-hidden />}
+          </Reveal>
         )}
 
-        <PlanBCard />
-        <TripEndCards location={userLocation} />
-
-        <StoriesRow />
-
-        <div className="divider-faded" />
-
-        {/* Featured / Destinations — only when the region has featured vendors. */}
-        {featured.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ padding: '0 16px 12px' }}>
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.home.featured')}</span>
-                <span className="section-title section-title-shimmer">{t('m.home.destinations')}</span>
-              </div>
-            </div>
-            <div ref={featuredScrollRef} onScroll={handleFeaturedScroll} className="horizontal-scroll" style={{ padding: '8px 16px 12px', scrollSnapType: 'x mandatory' }}>
-              {featured.map((vendor, index) => (
-                <Link key={vendor.id} href={`/vendor/${vendor.id}`} onClick={() => triggerHaptic('light')} style={{ textDecoration: 'none', flexShrink: 0, width: '100%', scrollSnapAlign: 'center' }}>
-                  <div className="featured-hero" style={{ margin: '0 4px' }}>
-                    {vendor.videos?.[0] ? (
-                      <SmartVideo src={vendor.videos[0]} poster={vendor.images[0]} alt={vendor.name} active={index === featuredIndex} />
-                    ) : (
-                      <Img src={vendor.images[0]} alt={vendor.name} width={1080} height={1350} priority={index === 0} />
-                    )}
-                    <div className="featured-hero-overlay" />
-                    {vendor.live && (
-                      <div className="featured-hero-badge">
-                        <span className="live-dot" />
-                        <span className="num-font">{vendor.whoThere}</span> {t('m.home.hereNow')}
-                      </div>
-                    )}
-                    <div className="featured-hero-content">
-                      <h2 className="featured-hero-title">{vendor.name}</h2>
-                      <p className="featured-hero-sub">{categoryStyle(vendor.category).label} · {vendor.neighborhood}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {featured.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                {featured.map((_, i) => (
-                  <div key={i} style={{ width: i === featuredIndex ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === featuredIndex ? 'var(--rum)' : 'var(--separator)', transition: 'all 0.3s ease' }} />
-                ))}
-              </div>
-            )}
-          </div>
+        {/* 4. Featured */}
+        {(loading || featured.length > 0) && (
+          <Reveal className="home-section">
+            <SectionHead eyebrow={t('m.home.featured')} title={t('m.home.featuredTitle')} />
+            {loading ? <div className="home-skel" style={{ height: '420px', margin: '4px 20px 30px' }} aria-hidden /> : <FeaturedCarousel items={featured} />}
+          </Reveal>
         )}
 
-        {loadFailed && <ErrorState onRetry={handleRefresh} />}
-
-        {!loadFailed && vendors.length === 0 && experiences.length === 0 && (
-          <div className="empty-state" style={{ padding: '24px 16px' }}>
+        {data && !data.story && featured.length === 0 && (
+          <div className="empty-state home-section" style={{ padding: '0 20px' }}>
             <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.region.emptyTitle', { town: town.name })}</p>
             <p>{t('m.region.emptyBody')}</p>
           </div>
         )}
 
-        {/* Parties & happenings */}
-        <EventsSection />
+        {/* 5. Parties & Happenings */}
+        <Reveal className="home-section home-events">
+          <EventsSection key={`events-${refreshKey}`} />
+        </Reveal>
 
-        <div className="divider-faded" style={{ marginBottom: '48px' }} />
-
-        {/* Moods */}
-        {moods.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--label-primary)' }}>{t('m.home.chooseVibe')}</h2>
+        {/* 6. Choose The Vibe */}
+        {(loading || moods.length > 0) && (
+          <Reveal className="home-section">
+            <SectionHead eyebrow={t('m.home.vibeEyebrow')} title={t('m.home.chooseVibe')} />
+            <div className="vibe-grid">
+              {loading
+                ? [0, 1, 2, 3, 4].map(i => <div key={i} className="home-skel" style={{ height: i === 0 ? '150px' : '120px', gridColumn: i === 0 ? 'span 2' : undefined }} aria-hidden />)
+                : moods.map((m, i) => (
+                  <Link key={m.id} href={`/mood/${m.id}`} onClick={() => triggerHaptic('light')} className={`vibe-tile press ${i === 0 ? 'lead' : ''}`}>
+                    {m.coverImage && <Img src={m.coverImage} alt="" width={i === 0 ? 900 : 480} height={i === 0 ? 300 : 240} sizes={i === 0 ? '100vw' : '50vw'} />}
+                    <span><Icon name={MOOD_ICONS[m.name] ?? m.icon} size={18} /> {m.name}</span>
+                  </Link>
+                ))}
             </div>
-            <div className="mood-picker" ref={moodPickerRef}>
-              {moods.map(mood => (
-                <button key={mood.id} data-mood={mood.id} onClick={() => snapMoodToCentre(mood.id)} className={`mood-pill ${selectedMood === mood.id ? 'centre' : ''}`}>
-                  <Icon name={mood.icon} size={16} />
-                  {mood.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Experiences */}
-        {filteredExperiences.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.home.curated')}</span>
-                <span className="section-title">{t('m.home.experiences')}</span>
-              </div>
-              <Link href="/experiences/browse" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div className="horizontal-scroll" style={{ padding: '4px 16px 12px' }}>
-              {filteredExperiences.slice(0, 4).map(e => <ExperienceCard key={e.id} exp={e} />)}
-            </div>
-          </div>
-        )}
-
-        {/* Vendor list */}
-        {filteredVendors.length > 0 && (
-          <div style={{ padding: '0 16px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.home.closeBy')}</span>
-                <span className="section-title">{t('m.home.nearYou')}</span>
-              </div>
-              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {filteredVendors.slice(0, 5).map(v => <VendorCard key={v.id} vendor={v} distanceKm={distanceFrom(userLocation, v)} />)}
-            </div>
-          </div>
+          </Reveal>
         )}
       </div>
 

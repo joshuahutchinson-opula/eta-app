@@ -199,6 +199,7 @@ model User {
   ownedProperties    PartnerProperty[]   @relation("PartnerOwner")
   questProgress      QuestProgress[]
   questsCreated      Quest[]             @relation("QuestCreator")
+  todayStories       TodayStory[]        @relation("TodayStoryAuthor")
 
   @@index([instagramHandle])
 }
@@ -256,6 +257,10 @@ model Vendor {
   locationSource       String?
   locationAccuracyM    Float?
   locationUpdatedAt    DateTime?
+  // Paid placement in Home's Featured carousel (labelled "Promoted") until then.
+  promotedUntil        DateTime?
+  // When videos last changed, so the Vibe feed counts them as fresh (14 days).
+  videosUpdatedAt      DateTime?
   // Placeholder listing from the seed, not a real vetted vendor.
   // scripts/remove-mock-data.ts deletes everything flagged this way.
   isMock               Boolean              @default(false)
@@ -287,6 +292,7 @@ model Vendor {
   questsSponsored     Quest[]
   questCheckpoints    QuestCheckpoint[]
   transferServices    TransferService[]
+  todayStories        TodayStory[]
 }
 
 model Accommodation {
@@ -999,6 +1005,7 @@ model Event {
   interests EventInterest[]
   stories   Story[]
   hostPicks HostPick[]
+  todayStories TodayStory[]
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -1629,4 +1636,36 @@ model QuestCheckpointHit {
   checkpoint   QuestCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
 
   @@unique([progressId, checkpointId])
+}
+
+// ---------- Home: Today story ----------
+
+// Home's big editorial card, one per region per day (Jamaica day). Written by
+// ETA (admin) or a vendor about their own place (vendor app). Body is a list
+// of blocks: { type: "text", text } | { type: "image", url, caption? } |
+// { type: "quote", text, by? }. Without one for today, Home builds a story
+// from a featured vendor (lib/today-story.ts).
+model TodayStory {
+  id          String   @id @default(cuid())
+  city        City
+  // "YYYY-MM-DD", Jamaica time.
+  publishOn   String
+  eyebrow     String?
+  title       String
+  dek         String
+  coverImage  String
+  coverVideo  String?
+  body        Json
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendorId    String?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  eventId     String?
+  event       Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?    @relation("TodayStoryAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([city, publishOn])
 }
