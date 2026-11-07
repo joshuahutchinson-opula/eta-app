@@ -2,9 +2,8 @@
 // swipeable carousel of B.O.N and promoted places for the daypart (open now
 // or soon; lib/home.ts). Cards tilt slightly and their media drifts as they
 // scroll (CSS vars --o/--a set per frame), only the centred card's video
-// plays, and promoted ones say "Promoted". An amber "Closes in 40 min" /
-// "Opens soon" dot shows when that's worth knowing; long-press opens the quick preview
-// (components/home/QuickPreview). Reduce motion keeps them flat.
+// plays, and promoted ones say "Promoted". Long-press opens the quick
+// preview (components/home/QuickPreview). Reduce motion keeps them flat.
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -18,17 +17,6 @@ import { useReducedMotion } from '@/lib/motion'
 import { SaveHeart, useOpenLine } from '@/components/home/bits'
 import { useLongPress } from '@/components/home/QuickPreview'
 import type { FeaturedItem } from '@/lib/home'
-
-function OpenDot({ v }: { v: FeaturedItem }) {
-  const { t } = useLang()
-  if (v.open.state === 'open') {
-    return v.closesInMin !== null
-      ? <span className="feat-status amber"><span aria-hidden /> {t('m.feat.closesIn', { n: v.closesInMin })}</span>
-      : null
-  }
-  if (v.open.state === 'soon') return <span className="feat-status amber"><span aria-hidden /> {t('m.feat.opensSoon')}</span>
-  return null
-}
 
 function Slide({ v, i, count, active, onPreview }: { v: FeaturedItem; i: number; count: number; active: boolean; onPreview?: (v: FeaturedItem) => void }) {
   const { t } = useLang()
@@ -52,7 +40,6 @@ function Slide({ v, i, count, active, onPreview }: { v: FeaturedItem; i: number;
           <SaveHeart kind="vendors" id={v.id} />
         </div>
         <div className="featured-body">
-          <OpenDot v={v} />
           <h3 className="featured-name">{v.name}</h3>
           <p className="featured-meta">{[labels.category(v.category), v.neighborhood, v.minutesFromPort !== undefined ? t('m.cruise.fromPort', { n: v.minutesFromPort }) : openLine(v.open)].filter(Boolean).join(' · ')}</p>
         </div>

@@ -31,15 +31,6 @@ function dayPick<T>(items: T[], seed: string): T | null {
   return items[h % items.length]
 }
 
-/** Minutes from now until "HH:MM" Jamaica time (past midnight counts as tomorrow). */
-export function minutesUntil(hhmm: string, now = new Date()): number {
-  const local = new Date(now.getTime() - 5 * 3600000)
-  const mins = local.getUTCHours() * 60 + local.getUTCMinutes()
-  const [h, m] = hhmm.split(':').map(Number)
-  let d = h * 60 + m - mins
-  if (d < 0) d += 24 * 60
-  return d
-}
 
 // ---------- Featured ----------
 
@@ -63,8 +54,6 @@ export interface FeaturedItem {
   bon: boolean
   promoted: boolean
   open: OpenNow
-  /** Set when it closes within the hour: "Closes in 40 min". */
-  closesInMin: number | null
   /** Cruise day: minutes from the port by road. */
   minutesFromPort?: number
   lat: number
@@ -92,12 +81,10 @@ async function featured(city: CityCode, daypart: Daypart, now: Date, cruise?: Cr
     .sort((a, b) => b.score - a.score)
     .slice(0, FEATURED_MAX)
     .map(({ v, open, away }) => {
-      const closesIn = open.state === 'open' && open.closes ? minutesUntil(open.closes, now) : null
       return {
         id: v.id, name: v.name, category: v.category, neighborhood: v.neighborhood, description: v.description,
         image: v.images[0] ?? null, images: v.images.slice(0, 5), video: v.videos[0] ?? null, live: v.live, whoThere: v.whoThere,
         bon: v.isPremium, promoted: Boolean(v.promotedUntil && v.promotedUntil > now), open,
-        closesInMin: closesIn !== null && closesIn <= 60 ? closesIn : null,
         ...(cruise ? { minutesFromPort: away } : {}),
         lat: v.lat, lng: v.lng
       }
