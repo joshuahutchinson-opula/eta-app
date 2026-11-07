@@ -4,7 +4,6 @@
 import type { TripDTO } from '@/lib/trips'
 import { getCurrentUser } from '@/lib/auth-client'
 import { authHeaders } from '@/lib/api-client'
-import { absoluteUrl } from '@/lib/site-url'
 import { ApiError, responseError } from '@/lib/errors'
 
 export type { TripDTO, TripStopDTO, TripMemberDTO } from '@/lib/trips'
@@ -33,10 +32,6 @@ export function rememberTrip(trip: RememberedTrip) {
   localStorage.setItem(MY_TRIPS, JSON.stringify([{ ...prev, ...trip }, ...rest].slice(0, 25)))
 }
 
-export function forgetTrip(slug: string) {
-  localStorage.setItem(MY_TRIPS, JSON.stringify(readMine().filter(t => t.slug !== slug)))
-}
-
 export function getTripKey(slug: string): string | undefined {
   return readMine().find(t => t.slug === slug)?.editKey
 }
@@ -50,11 +45,6 @@ function linkTokens(slug: string): Record<string, string> {
   if (onThisTrip && q.get('invite')) out['x-trip-invite'] = q.get('invite')!
   if (onThisTrip && q.get('view')) out['x-trip-view'] = q.get('view')!
   return out
-}
-
-/** The crew link for a trip. Joining needs an invite link (createInviteLink). */
-export function tripShareUrl(slug: string): string {
-  return absoluteUrl(`/trip/${slug}`)
 }
 
 export async function tripApi<T = TripView>(slug: string, path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {

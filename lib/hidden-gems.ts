@@ -27,17 +27,6 @@ export const MAX_SUBMISSIONS_PER_DAY = 5
 export const GEM_CATEGORIES = ['WATERFALL', 'HOT_SPRING', 'CULTURAL_ARTIFACT', 'VIEWPOINT', 'STREET_ART', 'SWIMMING_SPOT', 'LOCAL_FAVOURITE', 'OTHER'] as const
 export type GemCategoryKey = (typeof GEM_CATEGORIES)[number]
 
-export const GEM_CATEGORY_LABELS: Record<GemCategoryKey, string> = {
-  WATERFALL: 'Waterfall / river',
-  HOT_SPRING: 'Hot spring',
-  CULTURAL_ARTIFACT: 'Cultural find',
-  VIEWPOINT: 'Viewpoint',
-  STREET_ART: 'Street art',
-  SWIMMING_SPOT: 'Swimming spot',
-  LOCAL_FAVOURITE: 'Local favourite',
-  OTHER: 'Something else'
-}
-
 export function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   return haversineKm(a, b) * 1000
 }

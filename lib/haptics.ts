@@ -69,6 +69,3 @@ export function hapticSaved() {
   triggerHaptic('light')
 }
 
-export function hapticSurveyStepComplete() {
-  triggerHaptic('selection')
-}

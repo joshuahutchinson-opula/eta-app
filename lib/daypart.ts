@@ -53,8 +53,6 @@ export function sunInfo(lat: number, lng: number, now: Date = new Date()): SunIn
   return { daypart, sunrise, sunset, solarNoon, goldenStart, goldenEnd, nextChange }
 }
 
-export const daypartAt = (lat: number, lng: number, now?: Date) => sunInfo(lat, lng, now).daypart
-
 // ---------- What leads each daypart ----------
 
 interface Lean {

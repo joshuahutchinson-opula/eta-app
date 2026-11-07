@@ -38,13 +38,6 @@ export function jamaicaToday(offsetDays = 0): string {
   return new Date(Date.now() + offsetDays * 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Jamaica' })
 }
 
-/** Nights between two "YYYY-MM-DD" dates. */
-export function nightsBetween(checkIn: string, checkOut: string): number {
-  const a = Date.parse(`${checkIn}T00:00:00Z`)
-  const b = Date.parse(`${checkOut}T00:00:00Z`)
-  return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 86400000) : 0
-}
-
 /** Short code printed on tickets and receipts. */
 export function bookingCode(id: string): string {
   return `ETA-${id.slice(-8).toUpperCase()}`
