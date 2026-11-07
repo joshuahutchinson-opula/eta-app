@@ -2,7 +2,8 @@
 // right after a QR visit or an in-app payment (lib/review-prompts.ts). One
 // tap on the stars, an optional comment, Send. Skipped, it asks once more
 // later that day. Checks when the app comes back to the front, every few
-// minutes, and straight away when a scan or payment fires REVIEW_CHECK.
+// minutes, and straight away when a scan or payment fires REVIEW_CHECK
+// (eta-review-check).
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -17,11 +18,6 @@ import { triggerHaptic } from '@/lib/haptics'
 export const REVIEW_CHECK = 'eta-review-check'
 
 interface Due { id: string; reminder: boolean; vendor: { id: string; name: string; image: string | null } }
-
-/** Ask the prompt to look now (after a scan or a payment). */
-export function checkReviewPrompt(delayMs = 1500) {
-  setTimeout(() => window.dispatchEvent(new CustomEvent(REVIEW_CHECK)), delayMs)
-}
 
 // Not over flows that take the whole screen.
 const QUIET = ['/arrival', '/onboarding', '/login', '/register', '/stories', '/vibe']

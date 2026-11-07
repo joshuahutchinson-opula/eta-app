@@ -9,7 +9,6 @@ import { prisma } from '@/lib/prisma'
 export const REPORT_HIDE_THRESHOLD = Math.max(1, Number(process.env.REPORT_HIDE_THRESHOLD) || 3)
 
 export const REPORT_REASONS = ['SPAM', 'INAPPROPRIATE', 'HARASSMENT', 'MISLEADING', 'NOT_THERE', 'OTHER'] as const
-export type ReportReason = (typeof REPORT_REASONS)[number]
 
 export const REPORT_TARGETS = ['MOMENT', 'MOOD_MEDIA', 'STORY', 'REVIEW', 'HIDDEN_GEM'] as const satisfies readonly ReportTarget[]
 

@@ -1,6 +1,6 @@
 // components/home/HomeEvents.tsx — Home's "Parties & Happenings · This
-// Week": promoter events for the selected region over the next 7 days
-// (same data and empty message as components/EventsSection), as cards with
+// Week": promoter events for the selected region over the next 7 days,
+// with an empty message when nothing is on, as cards with
 // a calendar date tile (red weekday strip, big day number) and a red
 // "Tonight" tag on tonight's. Long-press opens the quick preview.
 'use client'

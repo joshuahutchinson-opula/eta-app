@@ -170,13 +170,6 @@ export async function vendorFacets(filter: VendorFilter): Promise<VendorFacets> 
   }
 }
 
-export async function getVendorCards(ids: string[]): Promise<VendorCardData[]> {
-  if (ids.length === 0) return []
-  const rows = await prisma.vendor.findMany({ where: { id: { in: ids } }, select: CARD_SELECT })
-  const cards = rows.map(toCard).map(({ createdAt: _c, ...c }) => c)
-  return ids.map(id => cards.find(c => c.id === id)).filter((c): c is VendorCardData => Boolean(c))
-}
-
 /** Parses Explore's URL search params (also used by /api/web/vendors). */
 export function filterFromParams(params: URLSearchParams | Record<string, string | string[] | undefined>): { filter: VendorFilter; sort: VendorSort } {
   const get = (k: string): string[] => {
