@@ -9,15 +9,13 @@
 //               On a cruise day, only places you can reach and be back from
 //               before all aboard.
 //   moods       Choose The Vibe, the daypart's moods first
-//   feed        whether the Vibe feed has enough fresh video (/vibe)
-// Your day (signed in) is yourDay() below; the feed itself is lib/vibe-feed.ts.
+// Your day (signed in) is yourDay() below.
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { daypartScore, orderMoods, sunInfo, type Daypart } from '@/lib/daypart'
 import { openNow, type OpenNow } from '@/lib/hours'
 import { jamaicaDayKey } from '@/lib/trip-dates'
 import { townFor, type CityCode } from '@/lib/regions'
-import { vibeFeedCount, FEED_MIN_VIDEOS } from '@/lib/vibe-feed'
 import { estimateMinutes, haversineKm, type LatLng } from '@/lib/routing'
 
 const FEATURED_MAX = 8
@@ -111,16 +109,20 @@ async function featured(city: CityCode, daypart: Daypart, now: Date, cruise?: Cr
 export interface HeroMedia {
   kind: 'photo' | 'video'
   url: string
+  /** A lighter copy (720p video) for small screens and low data. */
+  urlSd: string | null
   poster: string | null
   credit: string | null
   /** "town" = TownMedia for this daypart; "vendor" = the town's best vendor photo. */
   source: 'town' | 'vendor'
+  /** Where stock footage came from ("Pexels"), for the small credit on the hero. */
+  creditSource: string | null
 }
 
 async function heroMedia(city: CityCode, daypart: Daypart, now: Date): Promise<HeroMedia | null> {
   const rows = await prisma.townMedia.findMany({ where: { city: city as never, daypart, active: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })
   const pick = dayPick(rows, `${city}:${jamaicaDayKey(now)}:${daypart}`)
-  if (pick) return { kind: pick.kind === 'video' ? 'video' : 'photo', url: pick.url, poster: pick.poster, credit: pick.credit, source: 'town' }
+  if (pick) return { kind: pick.kind === 'video' ? 'video' : 'photo', url: pick.url, urlSd: pick.urlSd, poster: pick.poster, credit: pick.credit, source: 'town', creditSource: pick.source }
   // No media yet: the town's best vendor photo, leaning to the daypart.
   const vendors = await prisma.vendor.findMany({
     where: { city, visibleInMarketplace: true, isTransport: false, images: { isEmpty: false } },
@@ -130,7 +132,7 @@ async function heroMedia(city: CityCode, daypart: Daypart, now: Date): Promise<H
   const best = vendors
     .map(v => ({ v, s: daypartScore(daypart, v) + (v.isPremium ? 4 : 0) + Math.min(v._count.reviews, 20) / 5 }))
     .sort((a, b) => b.s - a.s)[0]?.v
-  return best ? { kind: 'photo', url: best.images[0], poster: null, credit: best.name, source: 'vendor' } : null
+  return best ? { kind: 'photo', url: best.images[0], urlSd: null, poster: null, credit: best.name, source: 'vendor', creditSource: null } : null
 }
 
 export interface PartyNight {
@@ -165,12 +167,11 @@ async function partyNight(city: CityCode, now: Date): Promise<PartyNight | null>
 export async function homeToday(city: CityCode, now = new Date(), cruise?: CruiseLimit | null) {
   const town = townFor(city)
   const sun = sunInfo(town.lat, town.lng, now)
-  const [items, hero, party, moods, feedCount] = await Promise.all([
+  const [items, hero, party, moods] = await Promise.all([
     featured(city, sun.daypart, now, cruise),
     heroMedia(city, sun.daypart, now),
     partyNight(city, now),
-    prisma.mood.findMany({ select: { id: true, name: true, icon: true, description: true, coverImage: true }, orderBy: { createdAt: 'asc' } }),
-    vibeFeedCount(city, now)
+    prisma.mood.findMany({ select: { id: true, name: true, icon: true, description: true, coverImage: true }, orderBy: { createdAt: 'asc' } })
   ])
   return {
     town: { city, name: town.name, lat: town.lat, lng: town.lng },
@@ -178,8 +179,7 @@ export async function homeToday(city: CityCode, now = new Date(), cruise?: Cruis
     hero,
     party,
     featured: items,
-    moods: orderMoods(sun.daypart, moods),
-    feed: { enabled: feedCount >= FEED_MIN_VIDEOS, count: feedCount }
+    moods: orderMoods(sun.daypart, moods)
   }
 }
 

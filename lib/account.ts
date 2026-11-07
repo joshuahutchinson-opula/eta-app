@@ -12,7 +12,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   await prisma.$transaction(async tx => {
     await tx.story.deleteMany({ where: { userId } })
     await tx.userMoment.deleteMany({ where: { userId } })
-    await tx.moodMedia.deleteMany({ where: { userId } })
     await tx.review.deleteMany({ where: { userId } })
     await tx.saved.deleteMany({ where: { userId } })
     await tx.savedList.deleteMany({ where: { userId } })

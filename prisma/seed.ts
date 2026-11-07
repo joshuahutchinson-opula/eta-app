@@ -69,7 +69,6 @@ async function main() {
   await prisma.review.deleteMany()
   await prisma.booking.deleteMany()
   await prisma.story.deleteMany()
-  await prisma.moodMedia.deleteMany()
   await prisma.mood.deleteMany()
   await prisma.experience.deleteMany()
   await prisma.accommodation.deleteMany()
@@ -2012,16 +2011,6 @@ async function main() {
     createdMoods.push(created)
   }
 
-  // Create mood media
-  await prisma.moodMedia.createMany({
-    data: [
-      { moodId: createdMoods[0].id, type: 'photo', url: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800', uploadedBy: 'Sarah' },
-      { moodId: createdMoods[1].id, type: 'photo', url: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800', uploadedBy: 'Jordan' },
-      { moodId: createdMoods[2].id, type: 'photo', url: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800', uploadedBy: 'Marcus' },
-      { moodId: createdMoods[3].id, type: 'photo', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', uploadedBy: 'Tasha' },
-      { moodId: createdMoods[4].id, type: 'photo', url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800', uploadedBy: 'Devon' },
-    ],
-  })
 
   // Link moods to experiences
   await prisma.experience.update({

@@ -28,6 +28,8 @@ import { addTrip, setTravelerType } from '@/lib/stage-client'
 import { startTrip } from '@/lib/stage-actions'
 import { inJamaica } from '@/lib/places-geo'
 import { triggerHaptic } from '@/lib/haptics'
+import { DateRangeField } from '@/components/RangeCalendar'
+import { TownField, useTravelHistory } from '@/components/TownPicker'
 import type { StayResult } from '@/lib/stays'
 
 type Step = 'who' | 'town' | 'planned' | 'dates' | 'stay' | 'vibe' | 'browse'
@@ -75,6 +77,7 @@ export default function OnboardingPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const step = path[path.length - 1]
+  const history = useTravelHistory()
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('step') === 'dates') { setPlanned(true); setPath(['who', 'planned', 'dates']) }
@@ -154,7 +157,6 @@ export default function OnboardingPage() {
     vibe: [t('m.onb.vibeTitle'), t('m.onb.vibeText')],
     browse: [t('m.onb2.browseTitle'), t('m.onb2.browseText')]
   }
-  const nights = Math.max(0, Math.round((Date.parse(dates.end) - Date.parse(dates.start)) / 86400000))
   const townChips = (onPick: (c: CityCode) => void, selected: CityCode | null) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
       {POPULAR_TOWNS.map(c => (
@@ -198,18 +200,10 @@ export default function OnboardingPage() {
         {step === 'dates' && (
           <>
             <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>{t('m.onb2.whichTown')}</p>
-            {townChips(setTown, town)}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '8px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-                {t('m.onb.arrive')}
-                <input type="date" value={dates.start} onChange={e => setDates(d => ({ start: e.target.value, end: d.end < e.target.value ? e.target.value : d.end }))} style={{ ...fieldStyle, marginTop: '6px' }} />
-              </label>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-                {t('m.onb.leave')}
-                <input type="date" value={dates.end} min={dates.start} onChange={e => setDates(d => ({ ...d, end: e.target.value }))} style={{ ...fieldStyle, marginTop: '6px' }} />
-              </label>
-            </div>
-            <p className="num-font" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '20px' }}>{t('m.onb.nights', { n: nights + 1 })}</p>
+            <TownField value={town} onChange={setTown} title={t('m.onb2.whichTown')} visited={history.visited} explored={history.explored} tone="dark" />
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.8)', margin: '16px 0 8px' }}>{t('m.plan.when')}</p>
+            <DateRangeField start={dates.start} end={dates.end} onChange={(start, end) => setDates({ start, end })} title={t('m.plan.when')} tone="dark" />
+            <div style={{ height: '20px' }} />
             <button className="btn btn-primary" onClick={() => go(arrivalDone() ? 'vibe' : 'stay')} disabled={!dates.start || !dates.end}>{patois.ctaPrimary}</button>
           </>
         )}

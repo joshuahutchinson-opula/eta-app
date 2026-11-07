@@ -2,21 +2,25 @@
 // from /api/stories?city=. Rings with stories the viewer hasn't seen get the
 // colour ring (vendors' pulse a rum-red glow); seen ones go grey and stop
 // (seen state is stored on the account).
-// "Your Story" posts a photo or short video with an optional caption for
-// 24 hours, tagged with the current region and (optionally) the place it was
-// taken, which gives the story its "Go here" button. Without a pick, the
-// server tags the vendor you QR-scanned at in the last few hours.
+// "Your Story" opens straight into the full-screen camera
+// (components/stories/StoryCamera), then the editor (text, stickers,
+// drawing; components/stories/StoryEditor), and posts for 24 hours to the
+// current region — to everyone, or to close friends only. A vendor or event
+// sticker gives the story its "Go here" / "Book this" button; without one,
+// the server tags the vendor you QR-scanned at in the last few hours.
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
 import { getCurrentUser } from '@/lib/auth-client'
-import { apiJson, uploadMedia } from '@/lib/api-client'
+import { apiJson } from '@/lib/api-client'
+import StoryCamera, { type Captured } from '@/components/stories/StoryCamera'
+import StoryEditor from '@/components/stories/StoryEditor'
 import { useRegion } from '@/components/RegionProvider'
-import { useErrorText, useLang } from '@/lib/i18n-client'
+import { useTabShow } from '@/components/TabKeeper'
+import { useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
-import { sortByDistance, useUserLocation } from '@/lib/geo'
 
 export interface StoryRow {
   id: string
@@ -42,19 +46,12 @@ interface Ring {
 
 export default function StoriesRow() {
   const { t } = useLang()
-  const errorText = useErrorText()
-  const { city, town, ready } = useRegion()
+  const { city, ready } = useRegion()
   const [rings, setRings] = useState<Ring[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [mine, setMine] = useState<Ring | null>(null)
-  const [draft, setDraft] = useState<{ file: File; preview: string; video: boolean } | null>(null)
-  const [caption, setCaption] = useState('')
-  const [posting, setPosting] = useState(false)
+  const [capture, setCapture] = useState<'camera' | Captured | null>(null)
   const [postError, setPostError] = useState<string | null>(null)
-  const [places, setPlaces] = useState<Array<{ id: string; name: string; lat?: number | null; lng?: number | null }>>([])
-  const [placeId, setPlaceId] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const location = useUserLocation()
 
   const load = useCallback(async () => {
     setFailed(false)
@@ -80,41 +77,13 @@ export default function StoriesRow() {
   }, [city])
 
   useEffect(() => { if (ready) load() }, [ready, load])
+  useTabShow('/', () => { if (ready) load() })
 
-  const pick = (file: File) => {
+  const openCamera = () => {
     if (!getCurrentUser()) { setPostError(t('m.stories.loginToPost')); return }
     setPostError(null)
-    setCaption('')
-    setPlaceId(null)
-    setDraft({ file, preview: URL.createObjectURL(file), video: file.type.startsWith('video/') })
-    fetch(`/api/vendors?city=${city}&limit=40`).then(r => (r.ok ? r.json() : [])).then(d => setPlaces(Array.isArray(d) ? d : [])).catch(() => setPlaces([]))
-  }
-
-  const closeDraft = () => {
-    if (draft) URL.revokeObjectURL(draft.preview)
-    setDraft(null)
-  }
-
-  const post = async () => {
-    if (!draft) return
-    setPosting(true)
-    setPostError(null)
-    try {
-      const media = await uploadMedia(draft.file, 'stories')
-      await apiJson('/api/stories', {
-        method: 'POST',
-        body: media.kind === 'video'
-          ? { imageUrl: media.poster ?? media.url, videoUrl: media.url, caption: caption.trim() || undefined, city, placeVendorId: placeId ?? undefined }
-          : { imageUrl: media.url, caption: caption.trim() || undefined, city, placeVendorId: placeId ?? undefined }
-      })
-      triggerHaptic('medium')
-      closeDraft()
-      await load()
-    } catch (e) {
-      setPostError(errorText(e))
-    } finally {
-      setPosting(false)
-    }
+    triggerHaptic('medium')
+    setCapture('camera')
   }
 
   const label = (text: string) => (
@@ -130,19 +99,18 @@ export default function StoriesRow() {
               <img src={mine.image} alt="" />
             </Link>
           ) : (
-            <button onClick={() => fileRef.current?.click()} disabled={posting} aria-label={t('m.stories.add')} className="story-ring standard" style={{ border: 'none', cursor: 'pointer' }}>
+            <button onClick={openCamera} aria-label={t('m.stories.add')} className="story-ring standard" style={{ border: 'none', cursor: 'pointer' }}>
               <span style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed var(--label-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-secondary)', background: 'var(--system-bg)' }}>
-                <Icon name={posting ? 'clock' : 'camera'} size={18} />
+                <Icon name="camera" size={18} />
               </span>
             </button>
           )}
           {mine && (
-            <button onClick={() => fileRef.current?.click()} disabled={posting} aria-label={t('m.stories.add')} style={{ position: 'absolute', right: '-2px', top: '44px', width: '22px', height: '22px', borderRadius: '50%', background: 'var(--rum)', color: 'white', border: '2px solid var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+            <button onClick={openCamera} aria-label={t('m.stories.add')} style={{ position: 'absolute', right: '-2px', top: '44px', width: '22px', height: '22px', borderRadius: '50%', background: 'var(--rum)', color: 'white', border: '2px solid var(--system-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
               <Icon name="plus" size={12} />
             </button>
           )}
-          {label(posting ? t('m.stories.posting') : t('m.stories.yours'))}
-          <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" hidden onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) pick(f) }} />
+          {label(t('m.stories.yours'))}
         </div>
 
         {failed ? (
@@ -160,48 +128,10 @@ export default function StoriesRow() {
           </Link>
         ))}
       </div>
-      {postError && !draft && <p role="alert" style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{postError}</p>}
+      {postError && <p role="alert" style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{postError}</p>}
 
-      <div className={`bottom-sheet-overlay ${draft ? 'open' : ''}`} onClick={posting ? undefined : closeDraft} />
-      <div className={`bottom-sheet ${draft ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={t('m.stories.newTitle')}>
-        <div className="sheet-grabber" />
-        {draft && (
-          <div style={{ padding: '0 20px 24px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '12px' }}>{t('m.stories.newTitle')}</h3>
-            <div style={{ borderRadius: '16px', overflow: 'hidden', height: '280px', background: '#000', marginBottom: '12px' }}>
-              {draft.video
-                ? <video src={draft.preview} muted loop playsInline autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <img src={draft.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-            </div>
-            <input
-              value={caption}
-              maxLength={200}
-              onChange={e => setCaption(e.target.value)}
-              placeholder={t('m.stories.captionPlaceholder')}
-              aria-label={t('m.stories.captionPlaceholder')}
-              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--separator)', background: 'var(--system-bg)', fontSize: '16px', fontFamily: 'inherit', color: 'var(--label-primary)', marginBottom: '8px', minHeight: '44px' }}
-            />
-            {places.length > 0 && (
-              <>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '6px' }}>{t('m.story.where')}</p>
-                <div className="horizontal-scroll" style={{ gap: '6px', padding: '0 0 8px' }}>
-                  {sortByDistance(places, location).slice(0, 10).map(p => (
-                    <button key={p.id} type="button" onClick={() => setPlaceId(placeId === p.id ? null : p.id)} aria-pressed={placeId === p.id} className={`chip ${placeId === p.id ? 'active' : ''}`} style={{ flexShrink: 0, minHeight: '32px', fontSize: '13px' }}>
-                      <Icon name="mapPin" size={12} /> {p.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{t('m.stories.lasts', { town: town.name })}</p>
-            {postError && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '8px' }}>{postError}</p>}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-tertiary" onClick={closeDraft} disabled={posting} style={{ flex: 1 }}>{t('m.book.cancel')}</button>
-              <button className="btn btn-primary" onClick={post} disabled={posting} style={{ flex: 2 }}>{posting ? t('m.stories.posting') : t('m.stories.post')}</button>
-            </div>
-          </div>
-        )}
-      </div>
+      {capture === 'camera' && <StoryCamera onClose={() => setCapture(null)} onCaptured={c => setCapture(c)} />}
+      {capture && capture !== 'camera' && <StoryEditor media={capture} onBack={() => setCapture('camera')} onPosted={() => { setCapture(null); load() }} />}
     </div>
   )
 }

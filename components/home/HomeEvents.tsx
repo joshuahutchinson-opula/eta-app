@@ -14,6 +14,7 @@ import ErrorState from '@/components/ErrorState'
 import { SectionHead } from '@/components/home/bits'
 import { useLongPress } from '@/components/home/QuickPreview'
 import { useRegion } from '@/components/RegionProvider'
+import { useTabShow } from '@/components/TabKeeper'
 import { useLang } from '@/lib/i18n-client'
 import { useEventFormat, type EventItem } from '@/lib/events'
 import { triggerHaptic } from '@/lib/haptics'
@@ -81,6 +82,7 @@ export default function HomeEvents({ onPreview }: { onPreview: (ev: EventItem) =
   }, [city])
 
   useEffect(() => { if (ready) { setEvents(null); load() } }, [ready, load])
+  useTabShow('/', () => { if (ready) load() })
 
   return (
     <div>

@@ -2,7 +2,7 @@
 // loop of the selected town for the daypart (TownMedia, lib/home.ts), or
 // the town's best vendor photo when none has been uploaded. A photo drifts
 // and zooms very slowly. On a party night it shows tonight's big event
-// instead. About 270px with a bottom scrim; the top bar (location + points)
+// instead. Stock footage carries a tiny credit bottom right. About 270px with a bottom scrim; the top bar (location + points)
 // and the bottom-left text come from the page.
 //   pull      pulling down at the top stretches and zooms it (before the
 //             refresh wave runs)
@@ -21,7 +21,7 @@ import type { HeroMedia } from '@/lib/home'
 export const HERO_HEIGHT = 270
 const FADE_MS = 900
 
-export interface HeroLayerMedia { kind: 'photo' | 'video'; url: string; poster: string | null }
+export interface HeroLayerMedia { kind: 'photo' | 'video'; url: string; poster: string | null; urlSd?: string | null }
 
 interface Props {
   media: HeroLayerMedia | HeroMedia | null
@@ -32,18 +32,22 @@ interface Props {
   children?: React.ReactNode
   /** Taller for the countdown hero. */
   height?: number
+  /** "Photo: <name> / Pexels", tiny and low-contrast, bottom right. */
+  credit?: string | null
 }
 
 interface Layer { key: string; media: HeroLayerMedia | null; leaving: boolean }
 
 function Media({ media, reduce }: { media: HeroLayerMedia | null; reduce: boolean }) {
   if (!media) return <div className="home-hero-fallback" aria-hidden />
-  if (media.kind === 'video' && !reduce) return <SmartVideo src={media.url} poster={media.poster} />
+  // Phones get the 720p copy when there is one.
+  const small = typeof window !== 'undefined' && window.innerWidth <= 820
+  if (media.kind === 'video' && !reduce) return <SmartVideo src={(small && media.urlSd) || media.url} poster={media.poster} />
   const src = media.kind === 'video' ? media.poster ?? media.url : media.url
   return <div className={`home-hero-photo ${reduce ? '' : 'drift'}`}><Img src={src} alt="" width={1290} height={900} sizes="100vw" priority /></div>
 }
 
-export default function HomeHero({ media, sceneKey, pull, washKey, topBar, children, height = HERO_HEIGHT }: Props) {
+export default function HomeHero({ media, sceneKey, pull, washKey, topBar, children, height = HERO_HEIGHT, credit }: Props) {
   const reduce = useReducedMotion()
   const waveRef = useRef<HTMLDivElement>(null)
   const mediaKey = `${sceneKey}|${media?.url ?? 'none'}`
@@ -86,6 +90,7 @@ export default function HomeHero({ media, sceneKey, pull, washKey, topBar, child
       <div className="home-hero-scrim" aria-hidden />
       <div className="home-hero-top">{topBar}</div>
       <div className="home-hero-bottom">{children}</div>
+      {credit && <p className="home-hero-credit">{credit}</p>}
     </div>
   )
 }

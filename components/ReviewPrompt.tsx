@@ -20,7 +20,7 @@ export const REVIEW_CHECK = 'eta-review-check'
 interface Due { id: string; reminder: boolean; vendor: { id: string; name: string; image: string | null } }
 
 // Not over flows that take the whole screen.
-const QUIET = ['/arrival', '/onboarding', '/login', '/register', '/stories', '/vibe']
+const QUIET = ['/arrival', '/onboarding', '/login', '/register', '/stories']
 
 export default function ReviewPrompt() {
   const { t } = useLang()

@@ -2,8 +2,8 @@
 // swipeable carousel of B.O.N and promoted places for the daypart (open now
 // or soon; lib/home.ts). Cards tilt slightly and their media drifts as they
 // scroll (CSS vars --o/--a set per frame), only the centred card's video
-// plays, and promoted ones say "Promoted". A green "Open" or amber "Closes
-// in 40 min" dot shows where it stands; long-press opens the quick preview
+// plays, and promoted ones say "Promoted". An amber "Closes in 40 min" /
+// "Opens soon" dot shows when that's worth knowing; long-press opens the quick preview
 // (components/home/QuickPreview). Reduce motion keeps them flat.
 'use client'
 
@@ -23,10 +23,10 @@ function OpenDot({ v }: { v: FeaturedItem }) {
   const { t } = useLang()
   if (v.open.state === 'open') {
     return v.closesInMin !== null
-      ? <span className="open-dot amber"><span aria-hidden /> {t('m.feat.closesIn', { n: v.closesInMin })}</span>
-      : <span className="open-dot green"><span aria-hidden /> {t('common.open')}</span>
+      ? <span className="feat-status amber"><span aria-hidden /> {t('m.feat.closesIn', { n: v.closesInMin })}</span>
+      : null
   }
-  if (v.open.state === 'soon') return <span className="open-dot amber"><span aria-hidden /> {t('m.feat.opensSoon')}</span>
+  if (v.open.state === 'soon') return <span className="feat-status amber"><span aria-hidden /> {t('m.feat.opensSoon')}</span>
   return null
 }
 

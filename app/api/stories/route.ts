@@ -3,9 +3,13 @@
 // vendor-approved Instagram story mentions (lib/instagram.ts), each with
 // `seen` for the signed-in viewer and `action`: where its "Go here" (a
 // vendor) or "Book this" (an event) button leads.
-// POST { caption?, imageUrl, videoUrl?, city, placeVendorId?, eventId? } —
-// post a 24-hour story (signed in, verified email). Without a place, it's
-// tagged with the vendor the poster QR-scanned at in the last few hours.
+// POST { caption?, imageUrl, videoUrl?, city, placeVendorId?, eventId?,
+//        overlays?, drawingUrl?, closeFriends?, muted? } — post a 24-hour
+// story (signed in, verified email). overlays/drawingUrl are the editor's
+// text, stickers and drawing (lib/story-overlays.ts); closeFriends shows it
+// only to the poster's close friends; muted plays a video without sound.
+// Without a place, it's tagged with the vendor the poster QR-scanned at in
+// the last few hours. Close-friends stories only reach those friends.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUser, userIdFromRequest } from '@/lib/auth-server'
@@ -14,6 +18,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { approvedMentionStories } from '@/lib/instagram'
 import { storyAction } from '@/lib/story-action'
 import { httpsUrl, id, parseBody, text, z } from '@/lib/validate'
+import { overlaysSchema, parseOverlays } from '@/lib/story-overlays'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +34,9 @@ export async function GET(request: Request) {
         where: {
           expiresAt: { gt: new Date() },
           hidden: false,
-          ...(isCityCode(city) ? { OR: [{ vendor: { city } }, { vendorId: null, city }] } : {})
+          ...(isCityCode(city) ? { OR: [{ vendor: { city } }, { vendorId: null, city }] } : {}),
+          // Close-friends stories: only the poster and the friends they picked.
+          AND: [{ OR: [{ closeFriends: false }, ...(userId ? [{ userId }, { user: { closeFriends: { some: { friendId: userId } } } }] : [])] }]
         },
         include: {
           vendor: { select: { name: true, isPremium: true, images: true, city: true } },
@@ -44,7 +51,7 @@ export async function GET(request: Request) {
     ])
     const own = stories.map(s => {
       const { views, user, placeVendor, event, ...rest } = s as typeof s & { views?: unknown[] }
-      return { ...rest, source: 'eta' as const, user: user ? { name: user.name.split(' ')[0], avatarUrl: user.avatarUrl } : null, seen: Boolean(views?.length), action: storyAction(s) }
+      return { ...rest, overlays: parseOverlays(rest.overlays), source: 'eta' as const, user: user ? { name: user.name.split(' ')[0], avatarUrl: user.avatarUrl } : null, seen: Boolean(views?.length), action: storyAction(s) }
     })
     const ig = mentions.map(m => ({ ...m, action: { kind: 'vendor' as const, id: m.vendorId, name: m.vendor.name } }))
     return NextResponse.json([...own, ...ig].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
@@ -60,7 +67,11 @@ const schema = z.object({
   videoUrl: httpsUrl.optional(),
   city: z.enum(CITY_CODES as [string, ...string[]]),
   placeVendorId: id.optional(),
-  eventId: id.optional()
+  eventId: id.optional(),
+  overlays: overlaysSchema.optional(),
+  drawingUrl: httpsUrl.optional(),
+  closeFriends: z.boolean().optional(),
+  muted: z.boolean().optional()
 })
 
 export async function POST(request: Request) {
@@ -91,6 +102,10 @@ export async function POST(request: Request) {
         userId: auth.user.id,
         placeVendorId: place?.id ?? recentScan?.vendorId ?? null,
         eventId: event?.id ?? null,
+        overlays: parsed.data.overlays ?? undefined,
+        drawingUrl: parsed.data.drawingUrl ?? null,
+        closeFriends: parsed.data.closeFriends ?? false,
+        muted: parsed.data.muted ?? false,
         expiresAt: new Date(Date.now() + 24 * 3600000)
       }
     })

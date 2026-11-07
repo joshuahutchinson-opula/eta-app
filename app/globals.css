@@ -1109,7 +1109,7 @@ textarea::placeholder {
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   text-decoration: none; cursor: pointer; white-space: nowrap;
 }
-.glass-icon { width: 40px; padding: 0; justify-content: center; position: relative; }
+
 .home-greeting { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; text-shadow: 0 2px 16px rgba(0,0,0,0.25); }
 .home-tagline { font-size: 17px; font-weight: 600; opacity: 0.95; text-shadow: 0 1px 10px rgba(0,0,0,0.3); }
 .home-watch {
@@ -1199,15 +1199,9 @@ textarea::placeholder {
 .vibe-slide { position: relative; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; }
 .vibe-slide video, .vibe-slide img.vibe-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .vibe-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.75) 100%); }
-.vibe-info { position: absolute; left: 16px; right: 84px; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); }
-.vibe-actions { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); display: flex; flex-direction: column; gap: 14px; align-items: center; }
-.vibe-action { width: 52px; height: 52px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; flex-direction: column; background: rgba(255,255,255,0.16); color: white; font: inherit; font-size: 10px; font-weight: 700; gap: 2px; cursor: pointer; text-decoration: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-.vibe-action[aria-pressed="true"] { color: #FF4D5E; }
-.vibe-burst { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); color: #FF4D5E; pointer-events: none; animation: vibeBurst 0.8s var(--spring-soft) forwards; }
-@keyframes vibeBurst { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -70%) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-wash-run, .heart-beat, .vibe-burst, .home-skel::after { animation: none !important; }
+  .hero-wash-run, .heart-beat, .home-skel::after { animation: none !important; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .press, .press:active, .featured-card, .featured-card:active { transition: none; transform: none; }
   .featured-media { transform: none; }
@@ -1215,7 +1209,3 @@ textarea::placeholder {
 }
 
 /* Story viewer progress bars (app/stories, set inline per story). */
-@keyframes storyFill {
-  from { width: 0%; }
-  to { width: 100%; }
-}

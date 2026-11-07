@@ -69,25 +69,12 @@ export async function startTrip(trip: TripView, opts: { shiftToToday?: boolean }
   return '/arrival'
 }
 
-/** "Looks like you're in Jamaica! Starting your trip?" → Yes: a trip from today; the arrival asks the leave date. */
-export async function startTripToday(city: CityCode): Promise<string> {
-  const today = jamaicaDayKey()
-  const trip = await addTrip({ city, start: today, end: addDays(today, 6), status: 'ACTIVE' })
-  const payload = await buildTripArrival(trip)
-  handToArrival({ ...payload, trip: payload.trip ? { ...payload.trip, end: null } : undefined })
-  return '/arrival'
-}
 
 export function endTrip(trip: TripView, early: boolean) {
   const today = jamaicaDayKey()
   return updateTrip(trip.id, { status: 'ENDED', ...(early && today < trip.end ? { end: today < trip.start ? trip.start : today } : {}) })
 }
 
-export function extendTrip(trip: TripView, days: number) {
-  const today = jamaicaDayKey()
-  const base = trip.end < today ? today : trip.end
-  return updateTrip(trip.id, { end: addDays(base, days) })
-}
 
 /** Arrived earlier or later than planned: move the whole trip by that many days. */
 export function shiftTrip(trip: TripView, days: number) {

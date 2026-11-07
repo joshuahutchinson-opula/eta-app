@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import './home.css'
+import './stories.css'
 import LaunchScreen from '@/components/LaunchScreen'
 import SessionGuard from '@/components/SessionGuard'
 import { RegionProvider } from '@/components/RegionProvider'
@@ -9,6 +10,7 @@ import HapticFallback from '@/components/HapticFallback'
 import ThemeAuto from '@/components/ThemeAuto'
 import ReviewPrompt from '@/components/ReviewPrompt'
 import PlanTripSheet from '@/components/PlanTripSheet'
+import TabKeeper from '@/components/TabKeeper'
 
 import { siteUrl } from '@/lib/site-url'
 
@@ -65,7 +67,7 @@ export default function RootLayout({
         }}>
           <RegionProvider>
             <ThemeAuto />
-            {children}
+            <TabKeeper>{children}</TabKeeper>
             <ReviewPrompt />
             <PlanTripSheet />
           </RegionProvider>

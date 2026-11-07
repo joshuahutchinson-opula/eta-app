@@ -36,7 +36,6 @@ export interface CurrentUser {
   stayAccommodationId?: string | null
   partnerPropertyId?: string | null
   travelerType?: 'LOCAL' | 'VISITOR' | null
-  stagePromptSnoozedUntil?: string | null
   cruisePort?: string | null
   cruiseDay?: string | null
   cruiseAllAboardAt?: string | null

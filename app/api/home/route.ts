@@ -1,7 +1,7 @@
 // GET /api/home?city=[&port=&backBy=] — Home's "today in <town>"
 // (lib/home.ts): the daypart from the real sun, the hero (town media for
-// the daypart, or tonight's big event), Featured, Choose The Vibe in
-// daypart order, and whether the Vibe feed has enough video to show.
+// the daypart, or tonight's big event), Featured and Choose The Vibe in
+// daypart order.
 // Cruise day: port (OCHO_RIOS | FALMOUTH | MONTEGO_BAY) and backBy (the
 // all-aboard time, ISO) keep Featured to places you can get back from.
 import { NextResponse } from 'next/server'

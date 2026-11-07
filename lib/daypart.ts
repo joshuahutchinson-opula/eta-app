@@ -1,11 +1,11 @@
 // lib/daypart.ts — "what time of day is it in <town>", from the real sun at
 // the town's coordinates (suncalc). Shared by the server (Home's ordering,
-// the Vibe feed) and the app (the living hero, the tagline).
+// the hero media) and the app (the hero, the tagline).
 //   morning    first light (30 min before sunrise) → solar noon
 //   afternoon  solar noon → golden hour
 //   golden     90 min before sunset → 30 min after it
 //   night      the rest
-// What leads each daypart (Featured, Choose The Vibe, the Vibe feed) is
+// What leads each daypart (Featured, Choose The Vibe) is
 // below: morning breakfast/beaches/coffee, afternoon lunch/water/activities,
 // golden hour sunset spots/sundowners, night dinner/bars/parties.
 import SunCalc from 'suncalc'

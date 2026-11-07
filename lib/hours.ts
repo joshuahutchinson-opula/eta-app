@@ -62,7 +62,7 @@ export function formatTime(hhmm: string): string {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 || h === 24 ? 'AM' : 'PM'}`
 }
 
-// Open now, or opening within the next 90 minutes (Home, the Vibe feed).
+// Open now, or opening within the next 90 minutes (Home).
 const SOON_MIN = 90
 
 export type OpenNow = { state: 'open'; closes: string | null } | { state: 'soon'; opens: string } | { state: 'closed' } | { state: 'unknown' }

@@ -9,8 +9,7 @@ export async function GET() {
       orderBy: { createdAt: 'asc' },
       include: {
         // Screens only need which experiences a mood covers, not the whole records.
-        experiences: { select: { id: true, city: true } },
-        media: { where: { hidden: false }, take: 6, orderBy: { createdAt: 'desc' } }
+        experiences: { select: { id: true, city: true } }
       }
     })
 

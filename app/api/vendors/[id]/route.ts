@@ -101,7 +101,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         ...(accessibility ? { accessibility: sanitizeAccessibility(accessibility) } : {}),
         ...(hours !== undefined ? { hours: hours ?? undefined } : {}),
         ...(promotedUntil !== undefined ? { promotedUntil: promotedUntil ? new Date(promotedUntil) : null } : {}),
-        // New videos are fresh for the Vibe feed (lib/vibe-feed.ts).
+        // When the vendor's videos last changed.
         ...(rest.videos && rest.videos.some(v => !before.videos.includes(v)) ? { videosUpdatedAt: new Date() } : {})
       }
     })
