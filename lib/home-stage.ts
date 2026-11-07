@@ -7,6 +7,7 @@
 //              "Places You Haven't Tried" and "Saved Last Time"
 //   cruise     rides back to the port (transport vendors in the port town)
 import { prisma } from '@/lib/prisma'
+import { rollMockEvents } from '@/lib/mock-events-roll'
 import { addDays, jamaicaDayStart } from '@/lib/trip-dates'
 import { welcomeBackRewardFor, welcomeRewardFor } from '@/lib/welcome'
 import type { CityCode } from '@/lib/regions'
@@ -66,6 +67,7 @@ export async function countdownExtras(input: { cities: CityCode[]; start: string
   const from = jamaicaDayStart(input.start)
   const to = new Date(jamaicaDayStart(input.end).getTime() + 86400000)
   const city = input.cities[0]
+  await rollMockEvents()
   const [events, ahead, gift] = await Promise.all([
     prisma.event.findMany({
       where: { city: { in: input.cities }, startAt: { gte: from, lt: to } },

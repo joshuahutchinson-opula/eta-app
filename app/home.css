@@ -1,5 +1,5 @@
-/* app/home.css — Home (revised): the hero, Your Day, the separator, the
-   tiles, the trip-stage cards and the sheets they open. Imported after
+/* app/home.css — Home (revised): the hero, Your Day, the tiles,
+   the trip-stage cards and the sheets they open. Imported after
    globals.css (app/layout.tsx), so it builds on its tokens (--rum, --gold,
    --home-radius, --home-shadow…) in light and dark. Every animation stops
    for reduce motion (the block at the end). */
@@ -59,7 +59,7 @@
 .home-skel { background: var(--rum-tint); }
 .home-skel::after { background: linear-gradient(90deg, transparent, rgba(184,32,16,0.14), rgba(255,255,255,0.18), transparent); }
 
-/* Stories: unseen vendor rings pulse a rum-red glow, on the separator's rhythm */
+/* Stories: unseen vendor rings pulse a rum-red glow */
 .story-ring.unseen.vendor { animation: ringPulse 3s ease-in-out infinite; }
 .story-ring.seen { animation: none; background: var(--separator); }
 @keyframes ringPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(184,32,16,0); } 50% { box-shadow: 0 0 0 3px rgba(184,32,16,0.18), 0 0 14px 2px rgba(184,32,16,0.45); } }
