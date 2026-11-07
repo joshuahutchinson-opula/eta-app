@@ -12,6 +12,7 @@
 // Your day (signed in) is yourDay() below.
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { rollMockEvents } from '@/lib/mock-events-roll'
 import { daypartScore, orderMoods, sunInfo, type Daypart } from '@/lib/daypart'
 import { openNow, type OpenNow } from '@/lib/hours'
 import { jamaicaDayKey } from '@/lib/trip-dates'
@@ -139,6 +140,7 @@ async function partyNight(city: CityCode, now: Date): Promise<PartyNight | null>
   const evening = new Date(dayStart.getTime() + 17 * 3600000)
   const lateNight = new Date(dayStart.getTime() + 30 * 3600000)
   if (now.getTime() < dayStart.getTime() + 15 * 3600000) return null
+  await rollMockEvents()
   const events = await prisma.event.findMany({
     where: { city, startAt: { gte: evening, lt: lateNight }, OR: [{ endAt: null }, { endAt: { gt: now } }] },
     select: { id: true, title: true, venueName: true, startAt: true, videoUrl: true, imageUrl: true, inAppTickets: true, ticketUrl: true, bigNight: true, _count: { select: { interests: true } } }

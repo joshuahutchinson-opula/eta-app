@@ -300,9 +300,6 @@ export default function HomePage() {
       </HomeHero>
 
       <div className="home-sheet">
-        <RegionMismatchPrompt />
-        <VerifyEmailBanner />
-
         {/* 1. Stories */}
         <div ref={storiesRef}>{stagger(<StoriesRow key={`stories-${refreshKey}`} />, 'stories')}</div>
 
@@ -314,6 +311,10 @@ export default function HomePage() {
             {result.stage === 'browsing' && <BrowsingCard />}
           </div>
         )}
+
+        {/* Then the rest: account and town nudges */}
+        <RegionMismatchPrompt />
+        <VerifyEmailBanner />
 
         {/* 3. Your Day (or what the stage puts in its place) */}
         {yourDayPlace === 'countdown' && trip && stagger(<CountdownBlock trip={trip} />, 'countdown')}

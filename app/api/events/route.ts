@@ -9,6 +9,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isCityCode } from '@/lib/regions'
 import { EVENT_WINDOWS, windowRange, type EventWindow } from '@/lib/event-windows'
+import { rollMockEvents } from '@/lib/mock-events-roll'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
   const notOver: Prisma.EventWhereInput = { OR: [{ endAt: { gte: now } }, { endAt: null, startAt: { gte: new Date(now.getTime() - 6 * 3600000) } }] }
   const range = window && EVENT_WINDOWS.includes(window) ? windowRange(window, now) : null
   try {
+    await rollMockEvents()
     const events = await prisma.event.findMany({
       where: ids.length
         ? { id: { in: ids } }
