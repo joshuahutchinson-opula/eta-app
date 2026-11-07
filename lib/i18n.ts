@@ -2595,8 +2595,6 @@ const more = {
   'm.h2.backToTop': ['Back to top', 'Volver arriba', 'Nach oben', 'Revenir en haut'],
   'm.ph2.eyebrow': ['Parties & Happenings', 'Fiestas Y Eventos', 'Partys & Events', 'Soirées & Événements'],
   'm.ph2.title': ['This Week', 'Esta Semana', 'Diese Woche', 'Cette Semaine'],
-  'm.feat.closesIn': ['Closes in {n} min', 'Cierra en {n} min', 'Schließt in {n} Min.', 'Ferme dans {n} min'],
-  'm.feat.opensSoon': ['Opens soon', 'Abre pronto', 'Öffnet bald', 'Ouvre bientôt'],
   'm.qp.away': ['{d} away', 'a {d}', '{d} entfernt', 'à {d}'],
   'm.qp.go': ['Go', 'Ir', 'Los', 'Y aller'],
   'm.qp.open': ['Open', 'Abrir', 'Öffnen', 'Ouvrir'],

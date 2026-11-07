@@ -130,11 +130,6 @@
 /* Long-press cards: no iOS link preview, the quick preview opens instead */
 .featured-card, .hev-card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
-/* Featured: closing / opening soon */
-.feat-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 9px 3px 7px; border-radius: 999px; background: rgba(0,0,0,0.38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); margin-bottom: 8px; }
-.feat-status > span { width: 8px; height: 8px; border-radius: 50%; }
-.feat-status.amber > span { background: #FF9F0A; box-shadow: 0 0 6px #FF9F0A; }
-
 /* Quick preview (long-press) */
 .qp-photos { display: flex; gap: 8px; overflow-x: auto; padding: 0 20px; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .qp-photos::-webkit-scrollbar { display: none; }
