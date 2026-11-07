@@ -3,6 +3,9 @@
 // the payment transaction so the last tickets can't be sold twice.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EARN } from '@/lib/earn-config'
+import { earn } from '@/lib/points-ledger'
+import { atLeast } from '@/lib/rewardTiers'
 import { requireUser } from '@/lib/auth-server'
 import { priceBreakdown } from '@/lib/pricing'
 import { payFromWallet, WalletError } from '@/lib/wallet-pay'
@@ -26,6 +29,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!event) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     if (!event.inAppTickets) return NextResponse.json({ error: 'Tickets for this one are sold by the promoter' }, { status: 409 })
     if ((event.endAt ?? event.startAt).getTime() < Date.now()) return NextResponse.json({ error: 'This event is over' }, { status: 410 })
+    // Early access: Insider and up can buy before earlyAccessUntil.
+    if (event.earlyAccessUntil && event.earlyAccessUntil.getTime() > Date.now()) {
+      const me = await prisma.user.findUnique({ where: { id: auth.user.id }, select: { lifetimePoints: true } })
+      if (!atLeast(me?.lifetimePoints ?? 0, 'INSIDER')) {
+        return NextResponse.json({ error: 'Insider early access — tickets open to everyone soon', code: 'EARLY_ACCESS', opensAt: event.earlyAccessUntil }, { status: 403 })
+      }
+    }
     const unit = event.isFree ? 0 : event.price
     if (unit === null) return NextResponse.json({ error: 'The ticket price isn’t listed yet' }, { status: 409 })
     const price = priceBreakdown(unit, quantity)
@@ -36,9 +46,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       const payment = price.total > 0
         ? await payFromWallet(tx, { userId: auth.user.id, amount: price.total, fees: price.fees, description: `${event.title} · ${quantity} ${quantity === 1 ? 'ticket' : 'tickets'}` })
         : null
-      return tx.ticket.create({
+      const made = await tx.ticket.create({
         data: { eventId: event.id, userId: auth.user.id, quantity, unitPrice: unit, fees: price.fees, totalPrice: price.total, code: ticketCode(), transactionId: payment?.id ?? null }
       })
+      // Event bookings earn EARN.bookingPerDollar per whole $1 (paid in-app).
+      await earn(tx, { userId: auth.user.id, reason: 'ticket', points: Math.floor(price.subtotal) * EARN.bookingPerDollar, sourceType: 'ticket', sourceId: made.id, city: event.city, vendorId: event.vendorId })
+      return made
     })
     const when = event.startAt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Jamaica' })
     await notifyUser(auth.user.id, 'bookings', `ticket:${ticket.id}:confirmed`, { title: `Tickets: ${event.title}`, body: `${when} · ${quantity} ${quantity === 1 ? 'ticket' : 'tickets'} · ${ticket.code}`, url: '/bookings' }).catch(() => {})

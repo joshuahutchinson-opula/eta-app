@@ -7,11 +7,11 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/lib/icons'
-import { AUTH_EVENT, getCurrentUser } from '@/lib/auth-client'
+import { AUTH_EVENT, USER_EVENT, getCurrentUser } from '@/lib/auth-client'
 import { useLang } from '@/lib/i18n-client'
 import { useReducedMotion } from '@/lib/motion'
 
-export const POINTS_EVENT = 'eta-points-change'
+export const POINTS_EVENT = USER_EVENT
 
 export default function PointsPill({ solid = false }: { solid?: boolean }) {
   const { t, lang } = useLang()

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import './home.css'
 import './stories.css'
+import './rewards.css'
 import LaunchScreen from '@/components/LaunchScreen'
 import SessionGuard from '@/components/SessionGuard'
 import { RegionProvider } from '@/components/RegionProvider'
@@ -11,6 +12,7 @@ import ThemeAuto from '@/components/ThemeAuto'
 import ReviewPrompt from '@/components/ReviewPrompt'
 import PlanTripSheet from '@/components/PlanTripSheet'
 import TabKeeper from '@/components/TabKeeper'
+import TierUpCelebration from '@/components/rewards/TierUpCelebration'
 
 import { siteUrl } from '@/lib/site-url'
 
@@ -70,6 +72,7 @@ export default function RootLayout({
             <TabKeeper>{children}</TabKeeper>
             <ReviewPrompt />
             <PlanTripSheet />
+            <TierUpCelebration />
           </RegionProvider>
         </main>
       </body>

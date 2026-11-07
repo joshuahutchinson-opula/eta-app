@@ -4,6 +4,7 @@
 // the bonus is paid once, the first time progress reaches the target
 // (checked after every check-in and whenever Rewards loads).
 import { prisma } from '@/lib/prisma'
+import { earn } from '@/lib/points-ledger'
 
 export const CHALLENGE_METRICS = ['NEW_BEACHES', 'NEW_FOOD_SPOTS', 'NEW_PLACES', 'CHECKINS', 'PHOTO_SPOTS', 'HIDDEN_GEMS'] as const
 export type ChallengeMetric = (typeof CHALLENGE_METRICS)[number]
@@ -53,10 +54,10 @@ export async function evaluateChallenges(userId: string): Promise<string[]> {
   for (const c of challenges) {
     if ((await progressFor(userId, c.metric, month)) < c.target) continue
     try {
-      await prisma.$transaction([
-        prisma.challengeCompletion.create({ data: { challengeId: c.id, userId, pointsAwarded: c.bonusPoints } }),
-        prisma.user.update({ where: { id: userId }, data: { points: { increment: c.bonusPoints } } })
-      ])
+      await prisma.$transaction(async tx => {
+        await tx.challengeCompletion.create({ data: { challengeId: c.id, userId, pointsAwarded: c.bonusPoints } })
+        await earn(tx, { userId, reason: 'challenge', points: c.bonusPoints, sourceType: 'challenge', sourceId: c.id })
+      })
       done.push(c.title)
     } catch {
       // Completed concurrently (unique constraint) — already paid.

@@ -15,7 +15,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (!auth.ok) return auth.response
   const trip = await prisma.travelTrip.findFirst({ where: { id: params.id, OR: [{ ownerId: auth.user.id }, { members: { some: { userId: auth.user.id } } }] }, select: { city: true, welcomeBackRedemptionId: true } })
   if (!trip) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
-  return NextResponse.json({ reward: await welcomeBackRewardFor(trip.city), claimed: Boolean(trip.welcomeBackRedemptionId) })
+  const me = await prisma.user.findUnique({ where: { id: auth.user.id }, select: { lifetimePoints: true } })
+  return NextResponse.json({ reward: await welcomeBackRewardFor(trip.city, null, me?.lifetimePoints ?? 0), claimed: Boolean(trip.welcomeBackRedemptionId) })
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {

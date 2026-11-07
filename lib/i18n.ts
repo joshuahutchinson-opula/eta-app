@@ -10,6 +10,8 @@
 // Every such call is listed in PATOIS_TRANSLATION_NOTES for review by a
 // native speaker.
 
+import { REWARDS_STRINGS } from '@/lib/i18n-rewards'
+
 export type Lang = 'en' | 'es' | 'de' | 'fr'
 export const LANGS: Lang[] = ['en', 'es', 'de', 'fr']
 export const LANG_COOKIE = 'eta_lang'
@@ -150,11 +152,11 @@ const en = {
   'm.profile.loginBody': 'Sign in to view your bookings, points and wallet.',
   'm.profile.login': 'Log In',
   'm.invite.title': 'Bring your crew',
-  'm.invite.body': 'You both get {points} points when a friend you invite finishes their first booking.',
+  'm.invite.body': 'You get {points} points when a friend you invite makes their first visit.',
   'm.invite.code': 'Your code',
   'm.invite.share': 'Share invite',
   'm.invite.stats': '{invited} invited · {rewarded} rewarded · +{earned} pts',
-  'm.invite.shareText': 'Join me on ETA — use my code {code} and we both get {points} points after your first trip.',
+  'm.invite.shareText': 'Join me on ETA with my code {code} — scan your first ETA vendor and I get {points} points.',
   'm.register.referral': 'Referral code (optional)',
   'm.detail.planWithCrew': 'Plan with crew',
   'm.detail.book': 'Dun — book dis',
@@ -550,11 +552,11 @@ const es: Record<BaseKey, string> = {
   'm.profile.loginBody': 'Entra para ver tus reservas, puntos y billetera.',
   'm.profile.login': 'Iniciar sesión',
   'm.invite.title': 'Trae a tu gente',
-  'm.invite.body': 'Los dos ganan {points} puntos cuando alguien que invitas termina su primera reserva.',
+  'm.invite.body': 'Ganas {points} puntos cuando alguien que invitas hace su primera visita.',
   'm.invite.code': 'Tu código',
   'm.invite.share': 'Compartir invitación',
   'm.invite.stats': '{invited} invitados · {rewarded} premiados · +{earned} pts',
-  'm.invite.shareText': 'Únete a ETA con mi código {code} y los dos ganamos {points} puntos después de tu primer viaje.',
+  'm.invite.shareText': 'Únete a ETA con mi código {code}: cuando escanees tu primer negocio ETA, gano {points} puntos.',
   'm.register.referral': 'Código de invitación (opcional)',
   'm.detail.planWithCrew': 'Planear con el grupo',
   'm.detail.book': 'Listo — reservar',
@@ -948,11 +950,11 @@ const de: Record<BaseKey, string> = {
   'm.profile.loginBody': 'Melde dich an für Buchungen, Punkte und Wallet.',
   'm.profile.login': 'Anmelden',
   'm.invite.title': 'Bring deine Crew mit',
-  'm.invite.body': 'Ihr bekommt beide {points} Punkte, wenn eine eingeladene Person ihre erste Buchung abschließt.',
+  'm.invite.body': 'Du bekommst {points} Punkte, wenn eine eingeladene Person ihren ersten Besuch macht.',
   'm.invite.code': 'Dein Code',
   'm.invite.share': 'Einladung teilen',
   'm.invite.stats': '{invited} eingeladen · {rewarded} belohnt · +{earned} Pkt.',
-  'm.invite.shareText': 'Komm zu ETA – mit meinem Code {code} bekommen wir beide {points} Punkte nach deinem ersten Trip.',
+  'm.invite.shareText': 'Komm zu ETA mit meinem Code {code} – scanne deinen ersten ETA-Anbieter und ich bekomme {points} Punkte.',
   'm.register.referral': 'Einladungscode (optional)',
   'm.detail.planWithCrew': 'Mit der Crew planen',
   'm.detail.book': 'Fertig – buchen',
@@ -1346,11 +1348,11 @@ const fr: Record<BaseKey, string> = {
   'm.profile.loginBody': 'Connectez-vous pour voir réservations, points et portefeuille.',
   'm.profile.login': 'Se connecter',
   'm.invite.title': 'Amenez votre équipe',
-  'm.invite.body': 'Vous gagnez tous les deux {points} points quand un ami invité termine sa première réservation.',
+  'm.invite.body': 'Vous gagnez {points} points quand un ami invité fait sa première visite.',
   'm.invite.code': 'Votre code',
   'm.invite.share': 'Partager l’invitation',
   'm.invite.stats': '{invited} invités · {rewarded} récompensés · +{earned} pts',
-  'm.invite.shareText': 'Rejoins-moi sur ETA avec mon code {code} : on gagne chacun {points} points après ton premier voyage.',
+  'm.invite.shareText': 'Rejoins-moi sur ETA avec mon code {code} : scanne ton premier commerçant ETA et je gagne {points} points.',
   'm.register.referral': 'Code de parrainage (facultatif)',
   'm.detail.planWithCrew': 'Planifier avec l’équipe',
   'm.detail.book': 'C’est bon — réserver',
@@ -1933,10 +1935,6 @@ const more = {
   'm.priceNoun.ACCOMMODATION': ['per night', 'por noche', 'pro Nacht', 'par nuit'],
   'm.priceNoun.TRANSPORT': ['per ride', 'por viaje', 'pro Fahrt', 'par trajet'],
   'm.priceNoun.OTHER': ['price', 'precio', 'Preis', 'prix'],
-  'm.tier.WANDERER': ['Newcomer', 'Recién llegado', 'Neuling', 'Nouveau venu'],
-  'm.tier.EXPLORER': ['Regular', 'Habitual', 'Stammgast', 'Habitué'],
-  'm.tier.TRAILBLAZER': ['Trailblazer', 'Pionero', 'Pionier', 'Pionnier'],
-  'm.tier.LOCAL_LEGEND': ['Legend', 'Leyenda', 'Legende', 'Légende'],
   'm.access.WHEELCHAIR_ACCESSIBLE': ['Wheelchair accessible', 'Accesible en silla de ruedas', 'Rollstuhlgerecht', 'Accessible en fauteuil roulant'],
   'm.access.STEP_FREE_ENTRY': ['Step-free entry', 'Entrada sin escalones', 'Stufenloser Zugang', 'Entrée sans marche'],
   'm.access.ACCESSIBLE_RESTROOM': ['Accessible restroom', 'Baño accesible', 'Barrierefreie Toilette', 'Toilettes accessibles'],
@@ -2163,15 +2161,6 @@ const more = {
   'm.badge.places25': ['25 places', '25 lugares', '25 Orte', '25 lieux'],
   'm.badge.towns3': ['3 towns', '3 pueblos', '3 Orte', '3 villes'],
   'm.badge.locked': ['{n} to go', 'Faltan {n}', 'Noch {n}', 'Encore {n}'],
-  'm.perk.WANDERER.0': ['Full access to the rewards catalog', 'Acceso completo al catálogo de premios', 'Voller Zugang zum Prämienkatalog', 'Accès complet au catalogue de récompenses'],
-  'm.perk.WANDERER.1': ['Earn points on every booking and payment', 'Gana puntos con cada reserva y pago', 'Punkte bei jeder Buchung und Zahlung', 'Des points à chaque réservation et paiement'],
-  'm.perk.EXPLORER.0': ['5% bonus points on every booking', '5% de puntos extra en cada reserva', '5 % Bonuspunkte bei jeder Buchung', '5 % de points bonus par réservation'],
-  'm.perk.EXPLORER.1': ['Early notice on new flash deals', 'Aviso anticipado de ofertas flash', 'Früh informiert über Flash-Deals', 'Alertes en avant-première sur les offres flash'],
-  'm.perk.TRAILBLAZER.0': ['Priority table holds at top-rated spots', 'Mesas reservadas con prioridad en los mejores sitios', 'Vorrang bei Tischen in Top-Lokalen', 'Tables prioritaires dans les meilleures adresses'],
-  'm.perk.TRAILBLAZER.1': ['10% bonus points on every booking', '10% de puntos extra en cada reserva', '10 % Bonuspunkte bei jeder Buchung', '10 % de points bonus par réservation'],
-  'm.perk.LOCAL_LEGEND.0': ['Access to Legend-exclusive rewards', 'Acceso a premios exclusivos de Leyenda', 'Zugang zu exklusiven Legenden-Prämien', 'Accès aux récompenses exclusives Légende'],
-  'm.perk.LOCAL_LEGEND.1': ['Free priority booking on every experience', 'Reserva prioritaria gratis en cada experiencia', 'Kostenlose Vorrangbuchung bei jedem Erlebnis', 'Réservation prioritaire gratuite sur chaque expérience'],
-  'm.perk.LOCAL_LEGEND.2': ['15% bonus points on every booking', '15% de puntos extra en cada reserva', '15 % Bonuspunkte bei jeder Buchung', '15 % de points bonus par réservation'],
   'm.rewards.ptsShort': ['{n} pts', '{n} pts', '{n} Pkt.', '{n} pts'],
   'm.rewards.ptsPlus': ['{n}+ pts', '{n}+ pts', '{n}+ Pkt.', '{n}+ pts'],
   // Safety
@@ -2880,9 +2869,9 @@ const more = {
   'm.sv.sent': ['Sent', 'Enviado', 'Gesendet', 'Envoyé'],
 } as const satisfies Record<string, readonly [string, string, string, string]>
 
-export type DictKey = BaseKey | keyof typeof more
+export type DictKey = BaseKey | keyof typeof more | keyof typeof REWARDS_STRINGS
 
-const column = (i: 0 | 1 | 2 | 3) => Object.fromEntries(Object.entries(more).map(([k, v]) => [k, v[i]])) as Record<keyof typeof more, string>
+const column = (i: 0 | 1 | 2 | 3) => Object.fromEntries([...Object.entries(more), ...Object.entries(REWARDS_STRINGS)].map(([k, v]) => [k, v[i]])) as Record<keyof typeof more | keyof typeof REWARDS_STRINGS, string>
 
 const DICTS: Record<Lang, Record<DictKey, string>> = {
   en: { ...en, ...column(0) },

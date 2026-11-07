@@ -3,16 +3,17 @@
 // POST { photoSpotId, lat, lng, accuracy? } (signed in) — GPS check-in at a
 // photo spot. Vendors are checked in by scanning their QR card instead
 // (POST /api/visits). The caller must be within CHECKIN_RADIUS_M of the
-// place. Earns CHECKIN_POINTS
-// once per place per day, plus a one-time Discovery bonus the first time
-// (same amounts as elsewhere: vendor 50, photo spot 30). Points are added
-// server-side.
+// place. Earns EARN.photoSpotCheckIn once per spot per day, plus
+// EARN.photoSpotFirst the first time (lib/earn-config.ts), as ledger entries.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'
 import { evaluateChallenges } from '@/lib/challenges'
 import { distanceM, MAX_GPS_ACCURACY_M, parseCoord } from '@/lib/hidden-gems'
-import { CHECKIN_POINTS, CHECKIN_RADIUS_M, DISCOVERY_POINTS } from '@/lib/checkins'
+import { CHECKIN_RADIUS_M } from '@/lib/checkins'
+import { EARN } from '@/lib/earn-config'
+import { balances, earn } from '@/lib/points-ledger'
+import { jamaicaDayKey } from '@/lib/trip-dates'
 import { startOfJamaicaDay } from '@/lib/booking-counts'
 import { id, parseBody, z } from '@/lib/validate'
 
@@ -65,8 +66,8 @@ export async function POST(request: Request) {
 
   try {
     const place = vendorId
-      ? await prisma.vendor.findUnique({ where: { id: vendorId }, select: { lat: true, lng: true, name: true } })
-      : await prisma.photoSpot.findUnique({ where: { id: photoSpotId! }, select: { lat: true, lng: true, name: true } })
+      ? await prisma.vendor.findUnique({ where: { id: vendorId }, select: { lat: true, lng: true, name: true, city: true } })
+      : await prisma.photoSpot.findUnique({ where: { id: photoSpotId! }, select: { lat: true, lng: true, name: true, city: true } })
     if (!place) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     const dist = Math.round(distanceM({ lat, lng }, place))
     if (dist > CHECKIN_RADIUS_M) {
@@ -77,17 +78,21 @@ export async function POST(request: Request) {
     const already = await prisma.checkIn.findFirst({ where: { ...where, createdAt: { gte: startOfJamaicaDay() } } })
     if (already) return NextResponse.json({ error: 'You already checked in here today', alreadyToday: true }, { status: 409 })
 
+    const spot = photoSpotId!
     const result = await prisma.$transaction(async tx => {
       const firstTime = !(await tx.discovery.findFirst({ where }))
-      const discoveryPoints = firstTime ? DISCOVERY_POINTS[vendorId ? 'vendor' : 'photospot'] : 0
-      await tx.checkIn.create({ data: { ...where, lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : null, distanceM: dist, method: 'gps', points: CHECKIN_POINTS } })
-      if (firstTime) await tx.discovery.create({ data: { ...where, type: vendorId ? 'VENDOR' : 'PHOTOSPOT', points: discoveryPoints } })
-      const user = await tx.user.update({ where: { id: userId }, data: { points: { increment: CHECKIN_POINTS + discoveryPoints } }, select: { points: true } })
-      return { pointsAwarded: CHECKIN_POINTS + discoveryPoints, firstDiscovery: firstTime, totalPoints: user.points }
+      const ci = await tx.checkIn.create({ data: { ...where, lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : null, distanceM: dist, method: 'gps', points: 0 } })
+      let pts = await earn(tx, { userId, reason: 'photo_spot', points: EARN.photoSpotCheckIn, sourceType: 'photospot', sourceId: `${spot}:${jamaicaDayKey()}`, city: place.city })
+      if (firstTime) {
+        pts += await earn(tx, { userId, reason: 'photo_spot', points: EARN.photoSpotFirst, sourceType: 'photospot', sourceId: `${spot}:first`, city: place.city })
+        await tx.discovery.create({ data: { ...where, type: 'PHOTOSPOT', points: EARN.photoSpotFirst } })
+      }
+      await tx.checkIn.update({ where: { id: ci.id }, data: { points: pts } })
+      return { pointsAwarded: pts, firstDiscovery: firstTime }
     })
     // Monthly challenges this check-in completes pay their bonus now.
     const challenges = await evaluateChallenges(userId).catch(err => { console.error('Challenge check failed:', err); return [] })
-    return NextResponse.json({ ...result, place: place.name, challengesCompleted: challenges })
+    return NextResponse.json({ ...result, ...(await balances(userId)), place: place.name, challengesCompleted: challenges })
   } catch (error) {
     console.error('Error creating check-in:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

@@ -3,8 +3,10 @@
 // scanner read: the card's /v/<token> link, the token, or the printed code.
 // The caller must be within QR_VISIT_RADIUS_M of the vendor, once per vendor
 // per Jamaica day. Logs the visit (CheckIn, method "qr" — the vendor's
-// proof of visit), awards CHECKIN_POINTS plus the first-visit Discovery
-// bonus, and returns the vendor's rewards the visit unlocks. A quest
+// proof of visit), earns EARN.qrFirstVisit or EARN.qrRepeatVisit plus any
+// boosts (lib/visit-earn.ts — every point a ledger entry), then the 3-day
+// streak, referral and crew bonuses, and returns the vendor's rewards the
+// visit unlocks and any badges it completes. A quest
 // checkpoint at this vendor counts, and via "explore" (scanning from Explore
 // mode) can unlock the vendor's explorer-only perks (lib/explore.ts).
 import { NextResponse } from 'next/server'
@@ -12,7 +14,10 @@ import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'
 import { evaluateChallenges } from '@/lib/challenges'
 import { distanceM, MAX_GPS_ACCURACY_M } from '@/lib/hidden-gems'
-import { CHECKIN_POINTS, DISCOVERY_POINTS, QR_VISIT_RADIUS_M } from '@/lib/checkins'
+import { QR_VISIT_RADIUS_M } from '@/lib/checkins'
+import { balances, planBoosts, sumLines } from '@/lib/points-ledger'
+import { afterVisit, earnForVisit } from '@/lib/visit-earn'
+import { badgesFor } from '@/lib/badges'
 import { startOfJamaicaDay } from '@/lib/booking-counts'
 import { parseScanned } from '@/lib/vendor-qr'
 import { rateLimit } from '@/lib/rate-limit'
@@ -49,7 +54,7 @@ export async function POST(request: Request) {
   try {
     const card = await prisma.vendorQrCard.findUnique({
       where: { token },
-      include: { vendor: { select: { id: true, name: true, lat: true, lng: true } } }
+      include: { vendor: { select: { id: true, name: true, lat: true, lng: true, city: true, indoor: true } } }
     })
     if (!card) return NextResponse.json({ error: 'That isn’t an ETA vendor code', code: 'QR_INVALID' }, { status: 404 })
     const vendor = card.vendor
@@ -65,16 +70,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You already checked in here today', code: 'ALREADY_TODAY', alreadyToday: true, vendor: { id: vendor.id, name: vendor.name }, explore }, { status: 409 })
     }
 
-    const result = await prisma.$transaction(async tx => {
+    const plan = await planBoosts(userId, vendor)
+    const visit = await prisma.$transaction(async tx => {
       const firstTime = !(await tx.discovery.findFirst({ where: { userId, vendorId: vendor.id } }))
-      const bonus = firstTime ? DISCOVERY_POINTS.vendor : 0
       const checkIn = await tx.checkIn.create({
-        data: { userId, vendorId: vendor.id, lat: parsed.data.lat, lng: parsed.data.lng, accuracy: accuracy ?? null, distanceM: dist, method: 'qr', points: CHECKIN_POINTS }
+        data: { userId, vendorId: vendor.id, lat: parsed.data.lat, lng: parsed.data.lng, accuracy: accuracy ?? null, distanceM: dist, method: 'qr', points: 0 }
       })
-      if (firstTime) await tx.discovery.create({ data: { userId, vendorId: vendor.id, type: 'VENDOR', points: bonus } })
-      const user = await tx.user.update({ where: { id: userId }, data: { points: { increment: CHECKIN_POINTS + bonus } }, select: { points: true } })
-      return { visitId: checkIn.id, pointsAwarded: CHECKIN_POINTS + bonus, firstDiscovery: firstTime, totalPoints: user.points }
+      const lines = await earnForVisit(tx, { userId, vendor, firstTime, checkInId: checkIn.id }, plan)
+      await tx.checkIn.update({ where: { id: checkIn.id }, data: { points: sumLines(lines) } })
+      if (firstTime) await tx.discovery.create({ data: { userId, vendorId: vendor.id, type: 'VENDOR', points: 0 } })
+      return { visitId: checkIn.id, firstDiscovery: firstTime, lines }
     })
+    const extras = await afterVisit(userId, vendor).catch(err => { console.error('After-visit bonuses failed:', err); return [] })
+    const lines = [...visit.lines, ...extras]
+    const badgeCheck = await badgesFor(userId).catch(() => ({ badges: [], unlocked: [] as string[] }))
+    const result = { visitId: visit.visitId, firstDiscovery: visit.firstDiscovery, pointsAwarded: sumLines(lines), lines, ...(await balances(userId)), badgesUnlocked: badgeCheck.badges.filter(b => badgeCheck.unlocked.includes(b.key)) }
 
     // The vendor's rewards that need a visit are now redeemable.
     const unlocked = await prisma.reward.findMany({

@@ -96,7 +96,7 @@ export default function ExploreModePage() {
         const q = r.quests[0]
         flash(r.revealed.length ? t('m.ex.revealed', { name: r.revealed[0].name, n: r.revealed[0].points }) : q.completed ? t('m.ex.questDone', { title: q.title, badge: q.badgeName ?? '' }) : t('m.ex.checkpointHit', { title: q.title, n: q.reached, total: q.total }))
         const u = getCurrentUser()
-        if (u && gained) setCurrentUser({ ...u, points: u.points + gained })
+        if (u && gained) setCurrentUser({ ...u, points: u.points + gained, lifetimePoints: (u.lifetimePoints ?? u.points) + gained })
         lastBand.current = null
         load()
       }
@@ -302,7 +302,7 @@ export default function ExploreModePage() {
                       <span style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>{p.unlocked ? p.name : t('m.ex.perkLocked')}</span>
                       <span style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{p.unlocked ? `${p.vendors.join(', ')} · ${p.code}` : t('m.ex.perkHow', { vendor: p.vendors[0] ?? state.town.name })}</span>
                     </span>
-                    {p.unlocked && <Link href="/rewards?tab=vouchers" style={{ color: 'var(--gold)', fontSize: '13px', fontWeight: 700 }}>{t('m.common.view')}</Link>}
+                    {p.unlocked && <Link href="/rewards/mine" style={{ color: 'var(--gold)', fontSize: '13px', fontWeight: 700 }}>{t('m.common.view')}</Link>}
                   </div>
                 ))}
               </div>

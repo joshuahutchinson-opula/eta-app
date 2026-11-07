@@ -39,7 +39,7 @@ export default function CheckInButton({ target }: { target: { kind: 'photospot';
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Sumth nah wuk')
       const u = getCurrentUser()
-      if (u && typeof data.totalPoints === 'number') setCurrentUser({ ...u, points: data.totalPoints })
+      if (u && typeof data.totalPoints === 'number') setCurrentUser({ ...u, points: data.totalPoints, ...(typeof data.lifetimePoints === 'number' ? { lifetimePoints: data.lifetimePoints } : {}) })
       hapticRewardRedeemed()
       setMessage({ ok: true, text: data.firstDiscovery ? t('m.checkin.firstTime', { points: data.pointsAwarded }) : t('m.checkin.done', { points: data.pointsAwarded }) })
     } catch (e) {

@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { earn } from '@/lib/points-ledger'
 import { requireUser } from '@/lib/auth-server'
 import { rateLimit } from '@/lib/rate-limit'
 import {
@@ -58,7 +59,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       await tx.gemConfirmation.create({ data: { userId, gemId: gem.id, lat, lng } })
       if (!alreadyFound) {
         await tx.discovery.create({ data: { userId, hiddenGemId: gem.id, type: 'HIDDEN_GEM', points: GEM_DISCOVERY_POINTS } })
-        await tx.user.update({ where: { id: userId }, data: { points: { increment: GEM_DISCOVERY_POINTS } } })
+        await earn(tx, { userId, reason: 'secret_spot', points: GEM_DISCOVERY_POINTS, sourceType: 'gem', sourceId: gem.id })
       }
 
       if (gem.status !== 'PENDING') return { verifiedNow: false, confirmationCount: gem.confirmationCount, status: gem.status }
@@ -73,7 +74,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       })
       if (flipped.count > 0) {
         await tx.discovery.create({ data: { userId: gem.submittedByUserId, hiddenGemId: gem.id, type: 'HIDDEN_GEM_VERIFIED', points: GEM_SUBMITTER_BONUS } })
-        await tx.user.update({ where: { id: gem.submittedByUserId }, data: { points: { increment: GEM_SUBMITTER_BONUS } } })
+        await earn(tx, { userId: gem.submittedByUserId, reason: 'gem_verified', points: GEM_SUBMITTER_BONUS, sourceType: 'gem', sourceId: gem.id })
       }
       return { verifiedNow: flipped.count > 0, confirmationCount: updated.confirmationCount, status: 'VERIFIED' as const }
     })

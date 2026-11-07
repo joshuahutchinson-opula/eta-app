@@ -6,6 +6,7 @@
 import crypto from 'crypto'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { atLeast } from '@/lib/rewardTiers'
 
 export const WELCOME_KIND = 'welcome'
 /** Returning travelers: a gift each trip they come back (lib/travel-trips.ts). */
@@ -62,8 +63,15 @@ export async function claimWelcome(userId: string, rewardId: string) {
   return { redemption, alreadyClaimed: false }
 }
 
-/** The welcome-back gift for a returning traveler's trip: a specific one, or the town's, or island-wide. */
-export function welcomeBackRewardFor(city: string, rewardId?: string | null) {
+/** Insider and up: the bigger welcome-back gift (Reward kind "welcome_back_insider"). */
+export const WELCOME_BACK_INSIDER_KIND = 'welcome_back_insider'
+
+/** The welcome-back gift for a returning traveler's trip: a specific one, or the town's, or island-wide. Insider and up get the bigger one when there is one. */
+export async function welcomeBackRewardFor(city: string, rewardId?: string | null, lifetimePoints = 0) {
+  if (atLeast(lifetimePoints, 'INSIDER')) {
+    const bigger = await welcomeRewardFor(city, rewardId, WELCOME_BACK_INSIDER_KIND)
+    if (bigger) return bigger
+  }
   return welcomeRewardFor(city, rewardId, WELCOME_BACK_KIND)
 }
 
@@ -75,7 +83,8 @@ export async function claimWelcomeBack(userId: string, tripId: string, rewardId?
     const existing = await prisma.redemption.findUnique({ where: { id: trip.welcomeBackRedemptionId } })
     if (existing) return { redemption: existing, alreadyClaimed: true }
   }
-  const reward = await welcomeBackRewardFor(trip.city, rewardId)
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { lifetimePoints: true } })
+  const reward = await welcomeBackRewardFor(trip.city, rewardId, me?.lifetimePoints ?? 0)
   if (!reward) throw new WelcomeError('No welcome-back gift on right now')
   const full = await prisma.reward.findUnique({ where: { id: reward.id } })
   const redemption = await prisma.redemption.create({

@@ -17,7 +17,7 @@ export function useLabels() {
   return {
     category: useCallback((c: string) => pick('m.cat.', c.toUpperCase(), c), [pick]),
     priceNoun: useCallback((c: string) => pick('m.priceNoun.', c.toUpperCase(), ''), [pick]),
-    tier: useCallback((key: string) => pick('m.tier.', key, key), [pick]),
+    tier: useCallback((key: string) => pick('m.rw.tier.', key, key), [pick]),
     access: useCallback((key: string) => pick('m.access.', key, key), [pick]),
     gem: useCallback((key: string) => pick('m.gemcat.', key, key), [pick]),
     stayType: useCallback((key: string) => pick('m.stayType.', key, key), [pick])

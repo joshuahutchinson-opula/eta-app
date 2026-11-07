@@ -6,6 +6,8 @@
 // for those this records the choice.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EARN } from '@/lib/earn-config'
+import { earnBoosted, planBoosts } from '@/lib/points-ledger'
 import { requireUser } from '@/lib/auth-server'
 import { payFromWallet, WalletError } from '@/lib/wallet-pay'
 import { sendReceipt } from '@/lib/booking-notify'
@@ -35,20 +37,24 @@ export async function POST(request: Request) {
   const tip = cents(parsed.data.tip)
   const total = cents(amount + tip)
   try {
-    const vendor = parsed.data.vendorId ? await prisma.vendor.findUnique({ where: { id: parsed.data.vendorId }, select: { id: true, name: true } }) : null
+    const vendor = parsed.data.vendorId ? await prisma.vendor.findUnique({ where: { id: parsed.data.vendorId }, select: { id: true, name: true, city: true, indoor: true } }) : null
     if (parsed.data.vendorId && !vendor) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
     const description = vendor?.name ?? 'ETA Pay'
+    const plan = await planBoosts(userId, vendor)
     const tx = await prisma.$transaction(async db => {
       const row = parsed.data.rail === WALLET_RAIL
         ? await payFromWallet(db, { userId, amount: total, tip, description, vendorId: vendor?.id ?? null })
         : await db.transaction.create({ data: { userId, vendorId: vendor?.id ?? null, amount: total, tip, rail: parsed.data.rail, description, type: 'PAYMENT', status: 'COMPLETED' } })
-      await db.user.update({ where: { id: userId }, data: { points: { increment: Math.floor(amount) } } })
+      // In-app payments earn EARN.payPerDollar per whole $1 (tip excluded); cash earns nothing.
+      if (!/cash/i.test(parsed.data.rail)) {
+        await earnBoosted(db, { userId, reason: 'payment', points: Math.floor(amount) * EARN.payPerDollar, sourceType: 'transaction', sourceId: row.id, city: vendor?.city ?? null, vendorId: vendor?.id ?? null }, plan)
+      }
       return row
     })
     sendReceipt(tx.id).catch(err => console.error('Receipt failed:', err))
     if (vendor) await promptReview(userId, vendor.id, 'payment', tx.id).catch(err => console.error('Review prompt failed:', err))
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true, walletBalance: true } })
-    return NextResponse.json({ transactionId: tx.id, points: user?.points ?? null, walletBalance: user?.walletBalance ?? null }, { status: 201 })
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true, lifetimePoints: true, walletBalance: true } })
+    return NextResponse.json({ transactionId: tx.id, points: user?.points ?? null, lifetimePoints: user?.lifetimePoints ?? null, walletBalance: user?.walletBalance ?? null }, { status: 201 })
   } catch (error) {
     if (error instanceof WalletError) return NextResponse.json({ error: error.message, code: 'WALLET' }, { status: 402 })
     console.error('Payment failed:', error)

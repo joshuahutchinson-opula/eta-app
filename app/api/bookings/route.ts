@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EARN } from '@/lib/earn-config'
+import { atLeast } from '@/lib/rewardTiers'
 import { requireUser } from '@/lib/auth-server'
 import { jamaicaDateTime, priceBreakdown } from '@/lib/pricing'
 import { dateOnly, hhmm, id, parseBody, z } from '@/lib/validate'
@@ -67,7 +69,8 @@ export async function POST(request: Request) {
         unitPrice: exp?.price ?? null,
         fees: price.fees,
         totalPrice: price.total,
-        pointsEarned: Math.floor(price.subtotal),
+        pointsEarned: Math.floor(price.subtotal) * EARN.bookingPerDollar,
+        priority: atLeast((await prisma.user.findUnique({ where: { id: auth.user.id }, select: { lifetimePoints: true } }))?.lifetimePoints ?? 0, 'INSIDER'),
         status: 'PENDING'
       }
     })
