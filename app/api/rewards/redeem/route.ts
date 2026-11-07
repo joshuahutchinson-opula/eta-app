@@ -1,58 +1,26 @@
-// POST { rewardId } (signed in) — spend points on a reward. Points come off
-// server-side in the same transaction that issues the voucher code, so the
-// balance can't go negative and the voucher always exists if the points left.
-import crypto from 'crypto'
+// POST { rewardId } (signed in) — spend points on a reward (lib/vouchers.ts):
+// tier, audience, visit lock and the reward's daily/monthly caps are
+// checked, the points come off through the ledger in the same transaction
+// that issues the single-use voucher.
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'
-import { REWARD_TIERS, getTierForPoints } from '@/lib/rewardTiers'
+import { redeemReward, VoucherError } from '@/lib/vouchers'
+import { rateLimit } from '@/lib/rate-limit'
 import { id, parseBody, z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
-class RedeemError extends Error {}
-
 export async function POST(request: Request) {
   const auth = await requireUser(request, { message: 'Log in to redeem rewards' })
   if (!auth.ok) return auth.response
-  const userId = auth.user.id
+  const limited = rateLimit('redeem', auth.user.id)
+  if (limited) return limited
   const parsed = await parseBody(request, z.object({ rewardId: id }))
   if (!parsed.ok) return parsed.response
-  const reward = await prisma.reward.findFirst({ where: { id: parsed.data.rewardId, active: true, kind: 'catalog' }, include: { vendors: { select: { vendorId: true } } } })
-  if (!reward) return NextResponse.json({ error: 'Nuttin nuh go suh' }, { status: 404 })
-  // Visit-locked rewards open once you've scanned one of their vendors' QR cards.
-  if (reward.requiresVisit) {
-    const visit = await prisma.checkIn.findFirst({ where: { userId, method: 'qr', vendorId: { in: reward.vendors.map(v => v.vendorId) } }, select: { id: true } })
-    if (!visit) return NextResponse.json({ error: 'Scan the vendor’s ETA QR card on your visit to unlock this', code: 'VISIT_REQUIRED' }, { status: 403 })
-  }
-
   try {
-    const result = await prisma.$transaction(async tx => {
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { points: true } })
-      if (!user) throw new RedeemError('Log in to redeem rewards')
-      if (reward.minTier) {
-        const need = REWARD_TIERS.findIndex(t => t.key === reward.minTier)
-        const have = REWARD_TIERS.findIndex(t => t.key === getTierForPoints(user.points).key)
-        if (have < need) throw new RedeemError(`${REWARD_TIERS[need].label} tier required`)
-      }
-      const debited = await tx.user.updateMany({ where: { id: userId, points: { gte: reward.cost } }, data: { points: { decrement: reward.cost } } })
-      if (debited.count === 0) throw new RedeemError('Yuh nave nuff points fi dat yet')
-      const redemption = await tx.redemption.create({
-        data: {
-          userId,
-          rewardId: reward.id,
-          rewardName: reward.name,
-          pointCost: reward.cost,
-          code: `ETA-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
-          expiresAt: new Date(Date.now() + reward.validDays * 86400000)
-        }
-      })
-      const after = await tx.user.findUnique({ where: { id: userId }, select: { points: true } })
-      return { redemption, points: after?.points ?? 0 }
-    })
-    return NextResponse.json(result, { status: 201 })
+    return NextResponse.json(await redeemReward(auth.user.id, parsed.data.rewardId), { status: 201 })
   } catch (error) {
-    if (error instanceof RedeemError) return NextResponse.json({ error: error.message }, { status: 409 })
+    if (error instanceof VoucherError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
     console.error('Error redeeming reward:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })
   }

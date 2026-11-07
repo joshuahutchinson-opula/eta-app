@@ -1,12 +1,13 @@
 // lib/referrals.ts
-// Referral program (B10). A user shares their code; a friend registers
-// with it (Referral row, PENDING). When that friend completes their first
-// booking, both get REFERRAL_POINTS added to the same `points` total the
-// reward tiers are computed from. The PENDING → REWARDED transition is a
-// conditional update, so the payout can only ever happen once.
+// Referral program. A user (tourist or local) shares their code; a friend
+// registers with it (Referral row, PENDING). When that friend makes their
+// first QR visit, the referrer earns REFERRAL_POINTS (EARN.referralFirstVisit)
+// as a ledger entry. The PENDING → REWARDED transition is a conditional
+// update, so the payout can only ever happen once.
 
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { earn } from '@/lib/points-ledger'
 
 export { REFERRAL_POINTS } from '@/lib/points'
 import { REFERRAL_POINTS } from '@/lib/points'
@@ -39,8 +40,8 @@ export async function findReferrer(code: unknown): Promise<{ id: string } | null
   return prisma.user.findUnique({ where: { referralCode: code.trim().toUpperCase() }, select: { id: true } })
 }
 
-/** Called from onBookingCompleted. Pays out a pending referral on the referee's first completed booking. */
-export async function rewardReferralOnFirstBooking(refereeId: string): Promise<boolean> {
+/** Called after a QR visit. Pays the referrer once, on the referred friend's first visit (lib/visit-earn.ts). */
+export async function rewardReferralOnFirstVisit(refereeId: string): Promise<boolean> {
   const referral = await prisma.referral.findUnique({ where: { refereeId } })
   if (!referral || referral.status !== 'PENDING') return false
   return prisma.$transaction(async tx => {
@@ -49,8 +50,7 @@ export async function rewardReferralOnFirstBooking(refereeId: string): Promise<b
       data: { status: 'REWARDED', pointsAwarded: REFERRAL_POINTS, rewardedAt: new Date() }
     })
     if (claimed.count === 0) return false
-    await tx.user.update({ where: { id: referral.referrerId }, data: { points: { increment: REFERRAL_POINTS } } })
-    await tx.user.update({ where: { id: refereeId }, data: { points: { increment: REFERRAL_POINTS } } })
+    await earn(tx, { userId: referral.referrerId, reason: 'referral', points: REFERRAL_POINTS, sourceType: 'referral', sourceId: referral.id })
     return true
   })
 }

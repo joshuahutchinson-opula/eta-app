@@ -59,6 +59,15 @@ const schema = z.object({
     if (!h) ctx.addIssue({ code: 'custom', message: 'Use your Instagram username, like @yourname' })
     return h
   }),
+  // One account per phone number (fraud protection): unique across users.
+  phone: z.string().max(24).nullable().transform((v, ctx) => {
+    if (!v || !v.trim()) return null
+    const n = normalizePhone(v)
+    if (!n) ctx.addIssue({ code: 'custom', message: 'Use a phone number with country code' })
+    return n
+  }),
+  // "MM-DD": double points on your birthday (Explorer and up).
+  birthday: z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'Use month and day').nullable(),
   whatsappNumber: z.string().max(24).nullable().transform((v, ctx) => {
     if (!v || !v.trim()) return null
     const n = normalizePhone(v)
@@ -88,6 +97,15 @@ export async function PUT(request: Request) {
   const end = tripEnd === undefined ? undefined : tripEnd ? jamaicaDayStart(tripEnd) : null
   if (start && end && end < start) return NextResponse.json({ error: 'The trip can’t end before it starts', code: 'INVALID_BODY' }, { status: 400 })
   if (rest.notifyWhatsapp && rest.whatsappNumber === null) return NextResponse.json({ error: 'Add your WhatsApp number first', code: 'INVALID_BODY' }, { status: 400 })
+  if (rest.phone) {
+    const taken = await prisma.user.findFirst({ where: { phone: rest.phone, id: { not: auth.user.id } }, select: { id: true } })
+    if (taken) return NextResponse.json({ error: 'That phone number is already on another ETA account', code: 'PHONE_TAKEN' }, { status: 409 })
+  }
+  // Birthday can be set once (no moving it to farm double points).
+  if (rest.birthday !== undefined) {
+    const had = await prisma.user.findUnique({ where: { id: auth.user.id }, select: { birthday: true } })
+    if (had?.birthday && had.birthday !== rest.birthday) return NextResponse.json({ error: 'Your birthday is already set — contact ETA to change it', code: 'BIRTHDAY_SET' }, { status: 409 })
+  }
   try {
     const before = start !== undefined || end !== undefined
       ? await prisma.user.findUnique({ where: { id: auth.user.id }, select: { tripStart: true, tripEnd: true } })

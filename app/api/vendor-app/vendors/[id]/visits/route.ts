@@ -1,9 +1,11 @@
 // GET /api/vendor-app/vendors/:id/visits?from=&to=&limit= — proof of visit
 // for the vendor app: every QR check-in at this vendor (first name + initial
 // only), with totals. from/to are ISO dates; defaults to the last 30 days.
+// Each visitor carries their ETA status; Yaadies get the gold badge.
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireVendorAccess } from '@/lib/vendor-app'
+import { getTierForPoints } from '@/lib/rewardTiers'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +25,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const where = { vendorId: access.vendor.id, method: 'qr', createdAt: { gte: from, lte: to } }
     const [visits, total, unique] = await Promise.all([
-      prisma.checkIn.findMany({ where, orderBy: { createdAt: 'desc' }, take: limit, include: { user: { select: { name: true, homeCountry: true } } } }),
+      prisma.checkIn.findMany({ where, orderBy: { createdAt: 'desc' }, take: limit, include: { user: { select: { name: true, homeCountry: true, lifetimePoints: true } } } }),
       prisma.checkIn.count({ where }),
       prisma.checkIn.groupBy({ by: ['userId'], where })
     ])
@@ -31,7 +33,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       vendor: access.vendor,
       from, to,
       totals: { visits: total, uniqueVisitors: unique.length },
-      visits: visits.map(v => ({ id: v.id, at: v.createdAt, visitor: shortName(v.user.name), homeCountry: v.user.homeCountry, distanceM: v.distanceM, pointsAwarded: v.points }))
+      visits: visits.map(v => ({ id: v.id, at: v.createdAt, visitor: shortName(v.user.name), homeCountry: v.user.homeCountry, tier: getTierForPoints(v.user.lifetimePoints).key, yaadie: getTierForPoints(v.user.lifetimePoints).key === 'YAADIE', distanceM: v.distanceM, pointsAwarded: v.points }))
     })
   } catch (error) {
     console.error('Error listing visits:', error)

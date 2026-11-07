@@ -2,6 +2,8 @@
 // reviewers by first name only). POST — post a review (signed in, verified).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { EARN } from '@/lib/earn-config'
+import { balances, earn } from '@/lib/points-ledger'
 import { requireUser } from '@/lib/auth-server'
 import { rateLimit } from '@/lib/rate-limit'
 import { id, parseBody, text, z } from '@/lib/validate'
@@ -50,7 +52,12 @@ export async function POST(request: Request) {
     const review = await prisma.review.create({
       data: { userId: auth.user.id, vendorId, experienceId: experienceId ?? null, rating, comment: comment || null }
     })
-    return NextResponse.json(review, { status: 201 })
+    // EARN.verifiedReview, only after a QR visit to this vendor, once per vendor.
+    const visited = await prisma.checkIn.findFirst({ where: { userId: auth.user.id, vendorId, method: 'qr' }, select: { vendor: { select: { city: true } } } })
+    const pointsAwarded = visited
+      ? await earn(prisma, { userId: auth.user.id, reason: 'review', points: EARN.verifiedReview, sourceType: 'review', sourceId: vendorId, city: visited.vendor?.city ?? null, vendorId })
+      : 0
+    return NextResponse.json({ ...review, pointsAwarded, ...(pointsAwarded ? await balances(auth.user.id) : {}) }, { status: 201 })
   } catch (error) {
     console.error('Error creating review:', error)
     return NextResponse.json({ error: 'Sumth nah wuk' }, { status: 500 })

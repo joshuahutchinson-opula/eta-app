@@ -85,21 +85,33 @@ enum TransactionStatus {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String?
-  name          String
-  role          Role     @default(EXPLORER)
-  level         Level    @default(WANDERER)
-  points        Int      @default(0)
-  walletBalance Float    @default(0)
-  streak        Int      @default(0)
-  city          City     @default(NEGRIL)
-  avatarUrl     String?
-  bio           String?
-  homeCountry   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String?
+  name           String
+  role           Role     @default(EXPLORER)
+  level          Level    @default(WANDERER)
+  // Spendable points (go down when redeemed or donated).
+  points         Int      @default(0)
+  // Every point ever earned; only goes up. Status tier comes from this
+  // (lib/rewardTiers.ts), so it never drops and carries across trips.
+  lifetimePoints Int      @default(0)
+  // The highest tier already celebrated (full-screen tier-up moment).
+  tierSeen       String   @default("VISITOR")
+  // One account per phone number (fraud protection), E.164.
+  phone          String?  @unique
+  // "MM-DD": Explorer and up earn double points on their birthday.
+  birthday       String?
+  // Demo leaderboard people (scripts/seed-rewards.ts).
+  isMock         Boolean  @default(false)
+  walletBalance  Float    @default(0)
+  streak         Int      @default(0)
+  city           City     @default(NEGRIL)
+  avatarUrl      String?
+  bio            String?
+  homeCountry    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Null until the user opens the link in their verification email.
   // Unverified users can browse but not book, review or post.
@@ -216,6 +228,10 @@ model User {
   storyReplies       StoryReply[]
   closeFriends       CloseFriend[]       @relation("CloseFriendOwner")
   closeFriendOf      CloseFriend[]       @relation("CloseFriendFriend")
+  pointsLedger       PointsLedger[]
+  donations          Donation[]
+  userBadges         UserBadge[]
+  fraudAlerts        FraudAlert[]
 
   @@index([instagramHandle])
 }
@@ -237,6 +253,9 @@ model Vendor {
   open                 Boolean              @default(false)
   live                 Boolean              @default(false)
   isPremium            Boolean              @default(false)
+  // Indoor spot: rainy-day boosts apply here when rain is forecast.
+  indoor               Boolean              @default(false)
+  boosts               Boost[]
   // A local spot: cook shop, jerk centre or street food. Drives the
   // "Most local" badge on generated routes (lib/plan.ts).
   localSpot            Boolean              @default(false)
@@ -540,6 +559,8 @@ model Booking {
   refundAmount  Float?
   // Set each time the traveler moves the booking to a new date/time.
   rescheduledAt DateTime?
+  // Insider and up: the vendor sees it as a priority booking.
+  priority      Boolean       @default(false)
 
   userId          String
   user            User           @relation(fields: [userId], references: [id])
@@ -1020,7 +1041,9 @@ model Event {
 
   // A big night in town: Home's hero shows this event (its video) tonight.
   // Events with lots of interest count too (lib/home.ts partyNight).
-  bigNight Boolean @default(false)
+  bigNight         Boolean   @default(false)
+  // Insider and up can buy tickets before this; everyone after.
+  earlyAccessUntil DateTime?
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -1042,20 +1065,26 @@ enum RedemptionStatus {
 // Points spent on a reward. The code (and its QR) is the voucher the
 // traveler shows; the points are deducted when this row is created.
 model Redemption {
-  id         String           @id @default(cuid())
-  rewardId   String
-  rewardName String
-  pointCost  Int
-  code       String           @unique
-  status     RedemptionStatus @default(ACTIVE)
-  expiresAt  DateTime?
-  usedAt     DateTime?
-  createdAt  DateTime         @default(now())
+  id            String           @id @default(cuid())
+  rewardId      String
+  rewardName    String
+  pointCost     Int
+  code          String           @unique
+  status        RedemptionStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  usedAt        DateTime?
+  createdAt     DateTime         @default(now())
+  // Set by the vendor when confirming: who confirmed and what the customer
+  // spent on that visit (vendor ROI report).
+  confirmedById String?
+  spendAmount   Float?
 
   userId   String
   user     User    @relation(fields: [userId], references: [id])
   vendorId String?
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([rewardId, createdAt])
 }
 
 enum ReservationStatus {
@@ -1337,26 +1366,42 @@ model MenuItem {
 
 // The reward catalog. id is a stable slug (Redemption.rewardId).
 model Reward {
-  id            String   @id
-  name          String
-  description   String
-  cost          Int
-  icon          String
-  minTier       String?
-  validDays     Int
+  id                String   @id
+  name              String
+  description       String
+  cost              Int
+  icon              String
+  minTier           String?
+  validDays         Int
   // Null = available everywhere in Jamaica.
-  city          City?
-  active        Boolean  @default(true)
-  sortOrder     Int      @default(0)
+  city              City?
+  active            Boolean  @default(true)
+  sortOrder         Int      @default(0)
   // "catalog" = bought with points in Rewards. "welcome" = free, once per
   // traveler, handed out by the arrival moment or a partner property code
   // (lib/welcome.ts); cost is ignored. Configure these as data.
-  kind          String   @default("catalog")
+  kind              String   @default("catalog")
   // Locked until the traveler has QR-scanned at one of the reward's vendors.
-  requiresVisit Boolean  @default(false)
-  isMock        Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  requiresVisit     Boolean  @default(false)
+  // Rewards hub filter: "vendor" (vendor perks, vendor-funded), "insider"
+  // (tier-only), "events" (early access, VIP entry) or "eta" (ETA perks:
+  // ride and experience discounts, ETA-funded).
+  category          String   @default("eta")
+  // "all", or "local" for local-flavoured perks only residents see.
+  audience          String   @default("all")
+  // Every reward has caps: redemptions per Jamaica day and per month.
+  dailyCap          Int      @default(20)
+  monthlyBudget     Int      @default(300)
+  // High-value rewards: the voucher QR rotates every 30 s, so a screenshot
+  // can't be reused (lib/voucher-qr.ts).
+  rotatingQr        Boolean  @default(false)
+  // Event perks (early access, VIP entry) point at their event.
+  eventId           String?
+  // The vendor that created it in the vendor app (vendor-funded).
+  createdByVendorId String?
+  isMock            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   vendors           RewardVendor[]
   partnerProperties PartnerProperty[]
@@ -1872,4 +1917,121 @@ model CloseFriend {
   friend   User   @relation("CloseFriendFriend", fields: [friendId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, friendId])
+}
+
+// ---------- Rewards (lib/points-ledger.ts, lib/earn-config.ts) ----------
+
+// Every change to a user's points: earns (+), spends and donations (-).
+// reason is a code from lib/earn-config.ts; (userId, reason, sourceId) is
+// unique, so the same thing can't pay out twice.
+model PointsLedger {
+  id         String   @id @default(cuid())
+  points     Int
+  // "earn" | "spend" | "donate"
+  kind       String
+  reason     String
+  sourceType String?
+  sourceId   String?
+  // Where it was earned (vendor's town, or the user's), for the town leaderboard.
+  city       City?
+  vendorId   String?
+  isMock     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reason, sourceId])
+  @@index([userId, createdAt])
+  @@index([city, createdAt])
+}
+
+// Points multipliers and bonuses that stack on the base earn values.
+//   quiet_hour  a vendor's 2x window (startMin-endMin, Jamaica minutes)
+//   rainy_day   2x at indoor spots in the town when rain is forecast
+//   crew        +bonus each when a whole group checks in together
+model Boost {
+  id         String   @id @default(cuid())
+  kind       String
+  title      String
+  multiplier Float    @default(2)
+  bonus      Int      @default(0)
+  startMin   Int?
+  endMin     Int?
+  // Days of week it runs (0 = Sunday); empty = every day.
+  days       Int[]    @default([])
+  city       City?
+  active     Boolean  @default(true)
+  isMock     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  vendorId String?
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([city, active])
+  @@index([vendorId])
+}
+
+// Give Back: a local cause per town that points can be donated to.
+// Admin-managed records.
+model Cause {
+  id           String   @id @default(cuid())
+  city         City
+  title        String
+  body         String
+  imageUrl     String?
+  goalPoints   Int
+  // Every unitPoints covers one unitLabel ("roofing supplies for a local family or small business").
+  unitPoints   Int
+  unitLabel    String
+  raisedPoints Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  donations Donation[]
+
+  @@index([city, active])
+}
+
+model Donation {
+  id        String   @id @default(cuid())
+  points    Int
+  isMock    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  causeId String
+  cause   Cause  @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([causeId, createdAt])
+}
+
+// When a collectable badge (lib/badges.ts) was unlocked.
+model UserBadge {
+  id       String   @id @default(cuid())
+  key      String
+  earnedAt DateTime @default(now())
+  isMock   Boolean  @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+}
+
+// Unusually fast earning, for an admin to look at (lib/points-ledger.ts).
+model FraudAlert {
+  id         String    @id @default(cuid())
+  kind       String
+  detail     Json
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
 }

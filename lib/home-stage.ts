@@ -68,6 +68,7 @@ export async function countdownExtras(input: { cities: CityCode[]; start: string
   const to = new Date(jamaicaDayStart(input.end).getTime() + 86400000)
   const city = input.cities[0]
   await rollMockEvents()
+  const lifetime = input.userId ? (await prisma.user.findUnique({ where: { id: input.userId }, select: { lifetimePoints: true } }))?.lifetimePoints ?? 0 : 0
   const [events, ahead, gift] = await Promise.all([
     prisma.event.findMany({
       where: { city: { in: input.cities }, startAt: { gte: from, lt: to } },
@@ -76,7 +77,7 @@ export async function countdownExtras(input: { cities: CityCode[]; start: string
       select: { id: true, title: true, venueName: true, startAt: true, imageUrl: true, isFree: true, price: true, city: true, vendor: { select: { images: true } } }
     }),
     bookAhead(input.cities, input.start, input.end),
-    (input.returning ? welcomeBackRewardFor(city) : Promise.resolve(null)).then(r => r ?? welcomeRewardFor(city))
+    (input.returning ? welcomeBackRewardFor(city, null, lifetime) : Promise.resolve(null)).then(r => r ?? welcomeRewardFor(city))
   ])
 
   let notTried: Array<{ id: string; name: string; image: string | null; category: string; neighborhood: string }> = []

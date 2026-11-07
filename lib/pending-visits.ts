@@ -3,12 +3,14 @@
 // visit here (with where they were, when the browser shares it) and shows
 // the vendor's web page with "Get ETA to collect your points". If they sign
 // up within 24 hours, the visit is credited like a normal QR visit
-// (app/api/visits): the CheckIn, the points and the first-visit bonus —
+// (app/api/visits): the CheckIn and the visit points (lib/visit-earn.ts) —
 // but only when they really were at the vendor when they scanned.
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { distanceM } from '@/lib/hidden-gems'
-import { CHECKIN_POINTS, DISCOVERY_POINTS, QR_VISIT_RADIUS_M } from '@/lib/checkins'
+import { QR_VISIT_RADIUS_M } from '@/lib/checkins'
+import { balances, sumLines } from '@/lib/points-ledger'
+import { afterVisit, earnForVisit } from '@/lib/visit-earn'
 import { parseScanned } from '@/lib/vendor-qr'
 import { jamaicaDayKey } from '@/lib/trip-dates'
 
@@ -31,7 +33,7 @@ export type ClaimResult =
   | { ok: false; reason: 'expired' | 'claimed' | 'notOnSite' | 'alreadyToday' | 'unknown' }
 
 export async function claimVisit(userId: string, claimToken: string): Promise<ClaimResult> {
-  const p = await prisma.pendingVisit.findUnique({ where: { claimToken }, include: { vendor: { select: { id: true, name: true } } } })
+  const p = await prisma.pendingVisit.findUnique({ where: { claimToken }, include: { vendor: { select: { id: true, name: true, city: true } } } })
   if (!p) return { ok: false, reason: 'unknown' }
   if (p.claimedAt) return { ok: false, reason: 'claimed' }
   if (Date.now() - p.createdAt.getTime() > CLAIM_WINDOW_MS) return { ok: false, reason: 'expired' }
@@ -45,14 +47,17 @@ export async function claimVisit(userId: string, claimToken: string): Promise<Cl
     await prisma.pendingVisit.update({ where: { id: p.id }, data: { claimedAt: new Date(), claimedById: userId } })
     return { ok: false, reason: 'alreadyToday' }
   }
-  const result = await prisma.$transaction(async tx => {
+  // Boosts were for the moment of the scan; a claimed visit earns the base only.
+  const lines = await prisma.$transaction(async tx => {
     const firstTime = !(await tx.discovery.findFirst({ where: { userId, vendorId: p.vendorId } }))
-    const bonus = firstTime ? DISCOVERY_POINTS.vendor : 0
-    await tx.checkIn.create({ data: { userId, vendorId: p.vendorId, lat: p.lat, lng: p.lng, distanceM: p.distanceM, method: 'qr', points: CHECKIN_POINTS, createdAt: p.createdAt } })
-    if (firstTime) await tx.discovery.create({ data: { userId, vendorId: p.vendorId, type: 'VENDOR', points: bonus } })
+    const checkIn = await tx.checkIn.create({ data: { userId, vendorId: p.vendorId, lat: p.lat, lng: p.lng, distanceM: p.distanceM, method: 'qr', points: 0, createdAt: p.createdAt } })
+    const earned = await earnForVisit(tx, { userId, vendor: p.vendor, firstTime, checkInId: checkIn.id, at: p.createdAt }, { lines: [], birthday: false })
+    await tx.checkIn.update({ where: { id: checkIn.id }, data: { points: sumLines(earned) } })
+    if (firstTime) await tx.discovery.create({ data: { userId, vendorId: p.vendorId, type: 'VENDOR', points: 0 } })
     await tx.pendingVisit.update({ where: { id: p.id }, data: { claimedAt: new Date(), claimedById: userId } })
-    const user = await tx.user.update({ where: { id: userId }, data: { points: { increment: CHECKIN_POINTS + bonus } }, select: { points: true } })
-    return { pointsAwarded: CHECKIN_POINTS + bonus, totalPoints: user.points }
+    return earned
   })
-  return { ok: true, vendor: p.vendor, ...result }
+  const extras = await afterVisit(userId, p.vendor).catch(() => [])
+  const { totalPoints } = await balances(userId)
+  return { ok: true, vendor: { id: p.vendor.id, name: p.vendor.name }, pointsAwarded: sumLines([...lines, ...extras]), totalPoints }
 }

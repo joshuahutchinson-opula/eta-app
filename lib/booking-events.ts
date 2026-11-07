@@ -4,15 +4,14 @@
 // booking), which is what keeps every award here exactly-once.
 
 import { prisma } from '@/lib/prisma'
-import { rewardReferralOnFirstBooking } from '@/lib/referrals'
+import { earn } from '@/lib/points-ledger'
 
 export async function onBookingCompleted(bookingId: string): Promise<void> {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { id: true, userId: true, pointsEarned: true } })
   if (!booking) return
   // The points shown on the booking ("+N pts") are credited when the trip is actually done.
+  // (EARN.bookingPerDollar per $1, set when the booking was made.)
   if (booking.pointsEarned > 0) {
-    await prisma.user.update({ where: { id: booking.userId }, data: { points: { increment: booking.pointsEarned } } })
+    await earn(prisma, { userId: booking.userId, reason: 'booking', points: booking.pointsEarned, sourceType: 'booking', sourceId: booking.id })
   }
-  // A friend's first completed booking pays out their referral (B10).
-  await rewardReferralOnFirstBooking(booking.userId).catch(err => console.error('Referral payout failed:', err))
 }

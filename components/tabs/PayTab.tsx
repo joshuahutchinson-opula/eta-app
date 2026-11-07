@@ -9,6 +9,7 @@
 // (from Explore mode) lets the scan reach quest checkpoints' explorer perks.
 'use client'
 
+import { refreshMe } from '@/lib/rewards-client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -102,6 +103,7 @@ export default function ScanAndPayPage() {
       setVisit(result)
       const u = getCurrentUser()
       if (u) setUser({ ...u, points: result.totalPoints })
+      refreshMe()
       setVendor((await who) ?? { id: result.vendor.id, name: result.vendor.name, image: null })
       setStage('pay')
     } catch (e) {
@@ -168,6 +170,7 @@ export default function ScanAndPayPage() {
       const updated = { ...user, ...(typeof data.points === 'number' ? { points: data.points } : {}), ...(typeof data.walletBalance === 'number' ? { walletBalance: data.walletBalance } : {}) }
       setCurrentUser(updated)
       setUser(updated)
+      refreshMe()
       hapticBookingConfirmed()
       // "How was <vendor>?" comes up over the receipt.
       setTimeout(() => window.dispatchEvent(new CustomEvent('eta-review-check')), 2500)

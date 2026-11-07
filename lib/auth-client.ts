@@ -8,7 +8,15 @@ export interface CurrentUser {
   name: string
   role: string
   level: string
+  /** Spendable points. */
   points: number
+  /** Every point ever earned (status tier; never goes down). */
+  lifetimePoints?: number
+  /** The highest tier already celebrated. */
+  tierSeen?: string
+  phone?: string | null
+  /** "MM-DD". */
+  birthday?: string | null
   walletBalance: number
   streak: number
   city: string
@@ -67,8 +75,12 @@ export function getAuthToken(): string | null {
   try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
 }
 
+/** Fired whenever the cached user changes (points pill, tier-up moment). */
+export const USER_EVENT = 'eta-points-change'
+
 export function setCurrentUser(user: CurrentUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
+  try { window.dispatchEvent(new CustomEvent(USER_EVENT)) } catch {}
 }
 
 export function isVerified(user: CurrentUser | null): boolean {

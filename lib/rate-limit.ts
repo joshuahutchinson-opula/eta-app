@@ -54,7 +54,9 @@ export const LIMITS = {
   route: { limit: 240, windowMs: 10 * 60000 },
   // Explore mode position fixes (one every ~15 s while walking).
   explorePing: { limit: 120, windowMs: 10 * 60000 },
-  gemConfirm: { limit: 20, windowMs: 10 * 60000 }
+  gemConfirm: { limit: 20, windowMs: 10 * 60000 },
+  donate: { limit: 20, windowMs: 60 * 60000 },
+  redeem: { limit: 20, windowMs: 60 * 60000 }
 } as const
 
 export type LimitName = keyof typeof LIMITS

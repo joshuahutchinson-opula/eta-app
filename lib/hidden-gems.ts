@@ -12,16 +12,17 @@
 // Anyone who walks within range can find and confirm a pending gem; that's
 // how it collects the confirmations that verify it.
 
+import { EARN } from '@/lib/earn-config'
 import { haversineKm } from '@/lib/routing'
 
 export const REVEAL_RADIUS_M = 100
 /** Confirming needs a GPS fix at least this good. */
 export const MAX_GPS_ACCURACY_M = 150
 export const VERIFY_THRESHOLD = 3
-/** Between a photo spot (30) and a vendor (50), same as other Discoveries. */
-export const GEM_DISCOVERY_POINTS = 40
+/** Finding a secret spot (lib/earn-config.ts). */
+export const GEM_DISCOVERY_POINTS = EARN.secretSpot
 /** One-time bonus to the submitter when their gem is verified. */
-export const GEM_SUBMITTER_BONUS = 150
+export const GEM_SUBMITTER_BONUS = EARN.gemVerified
 export const MAX_SUBMISSIONS_PER_DAY = 5
 
 export const GEM_CATEGORIES = ['WATERFALL', 'HOT_SPRING', 'CULTURAL_ARTIFACT', 'VIEWPOINT', 'STREET_ART', 'SWIMMING_SPOT', 'LOCAL_FAVOURITE', 'OTHER'] as const

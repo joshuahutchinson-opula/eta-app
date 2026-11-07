@@ -17,6 +17,8 @@
 //   badges       progress toward Beach hopper, Jerk hunter, Gem finder...
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { EARN, type EarnReason } from '@/lib/earn-config'
+import { earn } from '@/lib/points-ledger'
 import { GEM_DISCOVERY_POINTS, REVEAL_RADIUS_M, distanceM, type GemCategoryKey } from '@/lib/hidden-gems'
 import { streaks } from '@/lib/passport'
 import { townFor, type CityCode } from '@/lib/regions'
@@ -29,7 +31,7 @@ export const EXPLORE_RADIUS_KM = 20
 export const ZONE_RADIUS_M = 250
 /** Distance bands for warmer/colder: 0 is in range (revealed). */
 export const BANDS_M = [REVEAL_RADIUS_M, 200, 350, 600, 1200]
-export const CHECKPOINT_POINTS = 15
+export const CHECKPOINT_POINTS = EARN.questCheckpoint
 /** An explorer perk needs the QR scan within this long of an Explore session near the vendor. */
 const PERK_SESSION_MS = 3 * 3600000
 const PERK_SESSION_M = 1500
@@ -194,8 +196,8 @@ export async function exploreState(userId: string, city: CityCode) {
 
 // ---------- Moving around ----------
 
-async function awardPoints(userId: string, points: number) {
-  if (points > 0) await prisma.user.update({ where: { id: userId }, data: { points: { increment: points } } })
+async function awardPoints(userId: string, reason: EarnReason, points: number, sourceId: string) {
+  return earn(prisma, { userId, reason, points, sourceType: reason === 'secret_spot' ? 'gem' : 'quest', sourceId })
 }
 
 /** Records a checkpoint and moves the quest on; finishing pays out. */
@@ -213,13 +215,12 @@ export async function reachCheckpoint(progressId: string, checkpointId: string, 
   const moved = await prisma.questProgress.updateMany({ where: { id: progressId, reached: progress.reached, completedAt: null }, data: { reached, ...(completed ? { completedAt: new Date() } : {}) } })
   if (!moved.count) return null
   await prisma.questCheckpointHit.create({ data: { progressId, checkpointId, method } }).catch(() => {})
-  let points = CHECKPOINT_POINTS
+  let points = await awardPoints(progress.userId, 'quest_checkpoint', CHECKPOINT_POINTS, `${progressId}:${checkpointId}`)
   let perk: { name: string; code: string } | null = null
   if (completed) {
-    points += progress.quest.rewardPoints
+    points += await awardPoints(progress.userId, 'quest_complete', EARN.questComplete, progress.questId)
     if (progress.quest.rewardId) perk = await issuePerk(progress.userId, progress.quest.rewardId)
   }
-  await awardPoints(progress.userId, points)
   return { questId: progress.questId, title: progress.quest.title, checkpoint: expected.name, reached, total: progress.quest.checkpoints.length, completed, badgeName: completed ? progress.quest.badgeName : null, points, perk }
 }
 
@@ -255,7 +256,7 @@ export async function explorePing(userId: string, city: CityCode, pos: { lat: nu
     if (d <= REVEAL_RADIUS_M) {
       try {
         await prisma.discovery.create({ data: { userId, hiddenGemId: g.id, type: 'SECRET_SPOT', points: GEM_DISCOVERY_POINTS } })
-        await awardPoints(userId, GEM_DISCOVERY_POINTS)
+        await awardPoints(userId, 'secret_spot', GEM_DISCOVERY_POINTS, g.id)
         revealed.push({ id: g.id, name: g.name, points: GEM_DISCOVERY_POINTS })
       } catch {}
     } else if (nearest === null || d < nearest) nearest = d

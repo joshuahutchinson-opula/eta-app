@@ -14,11 +14,22 @@ export interface RewardItem {
   validDays: number
   /** Null = everywhere in Jamaica. */
   city?: string | null
-  vendors?: Array<{ id: string; name: string }>
+  vendors?: Array<{ id: string; name: string; image?: string | null; premium?: boolean }>
   /** Needs a QR visit to one of the vendors first (signed-in callers only). */
   locked?: boolean
   requiresVisit?: boolean
+  /** Rewards hub filter: vendor | insider | events | eta. */
+  category?: RewardCategory
+  /** "local" = local-flavoured perk, only listed for locals. */
+  audience?: string
+  rotatingQr?: boolean
+  event?: { id: string; title: string; startAt: string } | null
+  /** Left under the reward's caps. */
+  left?: { today: number; month: number }
 }
+
+export type RewardCategory = 'vendor' | 'insider' | 'events' | 'eta'
+export const REWARD_FILTERS = ['all', 'vendor', 'insider', 'events', 'eta'] as const
 
 /** Seed catalog. `vendors` are matched by name; `city` null = island-wide. */
 export const REWARD_SEED: Array<Omit<RewardItem, 'vendors' | 'city'> & { city: City | null; vendorNames: string[] }> = [
@@ -30,5 +41,5 @@ export const REWARD_SEED: Array<Omit<RewardItem, 'vendors' | 'city'> & { city: C
   { id: 'sunset-cruise', name: 'Free Sunset Cruise Upgrade', cost: 1200, description: 'Upgrade to the sunset sail on your next catamaran trip.', icon: 'wave', validDays: 60, city: 'NEGRIL', vendorNames: ['Seven Mile Beach Snorkel Tours'] },
   { id: 'spa-pass', name: 'Half-Day Spa Pass', cost: 1500, description: 'A half day of spa access at a partner spa.', icon: 'spa', validDays: 60, city: 'NEGRIL', vendorNames: ['Ocean View Spa'] },
   { id: 'vip-cabana', name: 'VIP Cabana for a Day', cost: 2000, description: 'A full day in a private beachfront cabana.', icon: 'crown', validDays: 60, city: 'MONTEGO_BAY', vendorNames: ["Doctor's Cave Beach Bar"] },
-  { id: 'legend-concierge', name: 'Personal Concierge Day', cost: 2500, description: 'A dedicated local concierge plans and runs your whole day. Legend tier exclusive.', icon: 'star', minTier: 'LOCAL_LEGEND', validDays: 90, city: null, vendorNames: [] }
+  { id: 'legend-concierge', name: 'Personal Concierge Day', cost: 2500, description: 'A dedicated local concierge plans and runs your whole day. Yaadie exclusive.', icon: 'star', minTier: 'YAADIE', validDays: 90, city: null, vendorNames: [] }
 ]

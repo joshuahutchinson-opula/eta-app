@@ -401,8 +401,8 @@ export default function ProfilePage() {
             <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px' }}>{memberSince}</p>
           )}
           <span className="chip" style={{ cursor: 'default', marginTop: '10px' }}>
-            <Icon name={getTierForPoints(user.points).icon as any} size={14} style={{ color: 'var(--rum-text)' }} />
-            {labels.tier(getTierForPoints(user.points).key)}
+            <Icon name={getTierForPoints(user.lifetimePoints ?? user.points).icon as any} size={14} style={{ color: 'var(--rum-text)' }} />
+            {labels.tier(getTierForPoints(user.lifetimePoints ?? user.points).key)}
           </span>
         </div>
 
