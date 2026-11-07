@@ -38,13 +38,12 @@ export async function GET(request: Request) {
   try {
     const [trips, user, explored] = await Promise.all([
       tripsFor(auth.user.id),
-      prisma.user.findUnique({ where: { id: auth.user.id }, select: { travelerType: true, cruisePort: true, cruiseDay: true, cruiseAllAboardAt: true, stagePromptSnoozedUntil: true } }),
+      prisma.user.findUnique({ where: { id: auth.user.id }, select: { travelerType: true, cruisePort: true, cruiseDay: true, cruiseAllAboardAt: true } }),
       exploredByTown(auth.user.id)
     ])
     return NextResponse.json({
       trips,
       travelerType: user?.travelerType ?? null,
-      snoozedUntil: user?.stagePromptSnoozedUntil ?? null,
       cruise: user?.cruisePort && user.cruiseDay && user.cruiseAllAboardAt ? { port: user.cruisePort, day: user.cruiseDay, allAboardAt: user.cruiseAllAboardAt } : null,
       explored
     })

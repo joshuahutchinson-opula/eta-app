@@ -60,7 +60,6 @@ export type PromptKind =
   | 'arrivingToday'  // arrival day, phone not in Jamaica yet: "Arriving today" (wait)
   | 'landed'         // arrival day, location off: "Landed?"
   | 'startGetaway'   // a local's getaway starts today
-  | 'inJamaica'      // in Jamaica, no trip, not a local: "Starting your trip?"
   | 'shiftDates'     // arrived earlier/later than the dates
   | 'extend'         // still in Jamaica after the leave date
   | 'endEarly'       // out of Jamaica before the leave date
@@ -174,8 +173,6 @@ export function stageFor(input: StageInput): StageResult {
   // No trip on. At a cruise port: a cruise day?
   const port = cruisePortAt(pos)
   if (port && !isLocal) ask({ kind: 'cruise', city: port.city })
-  // In Jamaica without a trip, and not a local: starting one?
-  if (inJa && !isLocal && !port) ask({ kind: 'inJamaica' })
 
   if (isLocal) return { ...base, stage: 'local', trip: null, prompts }
   const last = trips

@@ -172,8 +172,6 @@ export async function setCruise(cruise: CruiseDay | null) {
 export function dismissPrompt(p: Prompt, forMs: number) {
   const dev = readDevice()
   writeDevice({ dismissed: { ...dev.dismissed, [promptKey(p)]: Date.now() + forMs } })
-  // "Not now" on "Starting your trip?" is quiet for 7 days on every device.
-  if (p.kind === 'inJamaica' && signedIn()) apiJson('/api/users/me', { method: 'PUT', body: { stagePromptSnoozedUntil: new Date(Date.now() + forMs).toISOString() } }).catch(() => {})
 }
 
 export function setDayTrip(v: DeviceStage['dayTrip']) { writeDevice({ dayTrip: v }) }
@@ -242,7 +240,6 @@ export function useStage(): UseStage {
     const trips = u ? cached.trips : dev.trips
     const travelerType = (u?.travelerType as TravelerType | null | undefined) ?? dev.travelerType
     const dismissed = { ...dev.dismissed }
-    if (u?.stagePromptSnoozedUntil) dismissed['inJamaica:'] = Math.max(dismissed['inJamaica:'] ?? 0, Date.parse(u.stagePromptSnoozedUntil))
     const result = stageFor({ signedIn: Boolean(u), travelerType, trips, position, regionCity: city, cruise: dev.cruise, dismissed })
     return { ready: ready && regionReady, result, trips, travelerType, explored: cached.explored, cruise: dev.cruise, dayTrip: dev.dayTrip, position }
   }, [tick, ready, regionReady, city, position])

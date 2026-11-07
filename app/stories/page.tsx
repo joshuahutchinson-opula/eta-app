@@ -1,380 +1,332 @@
-// app/stories/page.tsx — full-screen stories for the selected region.
-// Photos show for 5 s, videos for their length (up to 30 s). Each story
-// viewed is marked seen on the account, which greys its ring on Home.
-// Every story with a place carries a "Go here" (vendor) or "Book this"
-// (event) button. Vendor-approved Instagram story mentions play inside the
-// vendor's ring, straight from Instagram.
+// app/stories/page.tsx — stories for the selected region, Instagram-style,
+// with the look of the old Vibe feed: full screen, one person (or vendor)
+// per screen.
+//   swipe up / down       next / previous person
+//   tap right / left      next / previous story
+//   hold                  pause
+//   progress bars         one per story, at the top
+//   reply / react         a message or a quick emoji (vendors see theirs in
+//                         the vendor app)
+//   swipe up on the tag   (or tap it) opens the tagged vendor or event
+// Photos show for 5 s, videos for their length (up to 30 s) with their
+// sound unless posted muted. Each story seen is marked on the account,
+// which greys its ring on Home. Vendor-approved Instagram mentions play
+// inside the vendor's ring. ?start=<vendorId|userId> opens that person.
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Icon from '@/lib/icons'
 import ReportButton from '@/components/ReportButton'
+import StoryOverlays from '@/components/stories/StoryOverlays'
 import { useRegion } from '@/components/RegionProvider'
-import { useLang } from '@/lib/i18n-client'
-import { authHeaders } from '@/lib/api-client'
+import { useErrorText, useLang } from '@/lib/i18n-client'
+import { apiJson, authHeaders } from '@/lib/api-client'
 import { getCurrentUser } from '@/lib/auth-client'
 import { useLowData } from '@/lib/low-data'
 import { triggerHaptic } from '@/lib/haptics'
+import { useReducedMotion } from '@/lib/motion'
+import { REACTIONS, type StoryOverlay } from '@/lib/story-overlays'
 
 interface Story {
   id: string
   content: string
-  type: string
   imageUrl: string
   videoUrl?: string | null
   seen?: boolean
   vendorId?: string | null
-  vendor: {
-    name: string
-    isPremium: boolean
-  } | null
+  vendor: { name: string; isPremium: boolean; images?: string[] } | null
   userId?: string | null
-  user: {
-    name: string
-    avatarUrl: string | null
-  } | null
+  user: { name: string; avatarUrl: string | null } | null
   source?: 'eta' | 'instagram'
   igUsername?: string
   action?: { kind: 'vendor' | 'event'; id: string; name: string } | null
+  overlays?: StoryOverlay[]
+  drawingUrl?: string | null
+  closeFriends?: boolean
+  muted?: boolean
+  createdAt: string
 }
 
-interface StoryGroup {
-  key: string
-  name: string
-  isPremium: boolean
-  items: Story[]
-}
+interface Group { key: string; name: string; avatar: string | null; isPremium: boolean; mine: boolean; items: Story[] }
 
-const ITEM_DURATION_MS = 5000
+const PHOTO_MS = 5000
 const MAX_VIDEO_MS = 30000
+const HOLD_MS = 200
 
 export default function StoriesPage() {
   const router = useRouter()
   const { t } = useLang()
   const { city, town, ready } = useRegion()
-  const { lowData } = useLowData()
-  const [durationMs, setDurationMs] = useState(ITEM_DURATION_MS)
-  const [muted, setMuted] = useState(true)
-  const seenRef = useRef(new Set<string>())
-  const [stories, setStories] = useState<Story[]>([])
-  const [loading, setLoading] = useState(true)
-  const [groupIndex, setGroupIndex] = useState(0)
-  const [itemIndex, setItemIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const [exiting, setExiting] = useState(false)
-  const [dragX, setDragX] = useState(0)
-  const dragStartX = useRef<number | null>(null)
-  const dragStartY = useRef<number | null>(null)
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isDraggingRef = useRef(false)
+  const [stories, setStories] = useState<Story[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [active, setActive] = useState(0)
+  const feed = useRef<HTMLDivElement>(null)
+  const startKey = useRef<string | null>(null)
 
-  useEffect(() => {
-    if (ready) fetchStories()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, city])
-
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  const fetchStories = async () => {
-    setLoading(true)
-    setLoadFailed(false)
+  const load = useCallback(async () => {
+    setFailed(false)
     try {
-      const response = await fetch(`/api/stories?city=${city}`, { headers: authHeaders() })
-      if (!response.ok) throw new Error('stories')
-      const data = await response.json()
+      const res = await fetch(`/api/stories?city=${city}`, { headers: authHeaders() })
+      if (!res.ok) throw new Error('stories')
+      const data = await res.json()
       setStories(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error(error)
-      setLoadFailed(true)
-    } finally {
-      setLoading(false)
+    } catch {
+      setFailed(true)
+      setStories([])
     }
-  }
+  }, [city])
 
-  const groups = useMemo<StoryGroup[]>(() => {
-    const map = new Map<string, StoryGroup>()
-    for (const s of stories) {
+  useEffect(() => { startKey.current = new URLSearchParams(window.location.search).get('start') }, [])
+  useEffect(() => { if (ready) load() }, [ready, load])
+
+  const groups = useMemo<Group[]>(() => {
+    const me = getCurrentUser()?.id
+    const map = new Map<string, Group>()
+    // Oldest first inside a person, like Instagram.
+    for (const s of [...(stories ?? [])].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))) {
       const key = s.vendorId || s.userId || s.id
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          name: s.vendor?.name || s.user?.name || 'ETA',
-          isPremium: !!s.vendor?.isPremium,
-          items: []
-        })
-      }
+      if (!map.has(key)) map.set(key, { key, name: s.vendor?.name || s.user?.name || 'ETA', avatar: s.vendor?.images?.[0] ?? s.user?.avatarUrl ?? null, isPremium: Boolean(s.vendor?.isPremium), mine: Boolean(me && s.userId === me), items: [] })
       map.get(key)!.items.push(s)
     }
-    return Array.from(map.values())
+    // People with something unseen first.
+    return Array.from(map.values()).sort((a, b) => Number(b.items.some(i => !i.seen)) - Number(a.items.some(i => !i.seen)))
   }, [stories])
 
-  // ?start=<vendorId|userId> opens that ring's stories (Home rings, vendor pages).
-  const [startKey, setStartKey] = useState<string | null>(null)
-  useEffect(() => { setStartKey(new URLSearchParams(window.location.search).get('start')) }, [])
+  // Open on the ring that was tapped.
   useEffect(() => {
-    if (!startKey || groups.length === 0) return
-    const i = groups.findIndex(g => g.key === startKey)
-    if (i >= 0) { setGroupIndex(i); setItemIndex(0) }
-  }, [startKey, groups])
+    if (!groups.length || !startKey.current) return
+    const i = groups.findIndex(g => g.key === startKey.current)
+    startKey.current = null
+    if (i > 0) requestAnimationFrame(() => { feed.current?.children[i]?.scrollIntoView({ behavior: 'auto' }); setActive(i) })
+  }, [groups])
 
-  const currentGroup = groups[groupIndex]
-  const currentItem = currentGroup?.items[itemIndex]
-  const playVideo = Boolean(currentItem?.videoUrl) && !lowData
-
-  // Mark each story seen once, for the ring on Home.
+  // Which person is on screen.
   useEffect(() => {
-    setDurationMs(ITEM_DURATION_MS)
-    if (!currentItem || currentItem.seen || currentItem.source === 'instagram' || seenRef.current.has(currentItem.id) || !getCurrentUser()) return
-    seenRef.current.add(currentItem.id)
-    fetch(`/api/stories/${currentItem.id}/view`, { method: 'POST', headers: authHeaders() }).catch(() => {})
-  }, [currentItem])
+    const el = feed.current
+    if (!el) return
+    const io = new IntersectionObserver(entries => {
+      for (const e of entries) if (e.isIntersecting && e.intersectionRatio > 0.6) setActive(Number((e.target as HTMLElement).dataset.index))
+    }, { root: el, threshold: [0.6] })
+    Array.from(el.children).forEach(c => io.observe(c))
+    return () => io.disconnect()
+  }, [groups.length])
 
-  const exit = () => {
-    setExiting(true)
-    setTimeout(() => (startKey && window.history.length > 1 ? router.back() : router.push('/')), 200)
+  const exit = useCallback(() => { if (window.history.length > 1) router.back(); else router.push('/') }, [router])
+  const goTo = useCallback((i: number) => {
+    if (i < 0) return
+    if (i >= groups.length) { exit(); return }
+    feed.current?.children[i]?.scrollIntoView({ behavior: 'smooth' })
+  }, [groups.length, exit])
+
+  if (stories === null) {
+    return <main className="vibe-feed" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}><div className="sv-spinner" aria-label="…" /></main>
   }
-
-  const goToItem = (nextGroupIndex: number, nextItemIndex: number) => {
-    if (nextGroupIndex < 0) return
-    if (nextGroupIndex >= groups.length) {
-      exit()
-      return
-    }
-    const group = groups[nextGroupIndex]
-    if (nextItemIndex < 0) {
-      // walked off the front of a group -> previous group's last item
-      goToItem(nextGroupIndex - 1, (groups[nextGroupIndex - 1]?.items.length || 1) - 1)
-      return
-    }
-    if (nextItemIndex >= group.items.length) {
-      goToItem(nextGroupIndex + 1, 0)
-      return
-    }
-    setGroupIndex(nextGroupIndex)
-    setItemIndex(nextItemIndex)
-  }
-
-  const advance = () => {
-    triggerHaptic('light')
-    goToItem(groupIndex, itemIndex + 1)
-  }
-
-  const rewind = () => {
-    triggerHaptic('light')
-    goToItem(groupIndex, itemIndex - 1)
-  }
-
-  // Auto-advance the current item's progress fill, pausable on hold.
-  useEffect(() => {
-    if (loading || !currentItem || paused || exiting) return
-    const timer = setTimeout(advance, durationMs)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupIndex, itemIndex, paused, loading, exiting, durationMs])
-
-  const handlePointerDown = (clientX: number, clientY: number) => {
-    dragStartX.current = clientX
-    dragStartY.current = clientY
-    isDraggingRef.current = false
-    holdTimer.current = setTimeout(() => {
-      setPaused(true)
-      triggerHaptic('selection')
-    }, 180)
-  }
-
-  const handlePointerMove = (clientX: number) => {
-    if (dragStartX.current === null) return
-    const dx = clientX - dragStartX.current
-    if (Math.abs(dx) > 8) {
-      isDraggingRef.current = true
-      if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
-      setPaused(true)
-      setDragX(dx)
-    }
-  }
-
-  const handlePointerUp = (clientX: number) => {
-    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
-    const startX = dragStartX.current
-    dragStartX.current = null
-    dragStartY.current = null
-
-    if (isDraggingRef.current && startX !== null) {
-      const dx = clientX - startX
-      setDragX(0)
-      isDraggingRef.current = false
-      setPaused(false)
-      if (Math.abs(dx) > 60) {
-        // Horizontal swipe: move between story groups
-        triggerHaptic('selection')
-        if (dx < 0) goToItem(groupIndex + 1, 0)
-        else goToItem(groupIndex - 1, 0)
-      }
-      return
-    }
-
-    isDraggingRef.current = false
-    setPaused(false)
-  }
-
-  const handleTapZone = (side: 'left' | 'right') => {
-    if (side === 'right') advance()
-    else rewind()
-  }
-
-  if (loading) {
+  if (!groups.length) {
     return (
-      <main style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000' }}>
-        <div style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--rum)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      </main>
-    )
-  }
-
-  if (groups.length === 0) {
-    return (
-      <main style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', background: '#000000' }}>
-        <p style={{ color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 24px' }}>{loadFailed ? t('m.stories.failed') : t('m.stories.none', { town: town.name })}</p>
-        {loadFailed && <button onClick={fetchStories} className="btn btn-secondary">{t('m.error.retry')}</button>}
+      <main className="vibe-feed" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', zIndex: 500 }}>
+        <p style={{ color: 'rgba(255,255,255,0.75)', textAlign: 'center', padding: '0 24px' }}>{failed ? t('m.stories.failed') : t('m.stories.none', { town: town.name })}</p>
+        {failed && <button onClick={load} className="btn btn-secondary">{t('m.error.retry')}</button>}
         <button onClick={() => router.push('/')} className="btn btn-primary">{t('m.stories.backHome')}</button>
       </main>
     )
   }
 
-  if (!currentGroup || !currentItem) return null
+  return (
+    <main ref={feed} className="vibe-feed sv-feed" style={{ zIndex: 500 }} aria-label={t('m.sv.title')}>
+      {groups.map((g, i) => (
+        <GroupSlide key={g.key} index={i} group={g} active={i === active} onNextGroup={() => goTo(i + 1)} onPrevGroup={() => goTo(i - 1)} onClose={exit} />
+      ))}
+    </main>
+  )
+}
+
+function GroupSlide({ group, index, active, onNextGroup, onPrevGroup, onClose }: { group: Group; index: number; active: boolean; onNextGroup: () => void; onPrevGroup: () => void; onClose: () => void }) {
+  const { t, lang } = useLang()
+  const errorText = useErrorText()
+  const router = useRouter()
+  const reduce = useReducedMotion()
+  const { lowData } = useLowData()
+  const firstUnseen = Math.max(0, group.items.findIndex(s => !s.seen))
+  const [item, setItem] = useState(firstUnseen)
+  const [paused, setPaused] = useState(false)
+  const [duration, setDuration] = useState(PHOTO_MS)
+  const [soundBlocked, setSoundBlocked] = useState(false)
+  const [userMuted, setUserMuted] = useState(false)
+  const [reply, setReply] = useState('')
+  const [typing, setTyping] = useState(false)
+  const [sent, setSent] = useState<string | null>(null)
+  const [burst, setBurst] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const held = useRef(false)
+  const swipe = useRef<number | null>(null)
+  const seen = useRef(new Set<string>())
+  const story = group.items[item]
+  const hasVideo = Boolean(story?.videoUrl) && !lowData
+  const stopped = !active || paused || typing
+
+  // Back to its first unseen story whenever this person scrolls into view.
+  useEffect(() => { if (active) { setItem(Math.max(0, group.items.findIndex(s => !s.seen && !seen.current.has(s.id)))); setDuration(PHOTO_MS) } }, [active]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark seen (drives the grey ring on Home).
+  useEffect(() => {
+    if (!active || !story || story.seen || story.source === 'instagram' || seen.current.has(story.id) || !getCurrentUser()) return
+    seen.current.add(story.id)
+    fetch(`/api/stories/${story.id}/view`, { method: 'POST', headers: authHeaders() }).catch(() => {})
+  }, [active, story])
+
+  const next = useCallback(() => {
+    triggerHaptic('light')
+    setDuration(PHOTO_MS)
+    if (item + 1 < group.items.length) setItem(item + 1)
+    else onNextGroup()
+  }, [item, group.items.length, onNextGroup])
+  const prev = () => {
+    triggerHaptic('light')
+    setDuration(PHOTO_MS)
+    if (item > 0) setItem(item - 1)
+    else onPrevGroup()
+  }
+
+  // Photos advance on a timer; videos when they end (or at 30 s).
+  useEffect(() => {
+    if (stopped || !story) return
+    const timer = setTimeout(next, duration)
+    return () => clearTimeout(timer)
+  }, [stopped, story, duration, next])
+
+  // Play / pause, with sound unless it was posted muted.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    if (stopped) { v.pause(); return }
+    v.muted = Boolean(story?.muted) || userMuted
+    v.play().catch(() => { v.muted = true; setSoundBlocked(true); v.play().catch(() => {}) })
+  }, [stopped, story, userMuted])
+
+  const down = () => {
+    held.current = false
+    hold.current = setTimeout(() => { held.current = true; setPaused(true); triggerHaptic('selection') }, HOLD_MS)
+  }
+  const up = (side: 'left' | 'right') => {
+    if (hold.current) { clearTimeout(hold.current); hold.current = null }
+    if (held.current) { held.current = false; setPaused(false); return }
+    if (side === 'right') next(); else prev()
+  }
+
+  const send = async (payload: { text?: string; emoji?: string }) => {
+    if (!story) return
+    if (!getCurrentUser()) { router.push(`/login?next=${encodeURIComponent('/stories')}`); return }
+    try {
+      await apiJson(`/api/stories/${story.id}/reply`, { method: 'POST', body: payload })
+      triggerHaptic('medium')
+      if (payload.emoji) { setBurst(payload.emoji); setTimeout(() => setBurst(null), 900) }
+      setReply('')
+      setTyping(false)
+      setSent(t('m.sv.sent'))
+      setTimeout(() => setSent(null), 1600)
+    } catch (e) {
+      setSent(errorText(e))
+    }
+  }
+
+  const openAction = () => {
+    if (!story?.action) return
+    triggerHaptic('medium')
+    router.push(story.action.kind === 'event' ? `/events/${story.action.id}` : `/vendor/${story.action.id}`)
+  }
+
+  if (!story) return <section className="vibe-slide" data-index={index} />
+  const when = (() => {
+    const mins = Math.max(1, Math.round((Date.now() - Date.parse(story.createdAt)) / 60000))
+    return mins < 60 ? t('m.sv.minAgo', { n: mins }) : t('m.sv.hAgo', { n: Math.round(mins / 60) })
+  })()
+  const canReply = story.source !== 'instagram' && !group.mine
 
   return (
-    <main
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 500,
-        background: '#000000',
-        overflow: 'hidden',
-        opacity: exiting ? 0 : 1,
-        transform: exiting ? 'scale(0.95)' : 'scale(1)',
-        transition: 'opacity 0.2s ease, transform 0.2s ease'
-      }}
-      onMouseDown={(e) => handlePointerDown(e.clientX, e.clientY)}
-      onMouseMove={(e) => { if (dragStartX.current !== null) handlePointerMove(e.clientX) }}
-      onMouseUp={(e) => handlePointerUp(e.clientX)}
-      onTouchStart={(e) => handlePointerDown(e.touches[0].clientX, e.touches[0].clientY)}
-      onTouchMove={(e) => handlePointerMove(e.touches[0].clientX)}
-      onTouchEnd={(e) => handlePointerUp(e.changedTouches[0].clientX)}
-    >
-      {/* Story content */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `url(${currentItem.imageUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          transform: `translateX(${dragX * 0.4}px)`,
-          transition: dragX === 0 ? 'transform 0.25s var(--spring-standard, ease-out)' : 'none'
-        }}
-      >
-        {playVideo && (
-          <video
-            key={currentItem.id}
-            src={currentItem.videoUrl!}
-            poster={currentItem.imageUrl}
-            autoPlay
-            muted={muted}
-            playsInline
-            ref={el => { if (el) { if (paused) el.pause(); else el.play().catch(() => {}) } }}
-            onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) setDurationMs(Math.min(MAX_VIDEO_MS, Math.round(d * 1000))) }}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,14,12,0.55) 0%, transparent 22%, transparent 65%, rgba(15,14,12,0.75) 100%)' }} />
+    <section className="vibe-slide sv-slide" data-index={index} aria-label={group.name}>
+      <img className="vibe-poster" src={story.imageUrl} alt="" />
+      {hasVideo && (
+        <video
+          ref={videoRef}
+          key={story.id}
+          src={story.videoUrl!}
+          poster={story.imageUrl}
+          playsInline
+          preload="auto"
+          onLoadedMetadata={e => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0) setDuration(Math.min(MAX_VIDEO_MS, Math.round(d * 1000))) }}
+        />
+      )}
+      <StoryOverlays overlays={story.overlays ?? []} drawingUrl={story.drawingUrl} />
+      <div className="vibe-shade" />
+
+      {/* Tap zones: left a third back, the rest forward; hold anywhere to pause */}
+      <div className="sv-taps">
+        <button type="button" aria-label={t('m.stories.prev')} onPointerDown={down} onPointerUp={() => up('left')} onPointerCancel={() => { if (hold.current) clearTimeout(hold.current); setPaused(false) }} onContextMenu={e => e.preventDefault()} />
+        <button type="button" aria-label={t('m.stories.next')} onPointerDown={down} onPointerUp={() => up('right')} onPointerCancel={() => { if (hold.current) clearTimeout(hold.current); setPaused(false) }} onContextMenu={e => e.preventDefault()} />
       </div>
 
-      {/* Tap zones (sit above content, below header/footer UI) */}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
-        <button aria-label={t('m.stories.prev')} style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('left')} />
-        <button aria-label={t('m.stories.next')} style={{ flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => !isDraggingRef.current && handleTapZone('right')} />
-      </div>
-
-      {/* Progress bars - one segment per item in the current group */}
-      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 10px)', left: '10px', right: '10px', display: 'flex', gap: '4px', zIndex: 10 }}>
-        {currentGroup.items.map((_, i) => (
-          <div key={i} style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '999px', overflow: 'hidden' }}>
-            {i < itemIndex && <div style={{ height: '100%', width: '100%', background: 'white' }} />}
-            {i === itemIndex && (
-              <div
-                key={`${groupIndex}-${itemIndex}`}
-                style={{
-                  height: '100%',
-                  background: 'white',
-                  animation: `storyFill ${durationMs}ms linear forwards`,
-                  animationPlayState: paused ? 'paused' : 'running'
-                }}
-              />
-            )}
-          </div>
+      {/* Progress bars */}
+      <div className="sv-bars">
+        {group.items.map((s, i) => (
+          <span key={s.id}>
+            {i < item && <i style={{ width: '100%' }} />}
+            {i === item && <i key={`${story.id}-${active}`} style={{ animation: active ? `storyFill ${duration}ms linear forwards` : 'none', animationPlayState: stopped ? 'paused' : 'running', width: reduce && !active ? 0 : undefined }} />}
+          </span>
         ))}
       </div>
 
-      {/* Header */}
-      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 24px)', left: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10 }}>
-        <div
-          className={`story-ring ${currentGroup.isPremium ? 'premium' : 'standard'}`}
-          style={{ width: '36px', height: '36px', padding: '2px', flexShrink: 0 }}
-        >
-          <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'white' }}>
-            {currentGroup.name.charAt(0)}
-          </div>
-        </div>
-        <span style={{ fontWeight: 700, fontSize: '14px', color: 'white' }}>{currentGroup.name}</span>
-        {currentGroup.isPremium && (
-          <span style={{ fontSize: '9px', background: 'var(--gold)', color: '#0F0E0C', fontWeight: 800, padding: '2px 6px', borderRadius: '999px' }}>
-            {t('m.stories.premium')}
-          </span>
-        )}
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          {playVideo && (
-            <button aria-label={muted ? t('m.stories.unmute') : t('m.stories.mute')} onClick={e => { e.stopPropagation(); setMuted(m => !m) }} style={{ width: '44px', height: '44px', background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="audio" size={16} />
+      {/* Who, when, and the controls */}
+      <header className="sv-head">
+        <span className="sv-avatar">{group.avatar ? <img src={group.avatar} alt="" /> : group.name.charAt(0)}</span>
+        <span className="sv-name">{group.name}</span>
+        {group.isPremium && <span className="sv-bon">B.O.N</span>}
+        {story.closeFriends && <span className="sv-close-friends"><Icon name="star" size={10} /> {t('m.se.closeFriends')}</span>}
+        <span className="sv-when num-font">{when}</span>
+        <span className="sv-head-actions">
+          {hasVideo && !story.muted && (
+            <button type="button" className="sv-icon" onClick={() => { setSoundBlocked(false); setUserMuted(m => (soundBlocked ? false : !m)) }} aria-label={userMuted || soundBlocked ? t('m.stories.unmute') : t('m.stories.mute')}>
+              <Icon name="audio" size={16} />{(userMuted || soundBlocked) && <span className="se-slash" aria-hidden />}
             </button>
           )}
-          {currentItem.source !== 'instagram' && <span onClick={() => setPaused(true)}><ReportButton targetType="STORY" targetId={currentItem.id} tone="light" /></span>}
+          {story.source !== 'instagram' && <span onClick={() => setPaused(true)}><ReportButton targetType="STORY" targetId={story.id} tone="light" /></span>}
+          <button type="button" className="sv-icon" onClick={() => { triggerHaptic('light'); onClose() }} aria-label={t('m.stories.close')}><Icon name="close" size={18} /></button>
         </span>
-        <button
-          aria-label={t('m.stories.close')}
-          style={{ width: '44px', height: '44px', background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { e.stopPropagation(); triggerHaptic('light'); exit() }}
-        >
-          <Icon name="close" size={18} />
-        </button>
-      </div>
+      </header>
+      {soundBlocked && active && <button type="button" className="sv-sound" onClick={() => { setSoundBlocked(false); setUserMuted(false) }}><Icon name="audio" size={14} /> {t('m.sv.tapSound')}</button>}
+      {paused && <p className="sv-paused">{t('m.stories.paused')}</p>}
+      {burst && !reduce && <span className="sv-burst" aria-hidden>{burst}</span>}
 
-      {paused && (
-        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 24px)', left: '50%', transform: 'translateX(-50%)', marginTop: '48px', background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '999px', zIndex: 10 }}>
-          {t('m.stories.paused')}
-        </div>
-      )}
-
-      {/* Caption, then where it is: "Go here" / "Book this" */}
-      <div style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)', left: '16px', right: '16px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '12px' }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-        {currentItem.source === 'instagram' && currentItem.igUsername && (
-          <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}><Icon name="instagram" size={14} /> @{currentItem.igUsername}</p>
-        )}
-        {currentItem.content && <p style={{ fontSize: '18px', fontWeight: 700, color: 'white' }}>{currentItem.content}</p>}
-        {currentItem.action && (
-          <Link
-            href={currentItem.action.kind === 'event' ? `/events/${currentItem.action.id}` : `/vendor/${currentItem.action.id}`}
-            onClick={() => triggerHaptic('medium')}
-            className="btn btn-primary"
-            style={{ textDecoration: 'none', width: '100%', justifyContent: 'center' }}
+      <footer className="sv-foot">
+        {story.source === 'instagram' && story.igUsername && <p className="sv-ig"><Icon name="instagram" size={14} /> @{story.igUsername}</p>}
+        {story.content && <p className="sv-caption">{story.content}</p>}
+        {story.action && (
+          <button
+            type="button"
+            className="sv-action"
+            onClick={openAction}
+            onTouchStart={e => { swipe.current = e.touches[0].clientY; e.stopPropagation() }}
+            onTouchEnd={e => { if (swipe.current !== null && swipe.current - e.changedTouches[0].clientY > 40) openAction(); swipe.current = null }}
           >
-            <Icon name={currentItem.action.kind === 'event' ? 'ticket' : 'navigate'} size={16} />
-            {currentItem.action.kind === 'event' ? t('m.story.bookThis') : t('m.story.goHere')}
-            <span style={{ fontWeight: 500, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {currentItem.action.name}</span>
-          </Link>
+            <Icon name="chevronDown" size={14} style={{ transform: 'rotate(180deg)' }} />
+            <Icon name={story.action.kind === 'event' ? 'ticket' : 'navigate'} size={15} />
+            <span>{story.action.kind === 'event' ? t('m.story.bookThis') : t('m.story.goHere')} · {story.action.name}</span>
+          </button>
         )}
-      </div>
-    </main>
+        {canReply && (
+          <>
+            <div className="sv-reactions" role="group" aria-label={t('m.sv.react')}>
+              {REACTIONS.map(e => <button key={e} type="button" onClick={() => send({ emoji: e })} aria-label={t('m.sv.reactWith', { emoji: e })}>{e}</button>)}
+            </div>
+            <form className="sv-reply" onSubmit={ev => { ev.preventDefault(); if (reply.trim()) send({ text: reply.trim() }) }}>
+              <input value={reply} onChange={e => setReply(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => { if (!reply) setTyping(false) }} maxLength={500} placeholder={t('m.sv.replyTo', { name: group.name })} aria-label={t('m.sv.replyTo', { name: group.name })} lang={lang} />
+              <button type="submit" disabled={!reply.trim()} aria-label={t('m.sv.send')}><Icon name="send" size={18} /></button>
+            </form>
+          </>
+        )}
+        {sent && <p className="sv-sent" role="status">{sent}</p>}
+      </footer>
+    </section>
   )
 }

@@ -1,5 +1,5 @@
 // components/ReportButton.tsx — a small "Report" flag for user content
-// (photo spot photos, mood photos, stories, reviews, hidden gems). Opens a
+// (photo spot photos, stories, reviews, hidden gems). Opens a
 // sheet to pick a reason and add an optional note; saved as a Report.
 // Enough reports hide the content until it's reviewed (lib/reports.ts).
 'use client'
@@ -12,7 +12,7 @@ import { getCurrentUser } from '@/lib/auth-client'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
 
-export type ReportTarget = 'MOMENT' | 'MOOD_MEDIA' | 'STORY' | 'REVIEW' | 'HIDDEN_GEM'
+export type ReportTarget = 'MOMENT' | 'STORY' | 'REVIEW' | 'HIDDEN_GEM'
 const REASONS = ['SPAM', 'INAPPROPRIATE', 'HARASSMENT', 'MISLEADING', 'NOT_THERE', 'OTHER'] as const
 
 export default function ReportButton({ targetType, targetId, tone = 'default', onReported }: {

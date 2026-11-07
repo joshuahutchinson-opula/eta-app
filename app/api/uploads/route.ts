@@ -10,8 +10,8 @@ import { z } from '@/lib/validate'
 
 export const dynamic = 'force-dynamic'
 
-const FOLDERS = ['stories', 'avatars', 'moments', 'mood-media', 'hidden-gems', 'town-media']
-const VIDEO_FOLDERS = ['stories', 'mood-media', 'town-media']
+const FOLDERS = ['stories', 'avatars', 'moments', 'hidden-gems', 'town-media']
+const VIDEO_FOLDERS = ['stories', 'town-media']
 
 export async function POST(request: Request) {
   const auth = await requireUser(request, { message: 'Log in to upload' })

@@ -103,66 +103,64 @@ model User {
 
   // Null until the user opens the link in their verification email.
   // Unverified users can browse but not book, review or post.
-  emailVerifiedAt         DateTime?
+  emailVerifiedAt       DateTime?
   // Bumped on log-out and account deletion; tokens carry the version they
   // were issued with, so older ones stop working (lib/auth-server.ts).
-  tokenVersion            Int              @default(0)
+  tokenVersion          Int              @default(0)
   // Set when the user deletes their account; personal fields are wiped then.
-  deletedAt               DateTime?
+  deletedAt             DateTime?
   // Which terms/privacy version the user agreed to at sign-up (lib/legal.ts).
-  termsVersion            String?
-  termsAcceptedAt         DateTime?
+  termsVersion          String?
+  termsAcceptedAt       DateTime?
   // Who "I feel unsafe" shares the live location link with (Safety screen).
-  emergencyContactName    String?
-  emergencyContactPhone   String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
   // Shown on the monthly leaderboard as first name + initial only.
-  leaderboardOptIn        Boolean          @default(false)
+  leaderboardOptIn      Boolean          @default(false)
   // Notification preferences per type, respected by every sender (lib/notify.ts).
-  notifyBookings          Boolean          @default(true)
-  notifyEvents            Boolean          @default(true)
-  notifyDeals             Boolean          @default(true)
-  notifyLive              Boolean          @default(true)
-  notifyCrew              Boolean          @default(true)
+  notifyBookings        Boolean          @default(true)
+  notifyEvents          Boolean          @default(true)
+  notifyDeals           Boolean          @default(true)
+  notifyLive            Boolean          @default(true)
+  notifyCrew            Boolean          @default(true)
   // Trip tips and the "planning your next trip?" nudge once they're home.
-  notifyTrips             Boolean          @default(true)
+  notifyTrips           Boolean          @default(true)
   // WhatsApp copies of booking confirmations, reminders, receipts and crew
   // messages (lib/whatsapp.ts). Opt-in: WhatsApp requires it.
-  whatsappNumber          String?
-  notifyWhatsapp          Boolean          @default(false)
+  whatsappNumber        String?
+  notifyWhatsapp        Boolean          @default(false)
   // Instagram username, lowercase without the @. Story mentions of @ETA from
   // this account are matched to the vendor they QR-scanned at (lib/instagram.ts).
-  instagramHandle         String?
+  instagramHandle       String?
   // Trip mode: the dates of the current (or last) trip, Jamaica days.
-  tripStart               DateTime?
-  tripEnd                 DateTime?
+  tripStart             DateTime?
+  tripEnd               DateTime?
   // Where they're staying: an ETA listing, a partner property, or just a town.
-  stayName                String?
-  stayCity                City?
-  stayAccommodationId     String?
+  stayName              String?
+  stayCity              City?
+  stayAccommodationId   String?
   // The hotel/villa partner whose code or QR brought them in (lib/partners.ts).
-  partnerPropertyId       String?
-  partnerJoinedAt         DateTime?
-  partnerProperty         PartnerProperty? @relation("PartnerGuests", fields: [partnerPropertyId], references: [id], onDelete: SetNull)
+  partnerPropertyId     String?
+  partnerJoinedAt       DateTime?
+  partnerProperty       PartnerProperty? @relation("PartnerGuests", fields: [partnerPropertyId], references: [id], onDelete: SetNull)
   // A dropped pin, when the stay isn't listed (arrival flow).
-  stayLat                 Float?
-  stayLng                 Float?
+  stayLat               Float?
+  stayLng               Float?
   // When the "planning your next trip?" nudge last went out (one per trip).
-  homeNudgeSentAt         DateTime?
+  homeNudgeSentAt       DateTime?
   // The last Explore mode position fix (lib/explore.ts): explorer-only perks
   // unlock when the QR scan follows an Explore session near that vendor.
-  exploreLastAt           DateTime?
-  exploreLastLat          Float?
-  exploreLastLng          Float?
+  exploreLastAt         DateTime?
+  exploreLastLat        Float?
+  exploreLastLng        Float?
   // Trip stages (lib/stage.ts): "LOCAL" (lives in Jamaica) or "VISITOR";
   // null until onboarding asks. The stage itself is inferred from this,
   // the travel trips and where the phone is.
-  travelerType            String?
-  // "Looks like you're in Jamaica! Starting your trip?" -> Not now: quiet until then.
-  stagePromptSnoozedUntil DateTime?
+  travelerType          String?
   // Cruise day: the port, the Jamaica day and the all-aboard time they entered.
-  cruisePort              City?
-  cruiseDay               String?
-  cruiseAllAboardAt       DateTime?
+  cruisePort            City?
+  cruiseDay             String?
+  cruiseAllAboardAt     DateTime?
 
   redemptions             Redemption[]
   dealClaims              FlashDealClaim[]
@@ -179,7 +177,6 @@ model User {
   challengeCompletions    ChallengeCompletion[]
   notifications           NotificationLog[]
   safetyShares            SafetyShare[]
-  moodMedia               MoodMedia[]
 
   vendors         Vendor[]
   bookings        Booking[]
@@ -209,7 +206,6 @@ model User {
   ownedProperties    PartnerProperty[]   @relation("PartnerOwner")
   questProgress      QuestProgress[]
   questsCreated      Quest[]             @relation("QuestCreator")
-  todayStories       TodayStory[]        @relation("TodayStoryAuthor")
   townMedia          TownMedia[]         @relation("TownMediaAuthor")
   travelTrips        TravelTrip[]        @relation("TravelTripOwner")
   travelTripMembers  TravelTripMember[]
@@ -217,6 +213,9 @@ model User {
   reviewPrompts      ReviewPrompt[]
   eventInvites       EventInvite[]
   claimedVisits      PendingVisit[]
+  storyReplies       StoryReply[]
+  closeFriends       CloseFriend[]       @relation("CloseFriendOwner")
+  closeFriendOf      CloseFriend[]       @relation("CloseFriendFriend")
 
   @@index([instagramHandle])
 }
@@ -309,7 +308,6 @@ model Vendor {
   questsSponsored     Quest[]
   questCheckpoints    QuestCheckpoint[]
   transferServices    TransferService[]
-  todayStories        TodayStory[]
   reviewPrompts       ReviewPrompt[]
   pendingVisits       PendingVisit[]
 }
@@ -458,23 +456,6 @@ model Mood {
   createdAt   DateTime @default(now())
 
   experiences Experience[]
-  media       MoodMedia[]
-}
-
-model MoodMedia {
-  id         String   @id @default(cuid())
-  type       String
-  url        String
-  // Display name of who posted it.
-  uploadedBy String
-  // Hidden after REPORT_HIDE_THRESHOLD reports, pending review.
-  hidden     Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  moodId String
-  mood   Mood    @relation(fields: [moodId], references: [id])
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model PhotoSpot {
@@ -498,20 +479,31 @@ model PhotoSpot {
 }
 
 model Story {
-  id        String   @id @default(cuid())
+  id           String   @id @default(cuid())
   // The caption.
-  content   String
-  type      String
+  content      String
+  type         String
   // The photo, or the poster frame for a video story.
-  imageUrl  String
-  videoUrl  String?
+  imageUrl     String
+  videoUrl     String?
   // Region the story was posted in (traveler stories); vendor stories use the vendor's town.
-  city      City?
-  hidden    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  city         City?
+  hidden       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  // The story editor's layers, drawn over the photo or video: text (font,
+  // colour, position, size, angle) and stickers (location, vendor, event,
+  // time), positions as fractions of the screen. The drawing is its own
+  // transparent PNG (drawingUrl).
+  overlays     Json?
+  drawingUrl   String?
+  // Only the poster's close friends see it (CloseFriend).
+  closeFriends Boolean  @default(false)
+  // A video posted with its sound off.
+  muted        Boolean  @default(false)
 
-  views StoryView[]
+  views   StoryView[]
+  replies StoryReply[]
 
   vendorId String?
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
@@ -1020,12 +1012,11 @@ model Event {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  tickets      Ticket[]
-  interests    EventInterest[]
-  stories      Story[]
-  hostPicks    HostPick[]
-  todayStories TodayStory[]
-  invites      EventInvite[]
+  tickets   Ticket[]
+  interests EventInterest[]
+  stories   Story[]
+  hostPicks HostPick[]
+  invites   EventInvite[]
 
   // A big night in town: Home's hero shows this event (its video) tonight.
   // Events with lots of interest count too (lib/home.ts partyNight).
@@ -1120,7 +1111,6 @@ model EmailVerificationToken {
 
 enum ReportTarget {
   MOMENT
-  MOOD_MEDIA
   STORY
   REVIEW
   HIDDEN_GEM
@@ -1668,36 +1658,6 @@ model QuestCheckpointHit {
 
 // ---------- Home: Today story ----------
 
-// Home's big editorial card, one per region per day (Jamaica day). Written by
-// ETA (admin) or a vendor about their own place (vendor app). Body is a list
-// of blocks: { type: "text", text } | { type: "image", url, caption? } |
-// { type: "quote", text, by? }. Without one for today, Home builds a story
-// from a featured vendor (lib/today-story.ts).
-model TodayStory {
-  id         String   @id @default(cuid())
-  city       City
-  // "YYYY-MM-DD", Jamaica time.
-  publishOn  String
-  eyebrow    String?
-  title      String
-  dek        String
-  coverImage String
-  coverVideo String?
-  body       Json
-  published  Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  vendorId    String?
-  vendor      Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  eventId     String?
-  event       Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  createdById String?
-  createdBy   User?   @relation("TodayStoryAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-
-  @@unique([city, publishOn])
-}
-
 // ---------- Home: the hero's media per town and daypart ----------
 
 // Photos and short muted loops of a town for each daypart (morning,
@@ -1712,9 +1672,16 @@ model TownMedia {
   // "photo" or "video".
   kind      String   @default("photo")
   url       String
+  // A lighter copy for small screens / low data (720p video).
+  urlSd     String?
   // The poster frame for a video.
   poster    String?
+  // The photographer or videographer, shown small on the hero.
   credit    String?
+  // Where it came from ("Pexels", "Pixabay"), its page and its licence.
+  source    String?
+  sourceUrl String?
+  license   String?
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -1872,4 +1839,37 @@ model PendingVisit {
   vendor      Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   claimedById String?
   claimedBy   User?   @relation(fields: [claimedById], references: [id], onDelete: SetNull)
+}
+
+// ---------- Stories: replies and close friends ----------
+
+// A reply or an emoji reaction to a story. Vendors see the ones on their
+// stories in the vendor app (/api/vendor-app/vendors/:id/story-replies);
+// travelers see theirs at /api/stories/replies.
+model StoryReply {
+  id        String    @id @default(cuid())
+  text      String?
+  emoji     String?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+}
+
+// Who sees a traveler's "Close friends" stories.
+model CloseFriend {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ownerId  String
+  owner    User   @relation("CloseFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  friendId String
+  friend   User   @relation("CloseFriendFriend", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, friendId])
 }

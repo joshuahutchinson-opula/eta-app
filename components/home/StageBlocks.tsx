@@ -1,8 +1,7 @@
 // components/home/StageBlocks.tsx — the parts of Home that change with the
 // trip stage (lib/stage.ts). The rest of Home stays the same; only the top
 // changes:
-//   StagePrompts    the confirm-first switches ("Starting your trip?",
-//                   "Landed?", "Still here? Extend your trip", …)
+//   StagePrompts    the confirm-first switches ("Landed?", "Still here? Extend your trip", …)
 //   GuestCard       "Sign up to save and earn points"
 //   BrowsingCard    "Planning a trip? Add your dates"
 //   CountdownBlock  live countdown tiles, Book Your Ride, Gift Waiting, On
@@ -29,8 +28,9 @@ import { useErrorText, useLang } from '@/lib/i18n-client'
 import { useLabels } from '@/lib/labels'
 import { hapticBookingConfirmed, triggerHaptic } from '@/lib/haptics'
 import { countdownParts, type Prompt, type StageResult } from '@/lib/stage'
-import { dismissPrompt, setCruise, setDayTrip, setTravelerType, type TripView } from '@/lib/stage-client'
-import { endTrip, extendTrip, prepareArrival, shiftTrip, startTrip, startTripToday } from '@/lib/stage-actions'
+import { dismissPrompt, setCruise, setDayTrip, setTravelerType, updateTrip, type TripView } from '@/lib/stage-client'
+import { endTrip, prepareArrival, shiftTrip, startTrip } from '@/lib/stage-actions'
+import { DateRangeField } from '@/components/RangeCalendar'
 import { AIRPORTS, cruisePortFor, nearestAirport } from '@/lib/places-geo'
 import { jamaicaDayKey } from '@/lib/trip-dates'
 import { townFor, type CityCode } from '@/lib/regions'
@@ -118,17 +118,6 @@ export function StagePrompts({ result, trips, legCity }: { result: StageResult; 
                 {actions([t('m.stage.startTrip'), () => run(key, async () => { await startTrip(trip); if (trip.city !== city) setCity(trip.city) }), 'primary'], [t('m.stage.notYet'), () => later(p, 3 * 3600000), 'secondary'])}
               </div>
             )
-          case 'inJamaica':
-            return (
-              <div key={key} className="stage-prompt rum">
-                <p className="stage-prompt-title"><Icon name="sun" size={18} /> {t('m.stage.inJamaicaTitle')}</p>
-                {actions(
-                  [t('m.stage.inJamaicaYes'), () => run(key, async () => router.push(await startTripToday(city))), 'primary'],
-                  [t('m.stage.liveHere'), () => run('local', () => setTravelerType('LOCAL')), 'secondary'],
-                  [t('m.stage.notNow'), () => later(p, 7 * DAY), 'secondary']
-                )}
-              </div>
-            )
           case 'shiftDates':
             return trip && (
               <div key={key} className="stage-prompt">
@@ -141,7 +130,10 @@ export function StagePrompts({ result, trips, legCity }: { result: StageResult; 
             return trip && (
               <div key={key} className="stage-prompt rum">
                 <p className="stage-prompt-title"><Icon name="sun" size={18} /> {t('m.stage.extendTitle')}</p>
-                {actions([t('m.stage.extend2'), () => run(key, () => extendTrip(trip, 2)), 'primary'], [t('m.stage.tripOver'), () => run('end', () => endTrip(trip, false)), 'secondary'])}
+                <div style={{ marginTop: '12px' }}>
+                  <DateRangeField start={trip.start} end={trip.end} min={trip.start} fixedStart label={t('m.stage.newLeave')} title={t('m.stage.extendTitle')} onChange={(_, end) => run(key, () => updateTrip(trip.id, { end }))} />
+                </div>
+                {actions([t('m.stage.tripOver'), () => run('end', () => endTrip(trip, false)), 'secondary'])}
               </div>
             )
           case 'endEarly':

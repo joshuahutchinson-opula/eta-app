@@ -49,7 +49,7 @@ export default function PartiesHappenings() {
   }, [city, ready, filter, attempt])
 
   return (
-    <section style={{ marginTop: '24px' }} aria-label={t('m.events.eyebrow')}>
+    <section style={{ marginTop: '40px' }} aria-label={t('m.events.eyebrow')}>
       <div className="section-header" style={{ padding: '0 16px' }}>
         <div className="section-heading">
           <span className="section-eyebrow">{town.name}</span>
@@ -57,7 +57,7 @@ export default function PartiesHappenings() {
         </div>
         <Link href={`/events?when=${filter}`} className="section-link">{t('m.common.seeAll')}</Link>
       </div>
-      <div role="tablist" aria-label={t('m.events.eyebrow')} style={{ display: 'flex', gap: '8px', padding: '0 16px 12px' }}>
+      <div role="tablist" aria-label={t('m.events.eyebrow')} style={{ display: 'flex', gap: '8px', padding: '10px 16px 14px' }}>
         {FILTERS.map(f => (
           <button key={f.id} role="tab" aria-selected={filter === f.id} className={`chip ${filter === f.id ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setFilter(f.id) }}>
             {t(f.label)}

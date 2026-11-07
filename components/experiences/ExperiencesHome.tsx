@@ -81,7 +81,7 @@ export default function ExperiencesHome({ moods, heroVideo, loading, failed, onR
 
       {/* Trip mode: the days left, each a tap away from planning it */}
       {progress && progress.phase !== 'after' && daysLeft.length > 0 && (
-        <section style={{ marginTop: '20px' }} aria-label={t('m.trip.planDays')}>
+        <section style={{ marginTop: '40px' }} aria-label={t('m.trip.planDays')}>
           <div className="section-header" style={{ padding: '0 16px' }}>
             <div className="section-heading">
               <span className="section-eyebrow">{progress.phase === 'during' ? t('m.trip.dayOf', { day: progress.day, total: progress.total }) : t('m.trip.startsIn', { n: progress.daysUntil })}</span>
@@ -102,7 +102,7 @@ export default function ExperiencesHome({ moods, heroVideo, loading, failed, onR
 
       {/* Your trip — only when there is one */}
       {yourTrip && (
-        <section style={{ padding: '16px 16px 0' }} aria-label={t('m.xh.yourTrip')}>
+        <section style={{ padding: '0 16px', marginTop: '40px' }} aria-label={t('m.xh.yourTrip')}>
           <button onClick={() => { triggerHaptic('light'); yourTrip.onOpen() }} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', width: '100%', border: 'none', textAlign: 'left', fontFamily: 'inherit' }}>
             <span style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: 'var(--rum-tint)', color: 'var(--rum-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {yourTrip.image ? <Img src={yourTrip.image} alt="" width={96} height={96} sizes="48px" /> : <Icon name="route" size={20} />}
@@ -120,7 +120,7 @@ export default function ExperiencesHome({ moods, heroVideo, loading, failed, onR
       <PartiesHappenings />
 
       {/* Pick a mood */}
-      <section style={{ marginTop: '24px' }}>
+      <section style={{ marginTop: '40px' }}>
         <div className="section-header" style={{ padding: '0 16px' }}>
           <div className="section-heading"><span className="section-title">{t('m.xh.pickMood')}</span></div>
         </div>

@@ -140,7 +140,6 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
           </div>
           <div className="card-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--label-primary)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? t('m.common.openNow') : t('m.common.closed')} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
@@ -172,7 +171,6 @@ export default function VendorCard({ vendor: v, variant = 'row', saved, onToggle
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
             <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-              <span className={v.open ? 'open-dot' : 'closed-dot'} aria-label={v.open ? t('m.common.openNow') : t('m.common.closed')} style={{ flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
             </p>
             {actions}

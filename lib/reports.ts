@@ -10,14 +10,13 @@ export const REPORT_HIDE_THRESHOLD = Math.max(1, Number(process.env.REPORT_HIDE_
 
 export const REPORT_REASONS = ['SPAM', 'INAPPROPRIATE', 'HARASSMENT', 'MISLEADING', 'NOT_THERE', 'OTHER'] as const
 
-export const REPORT_TARGETS = ['MOMENT', 'MOOD_MEDIA', 'STORY', 'REVIEW', 'HIDDEN_GEM'] as const satisfies readonly ReportTarget[]
+export const REPORT_TARGETS = ['MOMENT', 'STORY', 'REVIEW', 'HIDDEN_GEM'] as const satisfies readonly ReportTarget[]
 
 /** True when the target exists (so reports can't be filed against made-up ids). */
 export async function targetExists(type: ReportTarget, id: string): Promise<boolean> {
   const where = { where: { id }, select: { id: true } }
   switch (type) {
     case 'MOMENT': return Boolean(await prisma.userMoment.findUnique(where))
-    case 'MOOD_MEDIA': return Boolean(await prisma.moodMedia.findUnique(where))
     case 'STORY': return Boolean(await prisma.story.findUnique(where))
     case 'REVIEW': return Boolean(await prisma.review.findUnique(where))
     case 'HIDDEN_GEM': return Boolean(await prisma.hiddenGem.findUnique(where))
@@ -31,7 +30,6 @@ export async function hideIfReported(type: ReportTarget, id: string): Promise<bo
   const data = { where: { id }, data: { hidden: true } }
   switch (type) {
     case 'MOMENT': await prisma.userMoment.update(data); break
-    case 'MOOD_MEDIA': await prisma.moodMedia.update(data); break
     case 'STORY': await prisma.story.update(data); break
     case 'REVIEW': await prisma.review.update(data); break
     case 'HIDDEN_GEM': await prisma.hiddenGem.update(data); break

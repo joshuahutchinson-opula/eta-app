@@ -54,6 +54,7 @@ export default function Dock() {
           <Link
             key={tab.href}
             href={tab.href}
+            scroll={false}
             onClick={e => {
               triggerHaptic('selection')
               if (tab.href === '/' && onHome && scrolled) {

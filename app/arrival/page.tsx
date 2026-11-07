@@ -38,6 +38,7 @@ import { isCityCode, nearestTown, parishFor, TOWNS, townFor, type CityCode } fro
 import { haversineKm } from '@/lib/routing'
 import { hapticBookingConfirmed, hapticRewardRedeemed, triggerHaptic } from '@/lib/haptics'
 import type { StayResult } from '@/lib/stays'
+import { DateRangeField } from '@/components/RangeCalendar'
 
 const PinDropMap = dynamic(() => import('@/components/arrival/PinDropMap'), { ssr: false })
 
@@ -235,10 +236,9 @@ function WelcomeScreen({ arrival, next, onSkip, onNext, onTrip }: { arrival: Arr
         )}
       </div>
       {askLeave && (
-        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginBottom: '14px' }}>
-          {t('m.arr2.leaveWhen')}
-          <input type="date" value={leave} min={today} onChange={e => setLeave(e.target.value)} style={{ width: '100%', marginTop: '6px', padding: '14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(26,24,21,0.8)', color: 'white', fontSize: '16px', fontFamily: 'inherit', colorScheme: 'dark' }} />
-        </label>
+        <div style={{ marginBottom: '14px' }}>
+          <DateRangeField start={today} end={leave} fixedStart onChange={(_, end) => setLeave(end)} title={t('m.arr2.leaveWhen')} label={t('m.arr2.leaveWhen')} tone="dark" />
+        </div>
       )}
       {error && <p role="alert" style={{ fontSize: '14px', color: '#FFB4A3', marginBottom: '8px' }}>{error}</p>}
       {signedIn ? (

@@ -5,7 +5,7 @@
 //          instagramHandle?, whatsappNumber?, notifyWhatsapp?,
 //          tripStart?, tripEnd? (YYYY-MM-DD, Jamaica days),
 //          stayName?, stayCity?, stayAccommodationId?, stayLat?, stayLng?,
-//          travelerType? ("LOCAL" | "VISITOR"), stagePromptSnoozedUntil?,
+//          travelerType? ("LOCAL" | "VISITOR"),
 //          cruisePort?, cruiseDay?, cruiseAllAboardAt? (lib/stage.ts) } → updated user.
 // DELETE { confirm: "DELETE" } → delete the account: personal data is
 //          removed or anonymised (see lib/account.ts) and every session ends.
@@ -73,7 +73,6 @@ const schema = z.object({
   stayLat: z.number().finite().min(-90).max(90).nullable(),
   stayLng: z.number().finite().min(-180).max(180).nullable(),
   travelerType: z.enum(['LOCAL', 'VISITOR']).nullable(),
-  stagePromptSnoozedUntil: z.string().datetime().nullable(),
   cruisePort: z.enum(['OCHO_RIOS', 'FALMOUTH', 'MONTEGO_BAY']).nullable(),
   cruiseDay: dateOnly.nullable(),
   cruiseAllAboardAt: z.string().datetime().nullable()
@@ -84,7 +83,7 @@ export async function PUT(request: Request) {
   if (!auth.ok) return auth.response
   const parsed = await parseBody(request, schema)
   if (!parsed.ok) return parsed.response
-  const { tripStart, tripEnd, stayCity, cruisePort, stagePromptSnoozedUntil, cruiseAllAboardAt, ...rest } = parsed.data
+  const { tripStart, tripEnd, stayCity, cruisePort, cruiseAllAboardAt, ...rest } = parsed.data
   const start = tripStart === undefined ? undefined : tripStart ? jamaicaDayStart(tripStart) : null
   const end = tripEnd === undefined ? undefined : tripEnd ? jamaicaDayStart(tripEnd) : null
   if (start && end && end < start) return NextResponse.json({ error: 'The trip can’t end before it starts', code: 'INVALID_BODY' }, { status: 400 })
@@ -101,7 +100,6 @@ export async function PUT(request: Request) {
       ...(end !== undefined ? { tripEnd: end } : {}),
       ...(stayCity !== undefined ? { stayCity: stayCity as never } : {}),
       ...(cruisePort !== undefined ? { cruisePort: cruisePort as never } : {}),
-      ...(stagePromptSnoozedUntil !== undefined ? { stagePromptSnoozedUntil: stagePromptSnoozedUntil ? new Date(stagePromptSnoozedUntil) : null } : {}),
       ...(cruiseAllAboardAt !== undefined ? { cruiseAllAboardAt: cruiseAllAboardAt ? new Date(cruiseAllAboardAt) : null } : {}),
       // A new trip gets its own "planning your next trip?" nudge later.
       ...(datesChanged ? { homeNudgeSentAt: null } : {})
