@@ -17,6 +17,7 @@ import { getCurrentUser } from '@/lib/auth-client'
 import { apiJson } from '@/lib/api-client'
 import StoryCamera, { type Captured } from '@/components/stories/StoryCamera'
 import StoryEditor from '@/components/stories/StoryEditor'
+import { useHideDock } from '@/lib/dock-visibility'
 import { useRegion } from '@/components/RegionProvider'
 import { useTabShow } from '@/components/TabKeeper'
 import { useLang } from '@/lib/i18n-client'
@@ -52,6 +53,8 @@ export default function StoriesRow() {
   const [mine, setMine] = useState<Ring | null>(null)
   const [capture, setCapture] = useState<'camera' | Captured | null>(null)
   const [postError, setPostError] = useState<string | null>(null)
+  // No tab bar while the camera or the editor is open; it's back once the story is posted or closed.
+  useHideDock(capture !== null)
 
   const load = useCallback(async () => {
     setFailed(false)

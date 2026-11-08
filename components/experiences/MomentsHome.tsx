@@ -1,7 +1,8 @@
 // components/experiences/MomentsHome.tsx — the Experiences tab's first
 // screen (docs/mockups/ExpMoments.dc.html). It changes with the time of day
 // and the weather (lib/moments.ts):
-//   top bar     Experiences, the location pill, search
+//   top bar     Experiences, the location pill, the map (the Discover map,
+//               with its Explore mode button) and search
 //   the moment  one big swipeable card (story-style progress bars, live
 //               badge, start time, distance, spots left, who's going or
 //               booked today). Experiences: "Reserve" with "$X · pay there
@@ -36,7 +37,7 @@ import { triggerHaptic, hapticSaved } from '@/lib/haptics'
 import { readSaved, toggleSaved, SAVED_EVENT } from '@/lib/saved'
 import { apiJson } from '@/lib/api-client'
 import { getCurrentUser } from '@/lib/auth-client'
-import { minutesTo, clockAt } from '@/components/market/bits'
+import { minutesTo, clockAt, MkIcon } from '@/components/market/bits'
 import type { DictKey } from '@/lib/i18n'
 import type { Moment, MomentsData } from '@/lib/moments'
 
@@ -62,7 +63,7 @@ function readPrefs(): { mood?: string | null; time?: string; crew?: number } {
 const SLIDE_MS = 6000
 const FACE_TONES = ['#C4654F', '#2E7D8C', '#3B3F6B']
 
-export default function MomentsHome({ onPlan, yourTrip }: { onPlan: () => void; yourTrip: YourTripRow | null }) {
+export default function MomentsHome({ onPlan, onMap, yourTrip }: { onPlan: () => void; onMap: () => void; yourTrip: YourTripRow | null }) {
   const router = useRouter()
   const { t, lang } = useLang()
   const locale = lang === 'en' ? 'en-US' : lang
@@ -212,6 +213,7 @@ export default function MomentsHome({ onPlan, yourTrip }: { onPlan: () => void; 
         <h1>{t('m.mo.title')}</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
           <RegionPill />
+          <button aria-label={t('m.mk.map')} className="mk-icon-btn press" onClick={() => { triggerHaptic('light'); onMap() }}><MkIcon name="map" /></button>
           <Link href="/search" aria-label={t('m.mo.search')} className="mk-icon-btn press" onClick={() => triggerHaptic('light')}><Icon name="search" size={18} /></Link>
         </div>
       </header>

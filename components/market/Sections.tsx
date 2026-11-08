@@ -1,8 +1,10 @@
 // components/market/Sections.tsx — the Market tab's sections, each with its
 // own look (docs/mockups/MarketNew.dc.html):
 //   BonPanel        black-and-gold panel, two members a row, their perk
-//   DishesRow       top-down plates with a tilted price sticker
-//   DealsRow        tear-off tickets: points cost, or a live 2× countdown
+//   DishesRow       top-down plates (a thin rim, the dish's video looping in
+//                   the middle) with a tilted price sticker
+//   DealsRow        tear-off tickets: points cost, or a live 2× countdown;
+//                   a tap opens the vendor with that deal highlighted
 //   NearYouNow      a mini map (blue "you" dot, numbered pins) + numbered list
 //                   with big walk times
 //   LocalFavs       quote cards in locals' own words, "Locals' Pick" stamp
@@ -19,8 +21,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Img from '@/components/Img'
+import SmartVideo from '@/components/SmartVideo'
 import Price from '@/components/Price'
 import { triggerHaptic, hapticSaved } from '@/lib/haptics'
+import { useReducedMotion } from '@/lib/motion'
 import type { DictKey } from '@/lib/i18n'
 import type { LatLng } from '@/lib/routing'
 import type { MarketData, MkVendor } from '@/lib/market'
@@ -80,6 +84,7 @@ export function BonPanel({ ctx, items, signedIn }: { ctx: Ctx; items: MarketData
 // ---------- Dishes of the day ----------
 
 export function DishesRow({ ctx, dishes }: { ctx: Ctx; dishes: MarketData['dishes'] }) {
+  const reduce = useReducedMotion()
   if (!dishes.length) return null
   return (
     <section className="mk-sec" aria-label={ctx.t('m.mk.dishes')}>
@@ -88,7 +93,10 @@ export function DishesRow({ ctx, dishes }: { ctx: Ctx; dishes: MarketData['dishe
         {dishes.map(d => (
           <Link key={d.vendorId} href={`/vendor/${d.vendorId}`} onClick={tap} className="mk-dish press">
             <div className="mk-plate">
-              <div className="mk-plate-food" data-morph>{d.image && <Img src={d.image} alt={d.name} width={200} height={200} sizes="96px" />}</div>
+              <div className="mk-plate-food" data-morph>
+                {/* A short muted loop of the dish, playing only while it's on screen (photo in low data or without one). */}
+                {d.video && !reduce ? <SmartVideo src={d.video} poster={d.image} alt={d.name} /> : d.image && <Img src={d.image} alt={d.name} width={260} height={260} sizes="124px" />}
+              </div>
               {d.price != null && <span className="mk-sticker num"><Price usd={d.price} /></span>}
             </div>
             <p className="mk-dish-name">{d.name}</p>
@@ -111,7 +119,7 @@ export function DealsRow({ ctx, deals }: { ctx: Ctx; deals: MarketData['deals'] 
       <SectionHead title={ctx.t('m.mk.deals')} action={<Link href="/rewards" className="mk-all">{ctx.t('m.common.seeAll')}</Link>} />
       <div className="mk-scroll list-in">
         {live.map(d => d.kind === 'perk' ? (
-          <Link key={d.id} href="/rewards" onClick={tap} className="mk-ticket press" aria-label={ctx.t('m.mk.redeemFor', { title: d.title, n: d.cost })}>
+          <Link key={d.id} href={`/vendor/${d.vendorId}?deal=${d.id}`} onClick={tap} className="mk-ticket press" aria-label={ctx.t('m.mk.redeemFor', { title: d.title, n: d.cost })}>
             <div className="mk-ticket-main">
               <p className="mk-ticket-vendor mk-line1">{d.vendorName}</p>
               <p className="mk-ticket-title">{d.title}</p>
@@ -120,7 +128,7 @@ export function DealsRow({ ctx, deals }: { ctx: Ctx; deals: MarketData['deals'] 
             <div className="mk-stub pts"><b className="num">{d.cost.toLocaleString(ctx.locale)}</b><small>{ctx.t('m.mk.pts')}</small></div>
           </Link>
         ) : (
-          <Link key={d.id} href={`/vendor/${d.vendorId}`} onClick={tap} className="mk-ticket press">
+          <Link key={d.id} href={`/vendor/${d.vendorId}?deal=${d.id}`} onClick={tap} className="mk-ticket press">
             <div className="mk-ticket-main">
               <p className="mk-ticket-vendor mk-line1">{d.vendorName}</p>
               <p className="mk-ticket-title">{ctx.t('m.mk.xPoints', { x: x(d.multiplier) })}</p>

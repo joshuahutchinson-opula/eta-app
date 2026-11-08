@@ -1,7 +1,7 @@
 // lib/market.ts — everything the Market tab shows for a town, built on the
 // server in one go (app/api/market). Sections, in their chapters:
 //   Today's Picks  B.O.N Members (premium vendors + their perk), Dishes of
-//                  the Day (Vendor.dishOfDay), Deals Right Now (live vendor
+//                  the Day (Vendor.dishOfDay, with its short video), Deals Right Now (live vendor
 //                  perks from Rewards + quiet-hour boosts running now)
 //   Around You     Near You Now (the client sorts `vendors` by distance),
 //                  Local Favourites (ranked by locals' QR check-ins in the
@@ -44,7 +44,7 @@ export interface MkVendor {
   reviews: number
 }
 
-export interface MkDish { vendorId: string; vendorName: string; name: string; price: number | null; image: string | null; note: string | null }
+export interface MkDish { vendorId: string; vendorName: string; name: string; price: number | null; image: string | null; video: string | null; note: string | null }
 export type MkDeal =
   | { kind: 'perk'; id: string; vendorId: string; vendorName: string; title: string; cost: number; leftToday: number }
   | { kind: 'boost'; id: string; vendorId: string; vendorName: string; multiplier: number; endsAt: string | null }
@@ -162,8 +162,8 @@ export async function marketFor(city: CityCode, now = new Date()): Promise<Marke
   const dishes: MkDish[] = rows
     .filter(v => v.dishOfDay && typeof v.dishOfDay === 'object' && typeof (v.dishOfDay as { name?: unknown }).name === 'string')
     .map(v => {
-      const d = v.dishOfDay as { name: string; price?: number | null; imageUrl?: string | null; note?: string | null }
-      return { vendorId: v.id, vendorName: v.name, name: d.name, price: typeof d.price === 'number' ? d.price : null, image: d.imageUrl || v.images[0] || null, note: d.note ?? null }
+      const d = v.dishOfDay as { name: string; price?: number | null; imageUrl?: string | null; videoUrl?: string | null; note?: string | null }
+      return { vendorId: v.id, vendorName: v.name, name: d.name, price: typeof d.price === 'number' ? d.price : null, image: d.imageUrl || v.images[0] || null, video: d.videoUrl || null, note: d.note ?? null }
     })
 
   // Deals right now: live quiet-hour boosts first (they run out), then vendor perks with some left today.

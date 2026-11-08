@@ -17,7 +17,7 @@ export interface MoodProfile {
 
 // Keyed by the seeded mood names; icons are the fallback for renamed moods.
 export const MOOD_PROFILES: Record<string, MoodProfile> = {
-  'R&R': { categories: { WELLNESS: 3, BEACH: 2, FOOD: 1 }, spots: 1.5, keywords: ['spa', 'massage', 'beach', 'relax', 'calm', 'yoga'], titles: ['Slow day, no alarms', 'Easy like Sunday', 'Recharge route'] },
+  'R&R': { categories: { WELLNESS: 3, BEACH: 2, FOOD: 1 }, spots: 1.5, keywords: ['spa', 'massage', 'beach', 'relax', 'calm', 'yoga'], titles: ['Slow day, no alarms', 'Easy like Sunday'] },
   'Just The Two Of Us': { categories: { FOOD: 3, DRINKS: 2, WELLNESS: 1 }, spots: 2, spotTimes: ['Sunset', 'Golden Hour'], keywords: ['romantic', 'sunset', 'view', 'cliff', 'fine', 'lobster', 'private'], tierBias: 1, titles: ['Just the two of you', 'Date on the cliffs', 'Sunset for two'] },
   'Out Til Sunrise': { categories: { DRINKS: 3, FOOD: 1 }, spots: 0, keywords: ['party', 'dj', 'music', 'night', 'live', 'dance'], titles: ['Out til sunrise', 'Night shift', 'Last one standing'] },
   'Golden Hour': { categories: { DRINKS: 2, FOOD: 2 }, spots: 3, spotTimes: ['Sunset', 'Golden Hour'], keywords: ['sunset', 'cliff', 'view', 'west end'], titles: ['Chasing the sun', 'Golden hour run', 'Sunset circuit'] },
