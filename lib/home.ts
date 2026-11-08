@@ -1,18 +1,13 @@
 // lib/home.ts — Home's "today in <town>", computed on the server for the
 // selected region (app/api/home):
 //   daypart     from the real sun at the town (lib/daypart.ts)
-//   hero        a photo or short muted loop of the town for the daypart
-//               (TownMedia, uploaded in the vendor app), else the town's
-//               best vendor photo; on a party night, that event instead
 //   featured    B.O.N and promoted vendors, open now or soon, weighted by the
 //               daypart, with a little shuffle so it's different each open.
 //               On a cruise day, only places you can reach and be back from
 //               before all aboard.
 //   moods       Choose The Vibe, the daypart's moods first
 // Your day (signed in) is yourDay() below.
-import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { rollMockEvents } from '@/lib/mock-events-roll'
 import { daypartScore, orderMoods, sunInfo, type Daypart } from '@/lib/daypart'
 import { openNow, type OpenNow } from '@/lib/hours'
 import { jamaicaDayKey } from '@/lib/trip-dates'
@@ -20,18 +15,8 @@ import { townFor, type CityCode } from '@/lib/regions'
 import { estimateMinutes, haversineKm, type LatLng } from '@/lib/routing'
 
 const FEATURED_MAX = 8
-/** Interested people that make an event a "big night" without the flag. */
-const BIG_NIGHT_INTEREST = 15
 
 const openRank = (o: OpenNow) => (o.state === 'open' ? 2 : o.state === 'soon' ? 1 : o.state === 'unknown' ? 0.5 : 0)
-
-/** A stable pick for the day: the same one all day, a different one tomorrow. */
-function dayPick<T>(items: T[], seed: string): T | null {
-  if (!items.length) return null
-  const h = crypto.createHash('sha1').update(seed).digest().readUInt32BE(0)
-  return items[h % items.length]
-}
-
 
 // ---------- Featured ----------
 
@@ -92,81 +77,18 @@ async function featured(city: CityCode, daypart: Daypart, now: Date, cruise?: Cr
     })
 }
 
-// ---------- Hero ----------
-
-export interface HeroMedia {
-  kind: 'photo' | 'video'
-  url: string
-  /** A lighter copy (720p video) for small screens and low data. */
-  urlSd: string | null
-  poster: string | null
-  credit: string | null
-  /** "town" = TownMedia for this daypart; "vendor" = the town's best vendor photo. */
-  source: 'town' | 'vendor'
-  /** Where stock footage came from ("Pexels"), for the small credit on the hero. */
-  creditSource: string | null
-}
-
-async function heroMedia(city: CityCode, daypart: Daypart, now: Date): Promise<HeroMedia | null> {
-  const rows = await prisma.townMedia.findMany({ where: { city: city as never, daypart, active: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })
-  const pick = dayPick(rows, `${city}:${jamaicaDayKey(now)}:${daypart}`)
-  if (pick) return { kind: pick.kind === 'video' ? 'video' : 'photo', url: pick.url, urlSd: pick.urlSd, poster: pick.poster, credit: pick.credit, source: 'town', creditSource: pick.source }
-  // No media yet: the town's best vendor photo, leaning to the daypart.
-  const vendors = await prisma.vendor.findMany({
-    where: { city, visibleInMarketplace: true, isTransport: false, images: { isEmpty: false } },
-    select: { id: true, name: true, category: true, description: true, images: true, isPremium: true, _count: { select: { reviews: true } } },
-    take: 60
-  })
-  const best = vendors
-    .map(v => ({ v, s: daypartScore(daypart, v) + (v.isPremium ? 4 : 0) + Math.min(v._count.reviews, 20) / 5 }))
-    .sort((a, b) => b.s - a.s)[0]?.v
-  return best ? { kind: 'photo', url: best.images[0], urlSd: null, poster: null, credit: best.name, source: 'vendor', creditSource: null } : null
-}
-
-export interface PartyNight {
-  id: string
-  title: string
-  venueName: string
-  startAt: Date
-  video: string | null
-  image: string | null
-  bookable: boolean
-}
-
-/** Tonight's big event in the town (flagged bigNight, or lots of interest), from mid-afternoon until it ends. */
-async function partyNight(city: CityCode, now: Date): Promise<PartyNight | null> {
-  const day = jamaicaDayKey(now)
-  const dayStart = new Date(Date.parse(`${day}T00:00:00-05:00`))
-  const evening = new Date(dayStart.getTime() + 17 * 3600000)
-  const lateNight = new Date(dayStart.getTime() + 30 * 3600000)
-  if (now.getTime() < dayStart.getTime() + 15 * 3600000) return null
-  await rollMockEvents()
-  const events = await prisma.event.findMany({
-    where: { city, startAt: { gte: evening, lt: lateNight }, OR: [{ endAt: null }, { endAt: { gt: now } }] },
-    select: { id: true, title: true, venueName: true, startAt: true, videoUrl: true, imageUrl: true, inAppTickets: true, ticketUrl: true, bigNight: true, _count: { select: { interests: true } } }
-  })
-  const big = events
-    .filter(e => (e.bigNight || e._count.interests >= BIG_NIGHT_INTEREST) && (e.videoUrl || e.imageUrl))
-    .sort((a, b) => Number(b.bigNight) - Number(a.bigNight) || b._count.interests - a._count.interests)[0]
-  return big ? { id: big.id, title: big.title, venueName: big.venueName, startAt: big.startAt, video: big.videoUrl, image: big.imageUrl, bookable: big.inAppTickets || Boolean(big.ticketUrl) } : null
-}
-
 // ---------- Home ----------
 
 export async function homeToday(city: CityCode, now = new Date(), cruise?: CruiseLimit | null) {
   const town = townFor(city)
   const sun = sunInfo(town.lat, town.lng, now)
-  const [items, hero, party, moods] = await Promise.all([
+  const [items, moods] = await Promise.all([
     featured(city, sun.daypart, now, cruise),
-    heroMedia(city, sun.daypart, now),
-    partyNight(city, now),
     prisma.mood.findMany({ select: { id: true, name: true, icon: true, description: true, coverImage: true }, orderBy: { createdAt: 'asc' } })
   ])
   return {
     town: { city, name: town.name, lat: town.lat, lng: town.lng },
     sun: { daypart: sun.daypart, sunrise: sun.sunrise, sunset: sun.sunset, goldenStart: sun.goldenStart, goldenEnd: sun.goldenEnd, nextChange: sun.nextChange },
-    hero,
-    party,
     featured: items,
     moods: orderMoods(sun.daypart, moods)
   }

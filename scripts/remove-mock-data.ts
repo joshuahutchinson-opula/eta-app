@@ -1,7 +1,8 @@
 // scripts/remove-mock-data.ts — delete every piece of placeholder content in
 // one go: vendors, events, experiences, stays, rewards and challenges
 // flagged isMock, plus the Rewards demo (boosts, ledger entries, donations,
-// badges and leaderboard people from scripts/seed-rewards.ts) (plus vendors named in MOCK_VENDOR_NAMES, for databases
+// badges and leaderboard people from scripts/seed-rewards.ts; Market locals
+// and hand-picked moments from scripts/seed-market-moments.ts) (plus vendors named in MOCK_VENDOR_NAMES, for databases
 // seeded before the flag existed), and the rows that point at them.
 // Real users' bookings and payments are kept; their link to a removed
 // vendor or experience is cleared.
@@ -81,6 +82,12 @@ async function main() {
     await tx.pointsLedger.deleteMany({ where: { isMock: true } })
     await tx.donation.deleteMany({ where: { isMock: true } })
     await tx.userBadge.deleteMany({ where: { isMock: true } })
+    await tx.momentPick.deleteMany({ where: { isMock: true } })
+    // Demo people (leaderboard, Market locals): what they left behind goes with them.
+    const mockUsers = (await tx.user.findMany({ where: { isMock: true }, select: { id: true } })).map(u => u.id)
+    await tx.review.deleteMany({ where: { userId: { in: mockUsers } } })
+    await tx.checkIn.deleteMany({ where: { userId: { in: mockUsers } } })
+    await tx.booking.deleteMany({ where: { userId: { in: mockUsers }, transactions: { none: {} } } })
     await tx.user.deleteMany({ where: { isMock: true } })
     for (const c of await tx.cause.findMany({ select: { id: true } })) {
       const raised = await tx.donation.aggregate({ where: { causeId: c.id }, _sum: { points: true } })

@@ -219,6 +219,7 @@ model User {
   questProgress      QuestProgress[]
   questsCreated      Quest[]             @relation("QuestCreator")
   townMedia          TownMedia[]         @relation("TownMediaAuthor")
+  momentPicks        MomentPick[]        @relation("MomentPickAuthor")
   travelTrips        TravelTrip[]        @relation("TravelTripOwner")
   travelTripMembers  TravelTripMember[]
   travelTripChanges  TravelTripChange[]
@@ -296,6 +297,18 @@ model Vendor {
   promotedUntil        DateTime?
   // When videos last changed, so the Vibe feed counts them as fresh (14 days).
   videosUpdatedAt      DateTime?
+  // Market sections the vendor picks (vendor app; admins can edit), keys
+  // from lib/market-tags.ts: jerk, rum_bar, beach_bar, crafts, souvenirs,
+  // grocery, pharmacy, phone_topup. Hidden sections have no vendors.
+  marketTags           String[]             @default([])
+  // Jerk Spots' scotch-bonnet heat scale, 1 (mild) to 4 (fire). Vendor-set.
+  heatLevel            Int?
+  // Rum Bars & Beach Bars: daily happy hour, "HH:MM" Jamaica time.
+  happyHourStart       String?
+  happyHourEnd         String?
+  // One short line for Market tiles ("Sunset view", "40+ rums",
+  // "Carving since 1989"). Vendor-set.
+  marketNote           String?
   // Placeholder listing from the seed, not a real vetted vendor.
   // scripts/remove-mock-data.ts deletes everything flagged this way.
   isMock               Boolean              @default(false)
@@ -382,7 +395,7 @@ model AccommodationBlockedDate {
 }
 
 model Experience {
-  id                 String   @id @default(cuid())
+  id                 String       @id @default(cuid())
   name               String
   tagline            String
   price              Float
@@ -392,34 +405,41 @@ model Experience {
   startLocation      String
   travelTime         Int
   travelMode         String
-  accessibility      String[] @default([])
+  accessibility      String[]     @default([])
   // What the price covers, one line each. Empty = not listed.
-  included           String[] @default([])
+  included           String[]     @default([])
   meetingPoint       String?
   meetingLat         Float?
   meetingLng         Float?
   cancellationPolicy String?
   // Start times offered, "HH:MM" 24h. Empty = any time the traveler picks.
-  startTimes         String[] @default([])
+  startTimes         String[]     @default([])
   maxPartySize       Int?
   // Refund rules key from lib/cancellation.ts (flexible | standard | strict).
   // cancellationPolicy above is the vendor's own wording, shown alongside.
-  cancellationTier   String   @default("standard")
+  cancellationTier   String       @default("standard")
   // Spots per start time (all party members count). Null = no limit listed.
   capacityPerSlot    Int?
   // Extra photos for the detail page gallery (imageUrl is the cover).
-  gallery            String[] @default([])
-  whatToBring        String[] @default([])
+  gallery            String[]     @default([])
+  whatToBring        String[]     @default([])
   // Free-text detail beyond the accessibility keys (steps, terrain, boats...).
   accessibilityNotes String?
   // Languages the guide speaks, e.g. ["English", "Patois", "Spanish"].
-  guideLanguages     String[] @default([])
+  guideLanguages     String[]     @default([])
   // Rain-sensitive (Plan B, lib/plan-b.ts). Null = worked out from the stops:
   // beach, activity and photo-spot stops count as outdoor.
   outdoor            Boolean?
-  isMock             Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  // Moments (Experiences tab, lib/moments.ts), set by the vendor: when it's
+  // best: morning | afternoon | golden | night. Empty = worked out from
+  // startTimes and the town's real sunset.
+  bestTimes          String[]     @default([])
+  // Paid placement: a "Featured" moment (always labelled) until then. Admin-set.
+  featuredUntil      DateTime?
+  momentPicks        MomentPick[]
+  isMock             Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   slots ExperienceSlot[]
 
@@ -1044,6 +1064,13 @@ model Event {
   bigNight         Boolean   @default(false)
   // Insider and up can buy tickets before this; everyone after.
   earlyAccessUntil DateTime?
+
+  // Promo media the promoter uploads (vendor app): the event page's hero
+  // swipes through every video first, then every photo. imageUrl and
+  // videoUrl stay the cover used on cards.
+  videos      String[]     @default([])
+  photos      String[]     @default([])
+  momentPicks MomentPick[]
 
   // Optional: the venue's ETA listing, when it has one.
   vendorId String?
@@ -2034,4 +2061,35 @@ model FraudAlert {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([resolvedAt, createdAt])
+}
+
+// ---------- Experiences tab: moments ----------
+
+// An ETA admin's hand-pick for a town's moment card. Picks override the
+// automatic choice (lib/moments.ts): live picks for the town (and daypart,
+// when set) lead, in sortOrder. One of experienceId / eventId.
+model MomentPick {
+  id        String    @id @default(cuid())
+  city      City
+  // morning | afternoon | golden | night | rain; null = any time of day.
+  daypart   String?
+  // Live from/until; null = no limit.
+  startsAt  DateTime?
+  endsAt    DateTime?
+  sortOrder Int       @default(0)
+  // Optional line under the title ("Our pick for the full moon").
+  note      String?
+  active    Boolean   @default(true)
+  isMock    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  experienceId String?
+  experience   Experience? @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  eventId      String?
+  event        Event?      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?       @relation("MomentPickAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([city, active])
 }

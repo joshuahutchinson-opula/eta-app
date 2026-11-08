@@ -1,12 +1,14 @@
-// components/rewards/Badges.tsx — collectable badges on the Rewards hub:
-// a ring of progress per badge, a "one more to unlock" nudge for any badge
-// one step away, and for earned badges a shareable card image (drawn on a
+// components/rewards/Badges.tsx — collectable badges on the Rewards hub
+// (docs/mockups/RewardsHub.dc.html): "Collected n of N", four badges (earned
+// ones as medals, the rest as progress rings), a "one more to unlock" row
+// for any badge one step away, and for earned badges a shareable card image (drawn on a
 // canvas here: rum-red card, gold medal, badge name, date, ETA) that goes
 // to the share sheet as a PNG, or downloads where sharing files isn't
 // supported.
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Icon from '@/lib/icons'
 import { useLang } from '@/lib/i18n-client'
 import { triggerHaptic } from '@/lib/haptics'
@@ -92,25 +94,48 @@ export default function Badges({ badges }: { badges: BadgeView[] }) {
     a.click()
   }
 
+  // Earned first, then the closest to done; four on the hub.
+  const shown = [...badges].sort((a, b) => Number(b.earned) - Number(a.earned) || (b.progress / b.target) - (a.progress / a.target)).slice(0, 4)
+  const earned = badges.filter(b => b.earned).length
+  const ring = (b: BadgeView) => {
+    const c = 2 * Math.PI * 28
+    const done = Math.round((b.progress / b.target) * c)
+    return (
+      <span className="rh-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden>
+          <circle cx="32" cy="32" r="28" fill="var(--system-bg-elevated)" stroke="var(--separator)" strokeWidth="5" />
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#B82010" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${done} ${Math.ceil(c)}`} transform="rotate(-90 32 32)" />
+        </svg>
+        <span className="num">{b.progress}/{b.target}</span>
+      </span>
+    )
+  }
+
   return (
     <>
-      {nudge && (
-        <div className="rw-nudge" role="status">
-          <Icon name="sparkle" size={18} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-          <span>{t('m.rw.oneMore', { badge: name(nudge.key) })}</span>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <p className="rh-eb">{t('m.rw.collected', { n: earned, total: badges.length })}</p>
+          <h2 className="rh-st">{t('m.rw.badges')}</h2>
         </div>
-      )}
-      <div className="rw-badges">
-        {badges.map(b => (
-          <button key={b.key} className={`rw-badge press ${b.earned ? 'earned' : ''}`} onClick={() => { triggerHaptic('light'); setOpen(b) }} aria-label={`${name(b.key)} · ${t('m.rw.badgeProgress', { n: b.progress, target: b.target })}`}>
-            <span className="rw-badge-ring" style={{ '--p': Math.round((b.progress / b.target) * 100) } as React.CSSProperties}>
-              <span><Icon name={b.earned ? b.icon : 'lock'} size={20} /></span>
-            </span>
-            <span className="rw-badge-name">{name(b.key)}</span>
-            <span className="rw-badge-prog num-font">{b.earned ? <Icon name="check" size={12} style={{ color: 'var(--success)' }} /> : t('m.rw.badgeProgress', { n: b.progress, target: b.target })}</span>
+        <Link href="/rewards/passport" style={{ fontSize: '15px', fontWeight: 600, minHeight: '44px', display: 'flex', alignItems: 'center', color: 'var(--rum-text)', textDecoration: 'none' }}>{t('m.common.seeAll')}</Link>
+      </div>
+      <div className="rh-badges list-in">
+        {shown.map((b, i) => (
+          <button key={b.key} className="rh-badge press" onClick={() => { triggerHaptic('light'); setOpen(b) }} aria-label={`${name(b.key)} · ${t('m.rw.badgeProgress', { n: b.progress, target: b.target })}`}>
+            {b.earned ? (
+              <span className="rh-medal" style={{ background: i % 2 ? 'radial-gradient(circle at 35% 30%, #F24230, #B82010)' : 'radial-gradient(circle at 35% 30%, #FFD54A, #E0A100)', color: i % 2 ? '#FFFFFF' : '#7A1408' }}><Icon name={b.icon} size={28} /></span>
+            ) : ring(b)}
+            <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 600 }}>{name(b.key)}</p>
           </button>
         ))}
       </div>
+      {nudge && (
+        <button className="rh-card rh-link press" style={{ marginTop: '12px', width: '100%', border: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }} onClick={() => { triggerHaptic('light'); setOpen(nudge) }}>
+          <span style={{ flex: 1, fontSize: '14px' }}>{t('m.rw.oneMoreTo', { badge: '\u0000' }).split('\u0000').flatMap((part, k, arr) => k < arr.length - 1 ? [part, <b key={k}>{name(nudge.key)}</b>] : [part])}</span>
+          <Icon name="chevronRight" size={14} style={{ color: 'var(--rum-text)' }} />
+        </button>
+      )}
 
       <div className={`bottom-sheet-overlay ${open ? 'open' : ''}`} onClick={() => setOpen(null)} />
       <div className={`bottom-sheet ${open ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label={open ? name(open.key) : t('m.rw.badges')}>

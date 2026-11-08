@@ -1,663 +1,240 @@
-// components/tabs/MarketTab.tsx — the Market tab (route /marketplace,
-// kept alive by components/TabKeeper).
+// components/tabs/MarketTab.tsx — the Market tab (route /marketplace, kept
+// alive by components/TabKeeper), after docs/mockups/MarketNew.dc.html.
+// Top bar (title, location, map, search), a jump bar to the five chapters
+// (it stays on screen once you scroll past it), then:
+//   Today's Picks  B.O.N Members · Dishes Of The Day · Deals Right Now
+//   Around You     Near You Now · Local Favourites
+//   Food & Drink   Jerk Spots · Rum Bars & Beach Bars · Open Late
+//   Shop & Stay    Crafts & Souvenirs · Accommodation · Groceries & Essentials
+//   Everything     All Vendors
+// Each chapter has a minimal separator; sections show only a title. Empty
+// sections (and chapters) are hidden. From 9pm, Open Late moves to the very
+// top. Data: /api/market (lib/market.ts).
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Dock from '@/components/Dock'
 import Icon from '@/lib/icons'
-import { triggerHaptic } from '@/lib/haptics'
-import { usePatois } from '@/lib/i18n-client'
 import BrandedRefresh from '@/components/BrandedRefresh'
-import VendorCard from '@/components/VendorCard'
-import { syncAlerts } from '@/lib/alerts-client'
-import { ACCESSIBILITY_OPTIONS } from '@/lib/accessibility'
-import { useLang } from '@/lib/i18n-client'
-import { hapticSaved } from '@/lib/haptics'
-import SearchBar from '@/components/SearchBar'
-import PartnerBadge from '@/components/PartnerBadge'
-import Price from '@/components/Price'
+import ErrorState from '@/components/ErrorState'
+import RegionPill from '@/components/home/RegionPill'
 import { useRegion } from '@/components/RegionProvider'
 import { useTabShow } from '@/components/TabKeeper'
-import { inJamaica } from '@/lib/places-geo'
-import { nearestTown } from '@/lib/regions'
-import ErrorState from '@/components/ErrorState'
-import { moodCategories } from '@/lib/mood-profiles'
-import { distanceFrom, sortByDistance, useUserLocation } from '@/lib/geo'
+import { useLang } from '@/lib/i18n-client'
 import { useLabels } from '@/lib/labels'
+import { useUserLocation } from '@/lib/geo'
+import { triggerHaptic } from '@/lib/haptics'
+import { useReducedMotion } from '@/lib/motion'
+import { getCurrentUser, AUTH_EVENT } from '@/lib/auth-client'
 import { categoryStyle } from '@/lib/vendor-style'
-import SmartVideo from '@/components/SmartVideo'
-import Img from '@/components/Img'
+import type { DictKey } from '@/lib/i18n'
+import type { MarketData } from '@/lib/market'
+import { Chapter, MkIcon, useNow } from '@/components/market/bits'
+import { AllVendors, BarsGrid, BonPanel, CraftsMosaic, DealsRow, DishesRow, Essentials, JerkSpots, LocalFavs, NearYouNow, OpenLate, StaysRow, type Ctx } from '@/components/market/Sections'
 
 const EtaMap = dynamic(() => import('@/components/map/EtaMap'), { ssr: false })
 
-interface Vendor {
-  id: string
-  name: string
-  category: string
-  neighborhood: string
-  city: string
-  priceRange: string
-  description: string
-  images: string[]
-  videos: string[]
-  open: boolean
-  live: boolean
-  isPremium: boolean
-  whoThere: number
-  rating?: number
-  reviewCount?: number
-  lat?: number
-  lng?: number
-  accessibility?: string[]
-  dishOfDay?: { name: string; price?: number | null; imageUrl?: string | null; videoUrl?: string | null; prepMinutes?: number | null } | null
-}
+type ChapterId = 'picks' | 'around' | 'food' | 'shop' | 'all'
+const CHAPTER_KEYS: Record<ChapterId, DictKey> = { picks: 'm.mk.ch.picks', around: 'm.mk.ch.around', food: 'm.mk.ch.food', shop: 'm.mk.ch.shop', all: 'm.mk.ch.all' }
 
-interface Accommodation {
-  id: string
-  name: string
-  type: string
-  googleStars: number
-  description: string
-  priceRange: string
-  media: Array<{ type: string; url: string }>
-  vetted?: boolean
-  city: string
-  nightlyPrice?: number | null
-  partner?: { code: string; name: string } | null
-}
+function jamaicaHour(now: number) { return new Date(now - 5 * 3600000).getUTCHours() }
 
-interface FlashDeal {
-  id: string
-  deal: string
-  expires: string
-  vendor: { id: string; name: string; city: string; images?: string[]; isPremium?: boolean; rating?: number; reviewCount?: number }
-}
-
-const MOOD_ICONS: Record<string, string> = {
-  'R&R': 'spa',
-  'Just The Two Of Us': 'heart',
-  'Party Time': 'party',
-  'Sunset Chaser': 'sun',
-  'Water Life': 'wave',
-  'Street Food Crawl': 'food',
-  'Hangover Cures': 'recharge',
-  'Solo Missions': 'user',
-  'Family Day': 'users',
-  'Rum & Bass': 'glass'
-}
-
-const MOOD_NAMES = [
-  'R&R',
-  'Just The Two Of Us',
-  'Party Time',
-  'Sunset Chaser',
-  'Water Life',
-  'Street Food Crawl',
-  'Hangover Cures',
-  'Solo Missions',
-  'Family Day',
-  'Rum & Bass'
-]
-
-const SORT_OPTIONS = ['Recommended', 'Price', 'Rating', 'Distance']
-
-function formatCategory(category: string): string {
-  return category.charAt(0) + category.slice(1).toLowerCase()
-}
-
-export default function MarketplacePage() {
-  const patois = usePatois()
-  const { t } = useLang()
-  const labels = useLabels()
+export default function MarketTab() {
   const router = useRouter()
-  const [vendors, setVendors] = useState<Vendor[]>([])
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([])
-  const [flashDeals, setFlashDeals] = useState<FlashDeal[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [search, setSearch] = useState('')
+  const { t, lang } = useLang()
+  const labels = useLabels()
+  const locale = lang === 'en' ? 'en-US' : lang
+  const reduce = useReducedMotion()
   const { city, town, ready } = useRegion()
-  const [selectedMood, setSelectedMood] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState('Recommended')
-  const [savedVendors, setSavedVendors] = useState<string[]>([])
-  // Empty = every type; partners stay first (the API orders them).
-  const [accommodationType, setAccommodationType] = useState('')
-  const [showFilterSheet, setShowFilterSheet] = useState(false)
-  const [showSavedOnly, setShowSavedOnly] = useState(false)
-  const [selectedAccess, setSelectedAccess] = useState<string[]>([])
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
-  const [mapVendor, setMapVendor] = useState<Vendor | null>(null)
   const realLocation = useUserLocation()
-  const { town: regionTown } = useRegion()
-  const userLocation = realLocation ?? { lat: regionTown.lat, lng: regionTown.lng }
-  // The map opens on the town the user is in (nearest town to their position
-  // in Jamaica), or the selected town without a position.
-  const hereTown = realLocation && inJamaica(realLocation) ? nearestTown(realLocation) : regionTown
-  const mapCenter = { lat: hereTown.lat, lng: hereTown.lng }
-  const [loadFailed, setLoadFailed] = useState(false)
+  const [data, setData] = useState<MarketData | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [jumpFixed, setJumpFixed] = useState(false)
+  const [active, setActive] = useState<ChapterId>('picks')
+  const jumpRef = useRef<HTMLDivElement>(null)
+  const ticking = Boolean(data?.deals.some(d => d.kind === 'boost' && d.endsAt))
+  const now = useNow(ticking ? 1000 : 30000)
 
-  useEffect(() => { if (ready) fetchData() }, [ready, city])
-  // Back on the tab: refresh quietly (what's on screen stays).
-  useTabShow('/marketplace', () => { if (ready) fetchData() })
+  const load = useCallback(async () => {
+    setFailed(false)
+    try {
+      const res = await fetch(`/api/market?city=${city}`)
+      if (!res.ok) throw new Error('market')
+      setData(await res.json())
+    } catch {
+      setFailed(true)
+    }
+  }, [city])
 
+  useEffect(() => { if (ready) { setData(null); load() } }, [ready, load])
+  useTabShow('/marketplace', () => { if (ready) load() })
   useEffect(() => {
-    const saved = localStorage.getItem('savedVendors')
-    if (saved) setSavedVendors(JSON.parse(saved))
-    const savedMood = localStorage.getItem('marketplaceMood')
-    if (savedMood) setSelectedMood(savedMood)
-    const savedSort = localStorage.getItem('marketplaceSort')
-    if (savedSort) setSortBy(savedSort)
+    const read = () => setSignedIn(Boolean(getCurrentUser()))
+    read()
+    window.addEventListener(AUTH_EVENT, read)
+    return () => window.removeEventListener(AUTH_EVENT, read)
   }, [])
 
-  const fetchData = async () => {
-    try {
-      setLoadFailed(false)
-      const [vendorsRes, accomRes, flashDealsRes] = await Promise.all([
-        fetch(`/api/vendors?city=${city}`),
-        fetch(`/api/accommodations?city=${city}`),
-        fetch(`/api/flashdeals?city=${city}`)
-      ])
-
-      if (!vendorsRes.ok) throw new Error('vendors')
-      const vendorsData = await vendorsRes.json()
-      const accomData = await accomRes.json()
-      const flashDealsData = await flashDealsRes.json()
-
-      setVendors(Array.isArray(vendorsData) ? vendorsData : [])
-      setAccommodations(Array.isArray(accomData) ? accomData : [])
-      setFlashDeals(Array.isArray(flashDealsData) ? flashDealsData : [])
-      
-    } catch (error) {
-      console.error(error)
-      setLoadFailed(true)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRefresh = async () => {
+  const refresh = async () => {
     setRefreshing(true)
-    await fetchData()
+    await load()
     setRefreshing(false)
   }
 
-  const toggleSaveVendor = (vendorId: string) => {
-    hapticSaved()
-    const newSaved = savedVendors.includes(vendorId)
-      ? savedVendors.filter(id => id !== vendorId)
-      : [...savedVendors, vendorId]
-    setSavedVendors(newSaved)
-    localStorage.setItem('savedVendors', JSON.stringify(newSaved))
-    syncAlerts()
+  const from = realLocation ?? (data ? { lat: data.town.lat, lng: data.town.lng } : { lat: town.lat, lng: town.lng })
+  const byId = useMemo(() => new Map((data?.vendors ?? []).map(v => [v.id, v])), [data])
+  const ctx: Ctx = {
+    t, locale, category: labels.category, stayType: labels.stayType, from, hasLocation: Boolean(realLocation), now, town: town.name,
+    vendor: (id: string) => byId.get(id)
   }
 
-  const handleMoodChange = (mood: string | null) => {
-    setSelectedMood(mood)
-    if (mood) localStorage.setItem('marketplaceMood', mood)
-    else localStorage.removeItem('marketplaceMood')
+  // What each chapter has.
+  const has = data ? {
+    bon: data.bon.length > 0, dishes: data.dishes.length > 0, deals: data.deals.length > 0,
+    near: data.vendors.some(v => v.lat != null), favs: data.localFavs.length > 0,
+    jerk: data.jerk.length > 0, bars: data.bars.length > 0, late: data.openLate.some(r => Date.parse(r.closesAt) > now),
+    crafts: data.crafts.length > 0, stays: data.stays.length > 0, essentials: data.essentials.length > 0, all: data.vendors.length > 0
+  } : null
+  const lateFirst = jamaicaHour(now) >= 21 || jamaicaHour(now) < 4
+  const chapters: ChapterId[] = has ? ([
+    (has.bon || has.dishes || has.deals) && 'picks',
+    (has.near || has.favs) && 'around',
+    (has.jerk || has.bars || (has.late && !lateFirst)) && 'food',
+    (has.crafts || has.stays || has.essentials) && 'shop',
+    has.all && 'all'
+  ].filter(Boolean) as ChapterId[]) : []
+
+  // The fixed jump bar shows once the one under the title has scrolled away.
+  useEffect(() => {
+    const el = jumpRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setJumpFixed(!e.isIntersecting && e.boundingClientRect.top < 0))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [data])
+
+  // Which chapter you're reading.
+  useEffect(() => {
+    if (!chapters.length || typeof IntersectionObserver === 'undefined') return
+    const els = chapters.map(id => document.getElementById(`mk-${id}`)).filter((e): e is HTMLElement => Boolean(e))
+    const io = new IntersectionObserver(entries => {
+      const top = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+      if (top) setActive(top.target.id.replace('mk-', '') as ChapterId)
+    }, { rootMargin: '-80px 0px -60% 0px' })
+    els.forEach(e => io.observe(e))
+    return () => io.disconnect()
+  }, [chapters.join(','), data]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const jump = (id: ChapterId) => {
+    triggerHaptic('selection')
+    setActive(id)
+    document.getElementById(`mk-${id}`)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
   }
 
-  const handleSortChange = (sort: string) => {
-    setSortBy(sort)
-    localStorage.setItem('marketplaceSort', sort)
-  }
-
-  const formatCountdown = (expires: string) => {
-    const now = new Date()
-    const expiry = new Date(expires)
-    const diffMs = expiry.getTime() - now.getTime()
-    if (diffMs <= 0) return 'Ended'
-    const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 60) return `Ends in ${diffMin}m`
-    return `Ends in ${Math.floor(diffMin / 60)}h ${diffMin % 60}m`
-  }
-
-  // Dishes of the Day: whatever vendors in this region have set (Vendor.dishOfDay), one each.
-  const dishesOfDay = vendors.filter(v => v.city === city && v.dishOfDay?.name)
-  const premiumVendors = vendors.filter(v => v.isPremium && v.city === city)
-  const regionFlashDeals = flashDeals.filter(fd => fd.vendor.city === city)
-
-  const filteredVendors = vendors
-    .filter(v => !search || 
-      v.name.toLowerCase().includes(search.toLowerCase()) ||
-      v.category.toLowerCase().includes(search.toLowerCase()) ||
-      v.neighborhood.toLowerCase().includes(search.toLowerCase())
-    )
-    .filter(v => !city || v.city === city)
-    .filter(v => !selectedMood || moodCategories(selectedMood).includes(v.category))
-    .filter(v => !showSavedOnly || savedVendors.includes(v.id))
-    .filter(v => selectedAccess.every(k => v.accessibility?.includes(k)))
-    .sort((a, b) => {
-      if (sortBy === 'Price') return (a.priceRange || '').localeCompare(b.priceRange || '')
-      if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
-      return 0
-    })
-
-  // Distance: real distance from you (or the town centre until location is allowed); no coordinates → last.
-  const sortedVendors = sortBy === 'Distance' ? sortByDistance(filteredVendors, userLocation) : filteredVendors
-
-  const nearYou = sortByDistance(vendors.filter(v => v.city === city && (!selectedMood || moodCategories(selectedMood).includes(v.category))), userLocation).slice(0, 3)
-
-  const activeFilterCount =[selectedMood, showSavedOnly || null].filter(Boolean).length + selectedAccess.length
-
-  const filteredAccommodations = accommodations.filter(a =>
-    a.city === city && (!accommodationType || a.type === accommodationType)
+  const jumpBar = (fixed: boolean) => (
+    <div ref={fixed ? undefined : jumpRef} className={`mk-jump ${fixed ? `fixed ${jumpFixed ? 'on' : ''}` : ''}`} aria-hidden={fixed && !jumpFixed}>
+      <div className="mk-scroll" role="tablist" aria-label={t('m.mk.jumpTo')}>
+        {chapters.map(id => (
+          <button key={id} role="tab" aria-selected={active === id} className="mk-chip" tabIndex={fixed && !jumpFixed ? -1 : 0} onClick={() => jump(id)}>{t(CHAPTER_KEYS[id])}</button>
+        ))}
+      </div>
+    </div>
   )
 
-  if (loading) {
-    return (
-      <main style={{ minHeight: '100dvh', background: 'var(--system-bg)' }}>
-        <div style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px', paddingBottom: '100px' }}>
-          <div className="skeleton-card" style={{ height: '44px', marginBottom: '24px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-          <div className="skeleton-card" style={{ height: '200px', marginBottom: '24px' }}>
-            <div className="skeleton-image" style={{ height: '100%' }} />
-          </div>
-        </div>
-        <Dock />
-      </main>
-    )
-  }
+  const top = (
+    <header className="mk-top">
+      <h1>{t('m.mk.title')}</h1>
+      <div className="mk-top-actions">
+        <RegionPill />
+        <button className="mk-icon-btn press" aria-label={t('m.mk.map')} onClick={() => { triggerHaptic('light'); setMapOpen(true) }}><MkIcon name="map" /></button>
+        <Link href="/search" className="mk-icon-btn press" aria-label={t('m.mo.search')} onClick={() => triggerHaptic('light')}><Icon name="search" size={18} /></Link>
+      </div>
+    </header>
+  )
 
   return (
-    <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '80px' }}>
-      <BrandedRefresh refreshing={refreshing} onRefresh={handleRefresh} />
+    <main className="mk">
+      <BrandedRefresh refreshing={refreshing} onRefresh={refresh} />
+      {top}
 
-      <div className="content-fade-in" style={{ padding: '16px' }}>
-        {/* Search bar with controls */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px',
-          marginBottom: '12px',
-          minHeight: '44px'
-        }}>
-          <SearchBar value={search} onChange={setSearch} placeholder={t('m.market.search')} style={{ flex: 1 }} />
-          <button
-            onClick={() => setViewMode('list')}
-            style={{ 
-              background: viewMode === 'list' ? 'var(--rum)' : 'var(--system-bg-elevated)',
-              border: 'none',
-              cursor: 'pointer',
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: viewMode === 'list' ? 'white' : 'var(--label-secondary)',
-              flexShrink: 0
-            }}
-          >
-            <Icon name="journal" size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode('map')}
-            style={{ 
-              background: viewMode === 'map' ? 'var(--rum)' : 'var(--system-bg-elevated)',
-              border: 'none',
-              cursor: 'pointer',
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: viewMode === 'map' ? 'white' : 'var(--label-secondary)',
-              flexShrink: 0
-            }}
-          >
-            <Icon name="mapPin" size={16} />
-          </button>
-          <button
-            onClick={() => setShowFilterSheet(true)}
-            style={{
-              position: 'relative',
-              background: 'var(--system-bg-elevated)',
-              border: 'none',
-              cursor: 'pointer',
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--label-secondary)',
-              flexShrink: 0
-            }}
-          >
-            <Icon name="filter" size={16} />
-            {activeFilterCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '4px',
-                right: '4px',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: 'var(--rum)',
-                border: '1.5px solid var(--system-bg)'
-              }} />
-            )}
-          </button>
+      {!data ? (
+        failed ? <div className="mk-body" style={{ paddingTop: '24px' }}><ErrorState onRetry={load} /></div> : (
+          <div className="mk-body" aria-hidden style={{ paddingTop: '10px' }}>
+            <div className="skeleton-card" style={{ height: '38px', borderRadius: '999px', marginBottom: '22px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
+            <div className="skeleton-card" style={{ height: '220px', borderRadius: '22px', marginBottom: '18px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
+            <div className="skeleton-card" style={{ height: '170px', borderRadius: '18px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>
+          </div>
+        )
+      ) : !has?.all && !has?.stays ? (
+        <div className="empty-state content-fade-in" style={{ minHeight: '50vh' }}>
+          <Icon name="mapPin" size={32} style={{ color: 'var(--label-tertiary)' }} />
+          <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)' }}>{t('m.region.emptyTitle', { town: town.name })}</p>
+          <p>{t('m.region.emptyBody')}</p>
         </div>
+      ) : (
+        <div key={city} className="content-fade-in">
+          {jumpBar(false)}
+          {jumpBar(true)}
+          <div className="mk-body">
+            {lateFirst && <OpenLate ctx={ctx} rows={data.openLate} />}
 
+            {chapters.includes('picks') && <>
+              <Chapter id="mk-picks" title={t('m.mk.ch.picks')} first />
+              <BonPanel ctx={ctx} items={data.bon} signedIn={signedIn} />
+              <DishesRow ctx={ctx} dishes={data.dishes} />
+              <DealsRow ctx={ctx} deals={data.deals} />
+            </>}
 
-        {/* Map view */}
-        {viewMode === 'map' && (
-          <div style={{ position: 'relative', height: '440px', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' }}>
-            <EtaMap
-              center={mapCenter}
-              zoom={13}
-              user={realLocation}
-              markers={filteredVendors.filter(v => v.lat && v.lng).map(v => ({
-                id: v.id, lat: v.lat!, lng: v.lng!, color: categoryStyle(v.category).color, ring: v.isPremium ? '#FFB800' : '#FFFFFF',
-                size: v.isPremium ? 20 : 16, label: v.name, selected: mapVendor?.id === v.id, onClick: () => setMapVendor(v)
-              }))}
-              bottomInset={mapVendor ? 110 : 0}
-              label={t('m.market.allVendors')}
-            />
-            {mapVendor && (
-              <Link href={`/vendor/${mapVendor.id}`} className="card" style={{ position: 'absolute', left: '10px', right: '10px', bottom: '10px', zIndex: 5, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', textDecoration: 'none', boxShadow: 'var(--shadow-elevated)' }}>
-                <span style={{ width: '56px', height: '56px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'var(--system-bg-secondary)' }}>
-                  {mapVendor.images[0] && <Img src={mapVendor.images[0]} alt="" width={112} height={112} sizes="56px" />}
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapVendor.name}</span>
-                  <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)' }}>{labels.category(mapVendor.category)} · {mapVendor.priceRange}{mapVendor.isPremium ? ' · ★ B.O.N' : ''}</span>
-                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: mapVendor.open ? 'var(--success)' : 'var(--label-secondary)' }}>{mapVendor.open ? t('m.common.open') : t('m.common.closed')}</span>
-                </span>
-                <Icon name="chevronRight" size={14} style={{ color: 'var(--label-tertiary)' }} />
-              </Link>
-            )}
-          </div>
-        )}
+            {chapters.includes('around') && <>
+              <Chapter id="mk-around" title={t('m.mk.ch.around')} first={chapters[0] === 'around'} />
+              <NearYouNow ctx={ctx} vendors={data.vendors} onOpenMap={() => setMapOpen(true)} />
+              <LocalFavs ctx={ctx} favs={data.localFavs} />
+            </>}
 
-        {/* Dishes of the Day: one per vendor that's set one today, side by side */}
-        {dishesOfDay.length > 0 && viewMode === 'list' && !showSavedOnly && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.market.todaysPick')}</span>
-                <span className="section-title">{t('m.market.dishesOfDay')}</span>
-              </div>
-            </div>
-            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {dishesOfDay.map(v => {
-                const dish = v.dishOfDay!
-                const image = dish.imageUrl || v.images[0] || ''
-                return (
-                  <Link key={v.id} href={`/vendor/${v.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '170px' }}>
-                    <div className="card" style={{ height: '100%' }}>
-                      <div className="card-image" style={{ height: '130px', position: 'relative' }}>
-                        {dish.videoUrl ? (
-                          <div style={{ position: 'absolute', inset: 0 }}><SmartVideo src={dish.videoUrl} poster={image} alt={dish.name} /></div>
-                        ) : image ? (
-                          <Img src={image} alt={dish.name} width={340} height={260} sizes="170px" />
-                        ) : null}
-                        {dish.prepMinutes ? <div className="card-badge num-font"><Icon name="clock" size={11} /> {dish.prepMinutes} min</div> : null}
-                      </div>
-                      <div className="card-content" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dish.name}</p>
-                        <p style={{ fontSize: '12px', color: 'var(--label-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</p>
-                        {dish.price != null && <Price usd={dish.price} className="card-price" />}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
+            {chapters.includes('food') && <>
+              <Chapter id="mk-food" title={t('m.mk.ch.food')} first={chapters[0] === 'food'} />
+              <JerkSpots ctx={ctx} ids={data.jerk} />
+              <BarsGrid ctx={ctx} ids={data.bars} />
+              {!lateFirst && <OpenLate ctx={ctx} rows={data.openLate} />}
+            </>}
 
-        {/* B.O.N Members */}
-        {premiumVendors.length > 0 && viewMode === 'list' && !showSavedOnly && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-title">{t('m.bon.members')}</span>
-              </div>
-              <Link href="/vendors?premium=true" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {premiumVendors.map(v => (
-                <div key={v.id} style={{ flexShrink: 0, width: '180px' }}>
-                  <VendorCard vendor={v} variant="tile" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+            {chapters.includes('shop') && <>
+              <Chapter id="mk-shop" title={t('m.mk.ch.shop')} first={chapters[0] === 'shop'} />
+              <CraftsMosaic ctx={ctx} ids={data.crafts} />
+              <StaysRow ctx={ctx} stays={data.stays} />
+              <Essentials ctx={ctx} ids={data.essentials} />
+            </>}
 
-        {/* Flash Deals */}
-        {regionFlashDeals.length > 0 && viewMode === 'list' && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.market.limited')}</span>
-                <span className="section-title">{t('m.market.flashDeals')}</span>
-              </div>
-            </div>
-            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {regionFlashDeals.map(fd => (
-                <Link key={fd.id} href={`/vendor/${fd.vendor.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div className="card" style={{ width: '200px' }}>
-                    <div className="card-image" style={{ height: '110px' }}>
-                      {fd.vendor.images?.[0] && <Img src={fd.vendor.images[0]} alt={fd.vendor.name} width={600} height={400} sizes="80vw" />}
-                      <div className="card-overlay" />
-                    </div>
-                    <div className="card-content">
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--rum-text)' }}>{fd.vendor.name}</p>
-                      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)' }}>{fd.deal}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Icon name="clock" size={12} />
-                        {formatCountdown(fd.expires)}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Near You Now (moved here from Home): nearest first by real distance,
-            or from the town centre until location is allowed; no coordinates → last. */}
-        {nearYou.length > 0 && viewMode === 'list' && !showSavedOnly && !search && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.home.closeBy')}</span>
-                <span className="section-title">{t('m.home.nearYou')}</span>
-              </div>
-              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {nearYou.map(v => (
-                <VendorCard
-                  key={v.id}
-                  vendor={v}
-                  distanceKm={distanceFrom(realLocation, v)}
-                  saved={savedVendors.includes(v.id)}
-                  onToggleSave={() => toggleSaveVendor(v.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Accommodation */}
-        {filteredAccommodations.length > 0 && viewMode === 'list' && !showSavedOnly && (
-          <div style={{ marginBottom: '24px' }}>
-            <div className="section-header">
-              <div className="section-heading">
-                <span className="section-eyebrow">{t('m.market.stayAwhile')}</span>
-                <span className="section-title">{t('m.market.accommodation')}</span>
-              </div>
-              <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', padding: '0 0 12px' }}>
-              {['ALL_INCLUSIVE', 'A_LA_CARTE', 'VILLA'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setAccommodationType(accommodationType === type ? '' : type)}
-                  className={`chip ${accommodationType === type ? 'active' : ''}`}
-                  aria-pressed={accommodationType === type}
-                >
-                  {labels.stayType(type)}
-                </button>
-              ))}
-            </div>
-            <div className="horizontal-scroll" style={{ padding: '4px 0 12px' }}>
-              {filteredAccommodations.map(a => (
-                <Link key={a.id} href={`/accommodations/${a.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '240px' }}>
-                  <div className="card">
-                    <div className="card-image" style={{ height: '160px' }}>
-                      {a.media?.[0]?.url && <Img src={a.media[0].url} alt={a.name} width={600} height={400} sizes="80vw" />}
-                      {a.partner && <div style={{ position: 'absolute', top: '8px', left: '8px' }}><PartnerBadge /></div>}
-                    </div>
-                    <div className="card-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                        <Icon name="star" size={14} style={{ color: 'var(--gold)' }} />
-                        <span className="num-font" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{a.googleStars}</span>
-                      </div>
-                      <p style={{ fontSize: '17px', fontWeight: 600, color: 'var(--label-primary)', marginBottom: '2px' }}>{a.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '4px' }}>{labels.stayType(a.type)}</p>
-                      <p className="num-font" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--rum-text)' }}>
-                        {a.nightlyPrice != null ? <Price usd={a.nightlyPrice} /> : a.priceRange}
-                        <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--label-secondary)' }}> {t('m.common.perNightShort')}</span>
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* All Vendors Preview - 5 cards */}
-        <div>
-          <div className="section-header">
-            <div className="section-heading">
-              <span className="section-title">{t('m.market.allVendors')}</span>
-            </div>
-            <Link href="/vendors" className="section-link">{t('m.common.seeAll')}</Link>
-          </div>
-          {loadFailed ? (
-            <ErrorState onRetry={handleRefresh} />
-          ) : sortedVendors.length === 0 ? (
-            <div className="empty-state">
-              <Icon name="search" size={32} style={{ color: 'var(--label-tertiary)' }} />
-              {vendors.some(v => v.city === city) ? (
-                <p style={{ fontSize: '17px', fontWeight: 600 }}>{patois.emptySearch}</p>
-              ) : (
-                <>
-                  <p style={{ fontSize: '17px', fontWeight: 600 }}>{t('m.region.emptyTitle', { town: town.name })}</p>
-                  <p>{t('m.region.emptyBody')}</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {sortedVendors.slice(0, 5).map(v => (
-                <VendorCard
-                  key={v.id}
-                  vendor={v}
-                  distanceKm={distanceFrom(realLocation, v)}
-                  saved={savedVendors.includes(v.id)}
-                  onToggleSave={() => toggleSaveVendor(v.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Filter Sheet */}
-      <div className={`bottom-sheet-overlay ${showFilterSheet ? 'open' : ''}`} onClick={() => setShowFilterSheet(false)} />
-      <div className={`bottom-sheet ${showFilterSheet ? 'open' : ''}`}>
-        <div className="sheet-grabber" />
-        <div style={{ padding: '0 20px 20px' }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--label-primary)', marginBottom: '16px' }}>{t('m.market.filterTitle')}</h3>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.moodCategory')}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {MOOD_NAMES.map(mood => (
-              <button
-                key={mood}
-                onClick={() => handleMoodChange(selectedMood === mood ? null : mood)}
-                className={`chip ${selectedMood === mood ? 'active' : ''}`}
-              >
-                <Icon name={MOOD_ICONS[mood] as any} size={14} />
-                {mood}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.show')}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            <button
-              onClick={() => setShowSavedOnly(!showSavedOnly)}
-              className={`chip ${showSavedOnly ? 'active' : ''}`}
-            >
-              <Icon name="heart" size={14} className={showSavedOnly ? 'filled' : ''} />
-              {t('m.market.savedOnly')}
-            </button>
-          </div>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '4px' }}>{t('m.market.accessibility')}</p>
-          <p style={{ fontSize: '12px', color: 'var(--label-tertiary)', marginBottom: '8px' }}>{t('m.market.accessNote')}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {ACCESSIBILITY_OPTIONS.map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => setSelectedAccess(prev => prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key])}
-                className={`chip ${selectedAccess.includes(opt.key) ? 'active' : ''}`}
-                aria-pressed={selectedAccess.includes(opt.key)}
-              >
-                {labels.access(opt.key)}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--label-secondary)', marginBottom: '8px' }}>{t('m.market.sortBy')}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {SORT_OPTIONS.map(option => (
-              <button
-                key={t(`m.sort.${option}` as 'm.sort.Price')}
-                onClick={() => handleSortChange(option)}
-                className={`chip ${sortBy === option ? 'active' : ''}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {activeFilterCount > 0 && (
-              <button
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
-                onClick={() => {
-                  handleMoodChange(null)
-                  setShowSavedOnly(false)
-                  setSelectedAccess([])
-                }}
-              >
-                {t('m.common.clearAll')}
-              </button>
-            )}
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowFilterSheet(false)}>
-              {t('m.common.done')}
-            </button>
+            {chapters.includes('all') && <>
+              <Chapter id="mk-all" title={t('m.mk.ch.all')} first={chapters[0] === 'all'} />
+              <AllVendors ctx={ctx} vendors={data.vendors} />
+            </>}
           </div>
         </div>
-      </div>
+      )}
 
+      {/* The whole town on a map */}
+      {mapOpen && data && (
+        <div className="mk-mapsheet page-enter" role="dialog" aria-modal="true" aria-label={t('m.mk.map')}>
+          <button className="mk-icon-btn mk-mapsheet-close" aria-label={t('m.mk.close')} onClick={() => setMapOpen(false)}><Icon name="close" size={18} /></button>
+          <EtaMap
+            center={from}
+            zoom={14}
+            user={realLocation}
+            markers={data.vendors.filter(v => v.lat != null && v.lng != null).map(v => ({
+              id: v.id, lat: v.lat!, lng: v.lng!, color: categoryStyle(v.category).color, ring: v.isPremium ? '#FFB800' : '#FFFFFF',
+              size: v.isPremium ? 20 : 16, label: v.name, onClick: () => { setMapOpen(false); router.push(`/vendor/${v.id}`) }
+            }))}
+            label={t('m.mk.all')}
+          />
+        </div>
+      )}
 
       <Dock />
     </main>

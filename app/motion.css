@@ -1,0 +1,69 @@
+/* app/motion.css — how the app moves, in one place. Smooth and clean, no
+   hard cuts or flashes:
+     pages      ease in (fade + a small slide); a plain fade when a card is
+                growing into the hero (lib/morph.ts sets html.morphing)
+     tabs       crossfade in when switched to (components/TabKeeper)
+     sheets     slide up with a soft, non-bouncy curve; the dim fades
+     lists      items ease in one after another (.list-in)
+     content    skeleton → content fades (.content-fade-in)
+   Reduce Motion: everything becomes a short fade (the block at the end).
+   Fill modes are "backwards", never "both": a held transform would make
+   the wrapper the containing block for position:fixed bars. */
+
+:root {
+  --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-page: 0.34s;
+  --motion-tab: 0.22s;
+}
+
+@keyframes pageIn { from { opacity: 0; transform: translate3d(18px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+@keyframes riseIn { from { opacity: 0; transform: translate3d(0, 12px, 0); } to { opacity: 1; transform: none; } }
+@keyframes sheetUp { from { transform: translate3d(0, 100%, 0); } to { transform: none; } }
+
+.page-enter { animation: pageIn var(--motion-page) var(--ease-out-soft) backwards; }
+.page-enter:empty { animation: none; }
+html.morphing .page-enter { animation-name: fadeOnly; animation-duration: 0.26s; }
+
+.tab-enter { animation: fadeOnly var(--motion-tab) ease-out backwards; }
+
+/* Detail pages used to slide in by themselves; the page wrapper does it now. */
+.screen-push-in { animation: fadeOnly 0.2s ease-out backwards; }
+
+.content-fade-in { animation: fadeOnly 0.32s ease-out backwards; }
+
+/* Sheets and modals: slide up, no overshoot. Sheets that mount already open
+   get the same slide. */
+.bottom-sheet { transition: transform 0.42s var(--ease-out-soft), visibility 0s linear 0.42s; visibility: hidden; will-change: transform; }
+.bottom-sheet.open { visibility: visible; transition: transform 0.42s var(--ease-out-soft), visibility 0s; animation: sheetUp 0.42s var(--ease-out-soft) backwards; }
+.bottom-sheet-overlay { transition: opacity 0.3s ease; }
+.bottom-sheet-overlay.open { animation: fadeOnly 0.3s ease backwards; }
+
+/* List items easing in, one after another (up to 10 staggered). */
+.list-in > * { animation: riseIn 0.42s var(--ease-out-soft) backwards; }
+.list-in > *:nth-child(2) { animation-delay: 40ms; }
+.list-in > *:nth-child(3) { animation-delay: 80ms; }
+.list-in > *:nth-child(4) { animation-delay: 120ms; }
+.list-in > *:nth-child(5) { animation-delay: 160ms; }
+.list-in > *:nth-child(6) { animation-delay: 200ms; }
+.list-in > *:nth-child(7) { animation-delay: 240ms; }
+.list-in > *:nth-child(8) { animation-delay: 280ms; }
+.list-in > *:nth-child(9) { animation-delay: 320ms; }
+.list-in > *:nth-child(n+10) { animation-delay: 360ms; }
+
+/* A section easing in as a whole. */
+.rise-in { animation: riseIn 0.45s var(--ease-out-soft) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
+
+/* Crossfading between two states in place (a carousel slide, a filter). */
+.swap-fade { animation: fadeOnly 0.28s ease-out backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter, html.morphing .page-enter, .tab-enter, .screen-push-in, .content-fade-in,
+  .list-in > *, .rise-in, .stagger-in, .swap-fade {
+    animation-name: fadeOnly !important;
+    animation-duration: 0.18s !important;
+    animation-delay: 0s !important;
+  }
+  .bottom-sheet, .bottom-sheet.open { transform: none !important; animation: none !important; opacity: 0; transition: opacity 0.2s ease, visibility 0s linear 0.2s; }
+  .bottom-sheet.open { opacity: 1; transition: opacity 0.2s ease, visibility 0s; }
+}

@@ -118,7 +118,7 @@ export default function QuickPreview({ target, location, onClose }: { target: Pr
               )}
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px', alignItems: 'center' }}>
                 {go && <a href={go} target="_blank" rel="noopener noreferrer" className="btn btn-primary press" style={{ flex: 1, textDecoration: 'none' }} onClick={() => triggerHaptic('light')}><Icon name="navigate" size={16} /> {t('m.qp.go')}</a>}
-                <Link href={href} className="btn btn-secondary press" style={{ flex: 1, textDecoration: 'none' }} onClick={close}>{target.kind === 'event' && target.bookable ? t('m.events.getTickets') : t('m.qp.open')}</Link>
+                <Link href={href} className="btn btn-secondary press" style={{ flex: 1, textDecoration: 'none' }} onClick={close}>{target.kind === 'event' && target.bookable ? t('m.ev.buyTicket') : t('m.qp.open')}</Link>
                 <SaveHeart kind={target.kind === 'vendor' ? 'vendors' : 'events'} id={target.id} className="save-btn qp-save" />
               </div>
             </div>

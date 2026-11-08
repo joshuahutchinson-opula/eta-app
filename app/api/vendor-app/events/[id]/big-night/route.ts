@@ -1,7 +1,7 @@
 // PATCH /api/vendor-app/events/:id/big-night { bigNight } (ETA admins) —
-// flags an event as the town's big night: on its night, Home's hero shows
-// it (its video) with "Tonight: <event> · <time>" and Get Tickets
-// (lib/home.ts partyNight). Events with lots of interest count anyway.
+// flags an event as the town's big night: on its night it ranks higher for
+// the Experiences tab's moments (lib/moments.ts). To pin it to the top,
+// add a hand-pick (/api/vendor-app/moment-picks).
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth-server'

@@ -1,12 +1,13 @@
-// app/events/[id]/page.tsx — one promoter event: save it, mark interest,
-// add it to your calendar, and get tickets in the app (or through the
-// promoter's link when the event doesn't sell tickets on ETA). "I'm going,
-// come with me" shares an invite link (/api/events/:id/invite); opened from
-// one (?inv=), the page says who invited them, with Interested and Get
-// Tickets right there.
+// app/events/[id]/page.tsx — one promoter event. The hero is the promo
+// media to swipe through (videos first, then photos; components/events/
+// PromoMedia). Buy Ticket in the app (or through the promoter's link when
+// the event doesn't sell tickets on ETA); free events get Free Entry · RSVP
+// instead. One Add To Calendar button opens the calendar picker. Opened
+// from an invite link (?inv=) the page says who invited them; ?buy=1 opens
+// the ticket sheet straight away (Experiences' Buy Ticket).
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import Icon from '@/lib/icons'
@@ -16,7 +17,7 @@ import BackButton from '@/components/BackButton'
 import BookingSheet, { type BookingDetails, type BookingResult } from '@/components/BookingSheet'
 import AddToCalendar from '@/components/AddToCalendar'
 import Img from '@/components/Img'
-import SmartVideo from '@/components/SmartVideo'
+import PromoMedia, { promoItems } from '@/components/events/PromoMedia'
 import { useErrorText, useLang } from '@/lib/i18n-client'
 import { formatCity } from '@/lib/format'
 import { shareOrCopy } from '@/lib/share'
@@ -45,33 +46,12 @@ export default function EventDetailPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [ticketsOpen, setTicketsOpen] = useState(false)
   const [inviter, setInviter] = useState<{ name: string; avatarUrl: string | null } | null>(null)
-  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
-  const [inviting, setInviting] = useState(false)
 
   useEffect(() => {
     const inv = new URLSearchParams(window.location.search).get('inv')
     if (!inv) return
     fetch(`/api/event-invites/${encodeURIComponent(inv)}`).then(r => (r.ok ? r.json() : null)).then(d => { if (d?.eventId === id) setInviter(d.inviter) }).catch(() => {})
   }, [id])
-
-  // "I'm going, come with me": a personal invite link.
-  const inviteFriends = async () => {
-    if (!event) return
-    if (!getCurrentUser()) { setNotice(t('m.inv.login')); return }
-    setInviting(true)
-    setInviteMsg(null)
-    try {
-      const { url } = await apiJson<{ url: string }>(`/api/events/${id}/invite`, { method: 'POST' })
-      const first = getCurrentUser()?.name.split(' ')[0] ?? ''
-      const result = await shareOrCopy({ title: event.title, text: t('m.inv.shareText', { name: first, title: event.title, venue: event.venueName }), url })
-      if (result === 'copied') setInviteMsg(t('m.events.linkCopied'))
-      triggerHaptic('medium')
-    } catch (e) {
-      setInviteMsg(errorText(e))
-    } finally {
-      setInviting(false)
-    }
-  }
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +97,16 @@ export default function EventDetailPage() {
     }
   }
 
+  // ?buy=1 (Buy Ticket on Experiences): open the ticket sheet once it's loaded.
+  const buyParamDone = useRef(false)
+  useEffect(() => {
+    if (buyParamDone.current || state !== 'ready' || !event) return
+    if (new URLSearchParams(window.location.search).get('buy') !== '1') return
+    buyParamDone.current = true
+    window.history.replaceState(null, '', `/events/${id}`)
+    if (event.inAppTickets && !event.isFree) setTicketsOpen(true)
+  }, [state, event, id])
+
   const buyTickets = async (details: BookingDetails): Promise<BookingResult> => {
     const r = await apiJson<{ transactionId: string | null; walletBalance: number | null }>(`/api/events/${id}/tickets`, { method: 'POST', body: { quantity: details.partySize } })
     load()
@@ -156,23 +146,15 @@ export default function EventDetailPage() {
   return (
     <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: '92px' }}>
       <BackButton floating fallback="/events" />
-      <div style={{ position: 'relative', height: '42vh', background: 'var(--system-bg-secondary)', overflow: 'hidden' }}>
-        {event.videoUrl ? (
-          <SmartVideo src={event.videoUrl} poster={event.imageUrl} />
-        ) : event.imageUrl ? (
-          <Img src={event.imageUrl} alt={event.title} width={1080} height={720} priority />
-        ) : (
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-tertiary)' }}><Icon name="party" size={48} /></div>
-        )}
-        <div className="featured-hero-overlay" style={{ pointerEvents: 'none' }} />
-        <button onClick={toggleSave} aria-pressed={saved} aria-label={saved ? t('m.events.saved') : t('m.events.save')} className="heart-btn" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', right: '16px', background: 'rgba(255,255,255,0.85)', color: saved ? 'var(--rum)' : '#0F0E0C' }}>
+      <PromoMedia items={promoItems(event)} title={event.title}>
+        <button onClick={toggleSave} aria-pressed={saved} aria-label={saved ? t('m.events.saved') : t('m.events.save')} className="heart-btn" style={{ position: 'absolute', zIndex: 5, top: 'calc(env(safe-area-inset-top, 0px) + 12px)', right: '16px', background: 'rgba(255,255,255,0.85)', color: saved ? 'var(--rum)' : '#0F0E0C' }}>
           <Icon name="heart" size={18} />
         </button>
-        <div style={{ position: 'absolute', left: '16px', right: '16px', bottom: '20px' }}>
+        <div style={{ position: 'absolute', zIndex: 4, left: '16px', right: '16px', bottom: '20px', pointerEvents: 'none' }}>
           <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: '4px' }}>{t('m.events.promotedBy', { name: event.promoterName })}</p>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'white', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{event.title}</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'white', letterSpacing: '-0.02em', lineHeight: 1.1, paddingRight: '110px' }}>{event.title}</h1>
         </div>
-      </div>
+      </PromoMedia>
 
       <div style={{ padding: '20px 16px' }}>
         {inviter && (
@@ -181,18 +163,30 @@ export default function EventDetailPage() {
             <span style={{ flex: 1, fontSize: '15px', fontWeight: 600 }}>{t('m.inv.banner', { name: inviter.name })}</span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <button className={`chip ${event.interested ? 'active' : ''}`} aria-pressed={Boolean(event.interested)} onClick={toggleInterest} disabled={interestBusy}>
-            <Icon name="star" size={14} /> {event.interested ? t('m.events.interestedOn') : t('m.events.interested')}
+        {/* The main action: Buy Ticket, or Free Entry · RSVP for free events */}
+        {event.isFree ? (
+          <button className={`btn ${event.interested ? 'btn-secondary' : 'btn-primary'}`} style={{ width: '100%', marginBottom: '10px' }} onClick={toggleInterest} disabled={interestBusy} aria-pressed={Boolean(event.interested)}>
+            <Icon name={event.interested ? 'check' : 'ticket'} size={16} /> {event.interested ? t('m.ev.going') : t('m.ev.freeRsvp')}
           </button>
+        ) : inApp ? (
+          <button className="btn btn-primary" style={{ width: '100%', marginBottom: '10px' }} onClick={() => { triggerHaptic('medium'); setTicketsOpen(true) }} disabled={soldOut}>
+            <Icon name="ticket" size={16} /> {soldOut ? t('m.events.soldOut') : t('m.ev.buyTicket')}{!soldOut && unit ? <>&nbsp;·&nbsp;<Price usd={unit} /></> : null}
+          </button>
+        ) : event.ticketUrl ? (
+          <a className="btn btn-primary" href={event.ticketUrl} target="_blank" rel="noopener noreferrer" style={{ width: '100%', marginBottom: '10px', textDecoration: 'none' }} onClick={() => triggerHaptic('medium')}>
+            <Icon name="ticket" size={16} /> {t('m.ev.buyTicket')}
+          </a>
+        ) : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {!event.isFree && (
+            <button className={`chip ${event.interested ? 'active' : ''}`} aria-pressed={Boolean(event.interested)} onClick={toggleInterest} disabled={interestBusy}>
+              <Icon name="star" size={14} /> {event.interested ? t('m.events.interestedOn') : t('m.events.interested')}
+            </button>
+          )}
           {event.interestedCount ? (
             <span style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{event.interestedCount === 1 ? t('m.events.oneInterested') : t('m.events.interestedCount', { n: event.interestedCount })}</span>
           ) : null}
-          <button className="chip" onClick={inviteFriends} disabled={inviting} style={{ marginLeft: 'auto', background: 'var(--rum)', color: 'white' }}>
-            <Icon name="users" size={14} /> {inviting ? '…' : t('m.inv.cta')}
-          </button>
         </div>
-        {inviteMsg && <p role="status" style={{ fontSize: '13px', color: 'var(--label-secondary)', marginBottom: '12px' }}>{inviteMsg}</p>}
         {notice && <p role="alert" style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '12px' }}>{notice} {!getCurrentUser() && <Link href={`/login?next=/events/${id}`} style={{ color: 'var(--rum-text)', fontWeight: 600 }}>{t('m.profile.login')}</Link>}</p>}
 
         <div className="card" style={{ padding: '4px 16px', marginBottom: '16px', cursor: 'default' }}>
@@ -224,8 +218,8 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-          <AddToCalendar item={calendarItem} uid={`event-${event.id}`} />
+        <div style={{ marginBottom: '8px' }}>
+          <AddToCalendar block item={calendarItem} uid={`event-${event.id}`} />
         </div>
         <p style={{ fontSize: '12px', color: 'var(--label-secondary)', marginBottom: '24px' }}>{t('m.events.reminderNote')}</p>
 
@@ -261,11 +255,11 @@ export default function EventDetailPage() {
         )}
         {inApp ? (
           <button className="btn btn-primary" onClick={() => setTicketsOpen(true)} disabled={soldOut} style={{ flex: 1 }}>
-            <Icon name="ticket" size={16} /> {soldOut ? t('m.events.soldOut') : t('m.events.getTickets')}
+            <Icon name="ticket" size={16} /> {soldOut ? t('m.events.soldOut') : t('m.ev.buyTicket')}
           </button>
         ) : event.ticketUrl ? (
           <a className="btn btn-primary" href={event.ticketUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: 'none' }}>
-            {t('m.events.tickets')}
+            <Icon name="ticket" size={16} /> {t('m.ev.buyTicket')}
           </a>
         ) : null}
       </div>

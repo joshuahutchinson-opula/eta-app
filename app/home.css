@@ -38,10 +38,22 @@
 @keyframes pointsBurst { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); } }
 @keyframes pointsBurst2 { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(0.3); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(1.05); } }
 
-/* Slim frosted bar once the hero has scrolled away */
-.home-bar { background: rgba(255,255,255,0.78); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); }
-[data-theme="dark"] .home-bar { background: rgba(28,28,30,0.78); }
-.home-bar .points-pill { min-height: 36px; }
+/* Home's slim top bar (no hero): the location switcher and the points
+   pill, always there; frosted once content scrolls under it. Fixed, not
+   sticky: the root layout clips overflow-x, which breaks sticky. */
+.home-top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 8px;
+  background: var(--system-bg);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.home-top.scrolled { background: rgba(242,242,247,0.82); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); box-shadow: 0 0.5px 0 var(--separator); }
+[data-theme="dark"] .home-top.scrolled { background: rgba(0,0,0,0.78); }
+.home-top .glass-pill { background: var(--system-bg-elevated); color: var(--label-primary); border: none; box-shadow: var(--shadow-card); min-height: 40px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.home-top .glass-pill svg { color: var(--rum-text); }
+.home-top .points-pill svg { color: var(--gold); }
+.home-top-space { height: calc(env(safe-area-inset-top, 0px) + 58px); }
+.home-refresh-line { display: flex; align-items: center; justify-content: center; gap: 6px; overflow: hidden; font-size: 13px; font-weight: 600; color: var(--rum-text); transition: height 0.2s ease; }
 
 /* Changing town: the sections come back in one after another */
 .stagger-in { animation: staggerIn 0.55s var(--spring-standard) both; animation-delay: calc(var(--i, 0) * 70ms); }

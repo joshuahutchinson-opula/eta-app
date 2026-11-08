@@ -4,7 +4,8 @@
 // cancellation. Price and Book stay pinned at the bottom.
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
+import { useMorphIn } from '@/lib/morph'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import Icon from '@/lib/icons'
@@ -81,6 +82,9 @@ export default function ExperienceDetailView({ data, fallbackCenter, onBack, bac
   planning: boolean
   actionError: string | null
 }) {
+  // The tapped card's image grows into the hero (lib/morph.ts).
+  const heroRef = useRef<HTMLDivElement>(null)
+  useMorphIn(heroRef, true)
   const { t } = useLang()
   const labels = useLabels()
   const [sheet, setSheet] = useState<SheetKey>(null)
@@ -133,7 +137,7 @@ export default function ExperienceDetailView({ data, fallbackCenter, onBack, bac
   return (
     <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Hero */}
-      <div style={{ position: 'relative', height: '340px', overflow: 'hidden', background: '#0F0E0C' }}>
+      <div ref={heroRef} style={{ position: 'relative', height: '340px', overflow: 'hidden', background: '#0F0E0C' }}>
         {data.video ? <SmartVideo src={data.video} poster={data.image} alt="" /> : data.image ? <Img src={data.image} alt="" width={1080} height={680} priority /> : null}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 30%, rgba(0,0,0,0.75) 100%)' }} />
         <BackButton floating onClick={onBack} fallback={backFallback} />

@@ -1,7 +1,8 @@
-// app/rewards/tiers/page.tsx — Tiers & How To Earn: the status ladder
-// (Visitor, Explorer, Insider, Yaadie) with every tier's perks and where you
-// are on it; the earning table (straight from lib/earn-config.ts), how
-// boosts stack, the rules box, and your birthday for double points.
+// app/rewards/tiers/page.tsx — Tiers & Earning (docs/mockups/RewardsTiers.dc.html):
+// the lifetime status ladder (Visitor, Explorer, Insider, Yaadie) with each
+// tier's perks — reached ones ticked, yours highlighted with your progress
+// to the next, the next one locked — then How To Earn (straight from
+// lib/earn-config.ts), the rules, and your birthday for double points.
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -44,8 +45,6 @@ export default function TiersPage() {
   const current = getTierForPoints(lifetime)
   const { percent } = tierProgress(lifetime)
   const at = tierIndex(current.key)
-  // The gold line on the ladder runs up to your position.
-  const fill = `calc(${((at + percent / 100) / REWARD_TIERS.length) * 100}% - 18px)`
 
   const monthName = (m: number) => new Date(Date.UTC(2000, m - 1, 1)).toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' })
   const birthdayText = (b: string) => new Date(Date.UTC(2000, Number(b.slice(0, 2)) - 1, Number(b.slice(3, 5)))).toLocaleDateString(locale, { month: 'long', day: 'numeric', timeZone: 'UTC' })
@@ -69,37 +68,48 @@ export default function TiersPage() {
     }
   }
 
+  const prog = tierProgress(lifetime)
+  const check = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12l5 5 9-10" /></svg>
+  const star = <svg width="14" height="14" viewBox="0 0 24 24" fill="#7A1408" aria-hidden><path d="M12 2l2.9 6.3L22 9.2l-5.2 4.7 1.5 7.1L12 17.3 5.7 21l1.5-7.1L2 9.2l7.1-.9z" /></svg>
+  const lock = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E0A100" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+
   return (
     <main className="rw">
-      <RewardsTop title={t('m.rw.tiersTitle')} />
-      <div className="content-fade-in">
+      <RewardsTop title={t('m.rw.tiersEarning')} />
+      <div className="rh-pad content-fade-in" style={{ paddingTop: '10px' }}>
         {/* The ladder */}
-        <section aria-label={t('m.rw.ladder')}>
-          <div className="section-header" style={{ padding: '0 16px' }}><div className="section-heading"><span className="section-eyebrow">{t('m.rw.status')}</span><span className="section-title">{t('m.rw.ladder')}</span></div></div>
-          <p className="rw-pad" style={{ fontSize: '14px', color: 'var(--label-secondary)', marginBottom: '14px' }}>{t('m.rw.ladderSub')}</p>
-          <div className="rw-ladder">
-            {user && <span className="rw-ladder-fill" style={{ height: fill }} aria-hidden />}
+        <section aria-label={t('m.rw.yourTiers')}>
+          <p className="rh-eb">{t('m.rw.lifetimeStatus')}</p>
+          <h2 className="rh-st">{t('m.rw.yourTiers')}</h2>
+          <p className="rh-sub" style={{ margin: '6px 0 14px', fontSize: '14px', lineHeight: 1.45 }}>{t('m.rw.ladderIntro')}</p>
+          <div className="rh-ladder list-in">
             {REWARD_TIERS.map((tier, i) => {
-              const reached = Boolean(user) && i <= at
-              const isCurrent = Boolean(user) && i === at
+              const isCurrent = i === (user ? at : 0)
+              const reached = i < (user ? at : 0)
+              const locked = !reached && !isCurrent
               return (
-                <div key={tier.key} className={`rw-step ${reached ? 'reached' : 'locked'} ${isCurrent ? 'current' : ''}`}>
-                  <span className="rw-step-dot" aria-hidden><Icon name={reached ? tier.icon : 'lock'} size={14} /></span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--label-primary)' }}>{labels.tier(tier.key)}</span>
-                    <span className="num-font" style={{ fontSize: '13px', color: 'var(--label-secondary)' }}>{t('m.rw.ptsLifetime', { n: n(tier.threshold) })}</span>
-                    {isCurrent && <span className="rw-tag" style={{ marginLeft: 'auto' }}>{t('m.rw.youreHere')}</span>}
+                <div key={tier.key} className={`rh-tier-card ${isCurrent ? 'current' : ''} ${locked ? 'locked' : ''}`}>
+                  <span className="rh-dot" style={isCurrent ? { background: '#FFD54A', boxShadow: '0 0 0 4px rgba(255,213,74,0.3)' } : locked ? { background: 'var(--system-bg-elevated)', border: '2px solid #E0A100' } : { background: '#B82010' }}>
+                    {isCurrent ? star : locked ? lock : check}
+                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+                    <span style={{ fontSize: '17px', fontWeight: 800 }}>
+                      {labels.tier(tier.key)}
+                      {isCurrent && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.2)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', verticalAlign: '2px' }}>{t('m.rw.youTag')}</span>}
+                    </span>
+                    <span className={`num ${isCurrent ? '' : 'rh-sub'}`} style={{ fontSize: '13px', color: isCurrent ? 'rgba(255,255,255,0.8)' : undefined }}>{n(tier.threshold)}</span>
                   </div>
-                  {isCurrent && tierProgress(lifetime).next && (
-                    <p className="num-font" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--rum-text)', marginTop: '4px' }}>
-                      {t('m.rw.toNext', { n: n(tierProgress(lifetime).pointsToNext), tier: labels.tier(tierProgress(lifetime).next!.key) })}
-                    </p>
-                  )}
-                  <ul>
-                    {Array.from({ length: tier.perks }, (_, k) => (
-                      <li key={k}><Icon name={reached ? 'check' : 'sparkle'} size={15} style={{ color: reached ? 'var(--success)' : 'var(--gold)', flexShrink: 0, marginTop: '2px' }} />{t(`m.rw.perk.${tier.key}.${k}` as DictKey)}</li>
-                    ))}
+                  <ul className="rh-perks" style={isCurrent ? { color: 'rgba(255,255,255,0.95)' } : undefined}>
+                    {Array.from({ length: tier.perks }, (_, k) => <li key={k}>{t(`m.rw.perk.${tier.key}.${k}` as DictKey)}</li>)}
                   </ul>
+                  {isCurrent && prog.next && (
+                    <>
+                      <div style={{ marginTop: '12px', height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}><div style={{ width: `${percent}%`, height: '100%', borderRadius: '999px', background: '#FFD54A' }} /></div>
+                      <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                        <span className="num">{n(lifetime)}</span> / {n(prog.next.threshold)} · <span className="num">{n(prog.pointsToNext)}</span> {t('m.rw.toTier', { n: '', tier: labels.tier(prog.next.key) }).trim()}
+                      </p>
+                    </>
+                  )}
                 </div>
               )
             })}
@@ -107,39 +117,30 @@ export default function TiersPage() {
         </section>
 
         {/* How to earn */}
-        <section className="rw-section" aria-label={t('m.rw.howToEarn')}>
-          <div className="section-header" style={{ padding: '0 16px' }}><div className="section-heading"><span className="section-eyebrow">{t('m.rw.title')}</span><span className="section-title">{t('m.rw.howToEarn')}</span></div></div>
-          <div className="rw-table">
+        <section className="rh-sec" aria-label={t('m.rw.howToEarnTitle')}>
+          <p className="rh-eb">{t('m.rw.pointsEyebrow')}</p>
+          <h2 className="rh-st" style={{ marginBottom: '12px' }}>{t('m.rw.howToEarnTitle')}</h2>
+          <div className="rh-card" style={{ padding: '4px 14px' }}>
             {EARN_TABLE.map(row => (
-              <div key={row.key} className="rw-table-row">
+              <div key={row.key} className="rh-erow">
                 <span>{t(`m.rw.earn.${row.key}` as DictKey)}</span>
-                <b className="num-font">{row.per === 'dollar' ? t('m.rw.perDollar', { n: row.points }) : t('m.rw.ptsPlus', { n: row.points })}</b>
+                <b className="num">{row.per === 'dollar' ? t('m.rw.perDollarShort', { n: row.points }) : t('m.rw.ptsPlus', { n: row.points })}</b>
               </div>
             ))}
           </div>
-          <p className="rw-pad" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--label-primary)', margin: '20px 0 8px' }}>{t('m.rw.boostRules')}</p>
-          <div className="rw-table">
-            <div className="rw-table-row"><Icon name="clock" size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} /><span>{t('m.rw.boostRule.quiet')}</span></div>
-            <div className="rw-table-row"><Icon name="umbrella" size={16} style={{ color: '#5AC8FA', flexShrink: 0 }} /><span>{t('m.rw.boostRule.rain')}</span></div>
-            <div className="rw-table-row"><Icon name="users" size={16} style={{ color: 'var(--rum-text)', flexShrink: 0 }} /><span>{t('m.rw.boostRule.crew', { n: EARN.crewBonus })}</span></div>
-            <div className="rw-table-row"><Icon name="gift" size={16} style={{ color: 'var(--rum-text)', flexShrink: 0 }} /><span>{t('m.rw.boostRule.birthday')}</span></div>
-          </div>
+          <p className="rh-sub" style={{ margin: '10px 4px 0', fontSize: '12px', lineHeight: 1.45 }}>{t('m.rw.earnNote')}</p>
         </section>
 
         {/* Rules */}
-        <section className="rw-section" aria-label={t('m.rw.rules')}>
-          <div className="section-header" style={{ padding: '0 16px' }}><div className="section-heading"><span className="section-title">{t('m.rw.rules')}</span></div></div>
-          <div className="rw-rules">
-            <ul style={{ margin: 0, paddingLeft: '18px' }}>
-              {Array.from({ length: RULES }, (_, i) => <li key={i}>{t(`m.rw.rule.${i}` as DictKey)}</li>)}
-            </ul>
-          </div>
-        </section>
+        <div className="rh-rules" style={{ marginTop: '20px' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B82010" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flex: '0 0 auto' }}><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z" /></svg>
+          <p>{t('m.rw.rulesShort')}</p>
+        </div>
 
         {/* Birthday (Explorer perk) */}
         {user && (
-          <section className="rw-section" aria-label={t('m.rw.birthday')}>
-            <form onSubmit={saveBirthday} className="rw-link" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'default' }}>
+          <section className="rh-sec" aria-label={t('m.rw.birthday')}>
+            <form onSubmit={saveBirthday} className="rh-card rh-link" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'default' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className="rw-card-ic gold" style={{ marginBottom: 0 }} aria-hidden><Icon name="gift" size={20} /></span>
                 <span style={{ fontSize: '16px', fontWeight: 800 }}>{t('m.rw.birthday')}</span>
@@ -165,7 +166,7 @@ export default function TiersPage() {
           </section>
         )}
 
-        <p className="rw-foot">{t('m.rw.footer')}</p>
+        <p className="rh-sub" style={{ margin: '20px 4px 0', fontSize: '12px', textAlign: 'center' }}>{t('m.rw.footer')}</p>
       </div>
       <Dock />
     </main>

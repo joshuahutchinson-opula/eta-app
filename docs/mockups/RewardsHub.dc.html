@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rewards hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Space+Mono:wght@700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B82010;text-decoration:none}
+.num{font-family:'Space Mono',monospace}
+.eb{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B82010}
+.st{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.card{border-radius:18px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.sub{color:rgba(60,60,67,0.75)}
+.row{display:flex;align-items:center;gap:12px}
+.scroll{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+@keyframes eta-shine{0%{transform:translateX(-120%)}60%,100%{transform:translateX(220%)}}
+.shine{position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.18) 50%,rgba(255,255,255,0) 100%);animation:eta-shine 4.5s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.shine{animation:none;display:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1800px; box-sizing: border-box; position: relative; overflow: hidden; background: #F2F2F7; font-family: Inter, system-ui, sans-serif; color: #000000">
+
+  <!-- Top bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px">
+    <a href="#" aria-label="Back" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 700">Rewards</h1>
+    <a href="RewardsTiers.dc.html" aria-label="How it works" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"></path><circle cx="12" cy="17.2" r="0.6" fill="#000000"></circle></svg>
+    </a>
+  </div>
+
+  <div style="padding: 8px 16px 0">
+
+    <!-- STATUS CARD -->
+    <a href="RewardsTiers.dc.html" style="display: block; position: relative; overflow: hidden; border-radius: 22px; padding: 18px 18px 16px; background: linear-gradient(135deg, #7A1408 0%, #B82010 55%, #D9481F 100%); color: #FFFFFF; box-shadow: 0 8px 24px rgba(184,32,16,0.3)">
+      <div class="shine"></div>
+      <div style="position: relative">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,0.16); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#FFD54A" aria-hidden="true"><path d="M12 2l2.9 6.3L22 9.2l-5.2 4.7 1.5 7.1L12 17.3 5.7 21l1.5-7.1L2 9.2l7.1-.9z"></path></svg>
+            Insider
+          </span>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.8)">Member Since Mar 2026</span>
+        </div>
+
+        <p style="margin: 18px 0 0; font-size: 13px; color: rgba(255,255,255,0.8)">Points To Spend</p>
+        <p style="margin: 2px 0 0; display: flex; align-items: baseline; gap: 8px"><span class="num" style="font-size: 40px; line-height: 1">2,180</span><span style="font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.85)">pts</span></p>
+
+        <div style="margin-top: 18px; display: flex; justify-content: space-between; font-size: 13px">
+          <span style="font-weight: 600">Insider</span>
+          <span style="color: rgba(255,255,255,0.85)"><span class="num">2,580</span> to Yaadie</span>
+        </div>
+        <div style="position: relative; margin-top: 7px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.2)">
+          <div style="width: 36%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FFB800, #FFD54A)"></div>
+        </div>
+        <p style="margin: 10px 0 0; font-size: 12px; color: rgba(255,255,255,0.75)"><span class="num">3,420</span> lifetime points · Your status never drops</p>
+      </div>
+    </a>
+
+    <!-- Quick actions -->
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px">
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); color: #000000; font-size: 13px; font-weight: 600">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"></path></svg>
+        Scan To Earn
+      </a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); color: #000000; font-size: 13px; font-weight: 600">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v4H4zM5 11v9h14v-9M12 7v13"></path><path d="M12 7c-1.5-3-5-3-5-1s3 1 5 1zM12 7c1.5-3 5-3 5-1s-3 1-5 1z"></path></svg>
+        My Rewards <span class="num" style="font-size: 11px; color: #B82010">2</span>
+      </a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); color: #000000; font-size: 13px; font-weight: 600">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>
+        History
+      </a>
+    </div>
+
+    <!-- TODAY'S BOOSTS -->
+    <div style="margin-top: 28px">
+      <p class="eb">Today In Negril</p>
+      <p class="st" style="margin-bottom: 12px">Boosts</p>
+      <div class="scroll">
+        <div style="flex: 0 0 236px; position: relative; overflow: hidden; border-radius: 18px; padding: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <span class="num" style="padding: 4px 9px; border-radius: 999px; background: #FFB800; color: #000000; font-size: 13px">2× Points</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #B82010"><span style="width: 6px; height: 6px; border-radius: 50%; background: #B82010"></span>Live Now</span>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 16px; font-weight: 700">Pushcart Restaurant</p>
+          <p class="sub" style="margin: 2px 0 0; font-size: 13px">Quiet hours · 2–5pm · 0.4 mi</p>
+          <div style="margin-top: 12px; height: 5px; border-radius: 999px; background: #F2F2F7"><div style="width: 62%; height: 100%; border-radius: 999px; background: #B82010"></div></div>
+          <p class="sub" style="margin: 6px 0 0; font-size: 12px">Ends in 1h 52m</p>
+        </div>
+        <div style="flex: 0 0 236px; border-radius: 18px; padding: 14px; background: linear-gradient(160deg, #2F3B5C, #4A5A86); color: #FFFFFF">
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <span class="num" style="padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.18); font-size: 13px">2× Points</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.5 1.5A3.5 3.5 0 0 1 17.5 15z"></path><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"></path></svg>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 16px; font-weight: 700">Rainy Day Bonus</p>
+          <p style="margin: 2px 0 0; font-size: 13px; color: rgba(255,255,255,0.8)">Showers till 4pm · 9 indoor spots</p>
+          <p style="margin: 18px 0 0; font-size: 13px; font-weight: 600">See Indoor Spots →</p>
+        </div>
+        <div style="flex: 0 0 236px; border-radius: 18px; padding: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <span class="num" style="padding: 4px 9px; border-radius: 999px; background: rgba(184,32,16,0.1); color: #B82010; font-size: 13px">+25 Each</span>
+            <div style="display: flex">
+              <span style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid #FFFFFF; background: #C4654F"></span>
+              <span style="width: 24px; height: 24px; margin-left: -8px; border-radius: 50%; border: 2px solid #FFFFFF; background: #2E7D8C"></span>
+              <span style="width: 24px; height: 24px; margin-left: -8px; border-radius: 50%; border: 2px solid #FFFFFF; background: #3B3F6B"></span>
+            </div>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 16px; font-weight: 700">Crew Bonus</p>
+          <p class="sub" style="margin: 2px 0 0; font-size: 13px">Check in together, everyone gets extra</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REWARDS TO SPEND (interactive) -->
+    <div style="margin-top: 28px">
+      <p class="eb">Spend Your Points</p>
+      <p class="st" style="margin-bottom: 12px">Rewards</p>
+      <div class="scroll" role="tablist" aria-label="Reward types">
+        <sc-for list="{{cats}}" as="c" hint-placeholder-count="5">
+          <button role="tab" onClick="{{c.pick}}" aria-selected="{{c.on}}" style="{{c.style}}">{{c.label}}</button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px">
+        <sc-for list="{{items}}" as="r" hint-placeholder-count="4">
+          <div class="card" style="display: flex; align-items: center; gap: 12px; padding: 12px">
+            <div style="{{r.thumb}}">
+              <span style="font-size: 11px; font-weight: 700; color: #FFFFFF; text-align: center; padding: 0 4px">{{r.tag}}</span>
+            </div>
+            <div style="flex: 1; min-width: 0">
+              <p style="margin: 0; font-size: 15px; font-weight: 700">{{r.title}}</p>
+              <p class="sub" style="margin: 2px 0 0; font-size: 13px">{{r.where}}</p>
+              <p style="margin: 5px 0 0; font-size: 12px; font-weight: 600; color: {{r.noteColor}}">{{r.note}}</p>
+            </div>
+            <button style="{{r.btn}}" aria-label="{{r.aria}}"><span class="num">{{r.cost}}</span></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- GIVE BACK feature -->
+    <div style="margin-top: 14px; border-radius: 18px; overflow: hidden; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+      <div style="position: relative; height: 110px; background: linear-gradient(160deg, #1F6E5A, #2E8C6E)">
+        <span style="position: absolute; top: 12px; left: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.9); color: #1F6E5A; font-size: 12px; font-weight: 700">Give Back · Negril</span>
+        <span style="position: absolute; bottom: 10px; right: 12px; font-size: 11px; color: rgba(255,255,255,0.8)">Photo · Rebuilding in West End</span>
+      </div>
+      <div style="padding: 14px">
+        <p style="margin: 0; font-size: 16px; font-weight: 700">Help Negril Rebuild After Hurricane Melissa</p>
+        <p class="sub" style="margin: 2px 0 0; font-size: 13px">Give as many points as you like. Every 500 pts covers roofing supplies for a local family or small business.</p>
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 600"><span class="num">612</span> of 1,000 roofs</span><span class="sub">Community goal</span></div>
+        <div style="margin-top: 6px; height: 6px; border-radius: 999px; background: #F2F2F7"><div style="width: 61%; height: 100%; border-radius: 999px; background: #2E8C6E"></div></div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px">
+          <button style="min-height: 40px; border: 1.5px solid #E5E5EA; border-radius: 10px; background: #FFFFFF; font: 700 14px 'Space Mono', monospace; color: #000000">100</button>
+          <button style="min-height: 40px; border: 1.5px solid #1F6E5A; border-radius: 10px; background: rgba(31,110,90,0.08); font: 700 14px 'Space Mono', monospace; color: #1F6E5A">250</button>
+          <button style="min-height: 40px; border: 1.5px solid #E5E5EA; border-radius: 10px; background: #FFFFFF; font: 700 14px 'Space Mono', monospace; color: #000000">500</button>
+          <button style="min-height: 40px; border: 1.5px solid #E5E5EA; border-radius: 10px; background: #FFFFFF; font: 600 14px Inter, sans-serif; color: #000000">Other</button>
+        </div>
+        <button style="margin-top: 10px; width: 100%; min-height: 46px; border: 0; border-radius: 12px; background: #1F6E5A; color: #FFFFFF; font: 700 15px Inter, sans-serif">Give <span class="num">250</span> pts</button>
+      </div>
+    </div>
+
+    <!-- BADGES -->
+    <div style="margin-top: 28px">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between">
+        <div><p class="eb">Collected <span class="num">7</span> of 24</p><p class="st">Badges</p></div>
+        <a href="#" style="font-size: 15px; font-weight: 600; min-height: 44px; display: flex; align-items: center">See All</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px">
+        <div style="text-align: center">
+          <div style="margin: 0 auto; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #FFD54A, #E0A100)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7A1408" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="4"></circle><path d="M12 3v3M4.2 6.2l2 2M19.8 6.2l-2 2M2 13h3M19 13h3M5 20h14"></path></svg>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 12px; font-weight: 600">Sunset Chaser</p>
+        </div>
+        <div style="text-align: center">
+          <div style="margin: 0 auto; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 35% 30%, #F24230, #B82010)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8a3 3 0 0 0 6 0V3M10 3v18M17 3c-2 2-2 6 0 8v10"></path></svg>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 12px; font-weight: 600">Jerk Trail</p>
+        </div>
+        <div style="text-align: center">
+          <div style="position: relative; margin: 0 auto; width: 64px; height: 64px">
+            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="5"></circle><circle cx="32" cy="32" r="28" fill="none" stroke="#B82010" stroke-width="5" stroke-linecap="round" stroke-dasharray="132 176" transform="rotate(-90 32 32)"></circle></svg>
+            <span class="num" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px">3/4</span>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 12px; font-weight: 600">Cliff Hopper</p>
+        </div>
+        <div style="text-align: center">
+          <div style="position: relative; margin: 0 auto; width: 64px; height: 64px">
+            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="5"></circle><circle cx="32" cy="32" r="28" fill="none" stroke="#B82010" stroke-width="5" stroke-linecap="round" stroke-dasharray="35 176" transform="rotate(-90 32 32)"></circle></svg>
+            <span class="num" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px">1/5</span>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 12px; font-weight: 600">Secret Spots</p>
+        </div>
+      </div>
+      <a href="#" class="card" style="display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 12px 14px; color: #000000">
+        <span style="flex: 1; font-size: 14px"><b>Cliff Hopper</b> · one more cliff spot to unlock <span class="num" style="color: #B82010">+100</span></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </a>
+    </div>
+
+    <!-- LEADERBOARD (opt-in) -->
+    <div style="margin-top: 28px">
+      <p class="eb">Negril · November</p>
+      <p class="st" style="margin-bottom: 12px">Leaderboard</p>
+      <div class="card" style="padding: 6px 14px">
+        <div class="row" style="min-height: 48px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+          <span class="num" style="width: 24px; color: #E0A100">1</span><span style="width: 32px; height: 32px; border-radius: 50%; background: #C4654F"></span><span style="flex: 1; font-size: 15px; font-weight: 600">Maya R. <span style="font-size: 11px; font-weight: 700; color: #B82010">YAADIE</span></span><span class="num" style="font-size: 14px">1,940</span>
+        </div>
+        <div class="row" style="min-height: 48px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+          <span class="num" style="width: 24px; color: rgba(60,60,67,0.6)">2</span><span style="width: 32px; height: 32px; border-radius: 50%; background: #2E7D8C"></span><span style="flex: 1; font-size: 15px; font-weight: 600">Dre B.</span><span class="num" style="font-size: 14px">1,610</span>
+        </div>
+        <div class="row" style="min-height: 48px; margin: 0 -14px; padding: 0 14px; background: rgba(184,32,16,0.06)">
+          <span class="num" style="width: 24px; color: #B82010">14</span><span style="width: 32px; height: 32px; border-radius: 50%; background: #3B3F6B"></span><span style="flex: 1; font-size: 15px; font-weight: 700">You</span><span class="num" style="font-size: 14px">640</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 10px; padding: 0 4px">
+        <span class="sub" style="flex: 1; font-size: 13px">Show me on the leaderboard</span>
+        <span role="switch" aria-checked="true" style="position: relative; width: 51px; height: 31px; border-radius: 999px; background: #34C759"><span style="position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.2)"></span></span>
+      </div>
+    </div>
+
+    <!-- How it works link -->
+    <a href="RewardsTiers.dc.html" class="card" style="display: flex; align-items: center; gap: 12px; margin-top: 24px; padding: 14px; color: #000000">
+      <span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(184,32,16,0.1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4V10H4zM10 20h4V4h-4zM16 20h4v-7h-4z"></path></svg>
+      </span>
+      <span style="flex: 1"><span style="display: block; font-size: 15px; font-weight: 700">Tiers &amp; How To Earn</span><span class="sub" style="display: block; font-size: 13px">Visitor → Explorer → Insider → Yaadie</span></span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+    </a>
+    <p class="sub" style="margin: 12px 4px 0; font-size: 12px; text-align: center">Points can't be exchanged for cash.</p>
+  </div>
+
+  <!-- DOCK -->
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(255,255,255,0.96); border-top: 0.5px solid rgba(60,60,67,0.29); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 8px; box-sizing: border-box" aria-label="Tabs">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg>Experiences</a>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; margin-top: -14px; border-radius: 50%; background: #B82010; color: #FFFFFF; font: 800 15px Inter, sans-serif; box-shadow: 0 4px 12px rgba(184,32,16,0.35)" aria-label="Scan and pay">ETA</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.5 11h-13z"></path><path d="M8 9V7a4 4 0 0 1 8 0v2"></path></svg>Market</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: #B82010; font-size: 10px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>Profile</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1800}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { cat: 'All' }; }
+  renderVals() {
+    const cats = ['All', 'Vendor Perks', 'Insider Only', 'Events', 'ETA Perks'];
+    const all = [
+      { cat: 'Vendor Perks', title: 'Free Rum Punch', where: "Rick's Café · Negril", note: '14 left today', cost: '300', bg: '#C4654F', tag: 'Drink' },
+      { cat: 'Insider Only', title: 'Sunset Cliff Table', where: 'The Rockhouse · Negril', note: 'Insider Only · 3 left this week', cost: '900', bg: '#3B3F6B', tag: 'Insider', gold: true },
+      { cat: 'Events', title: 'Skip The Line + VIP Area', where: 'Bourbon Beach · Fri Night', note: 'Early access opens Wed for Insiders', cost: '650', bg: '#7A1408', tag: 'VIP' },
+      { cat: 'ETA Perks', title: '$5 Off Your Next Ride', where: 'Any ETA transfer', note: 'Use within 30 days', cost: '500', bg: '#2E7D8C', tag: 'Ride' },
+      { cat: 'Vendor Perks', title: 'Second Patty Free', where: 'Juicy Patties · West End', note: 'Quiet hours only · 2–5pm', cost: '150', bg: '#C98A2B', tag: 'Food' },
+      { cat: 'Events', title: 'Early Tickets · Reggae Night', where: "Alfred's Ocean Palace · Sat", note: '48h before everyone else', cost: '400', bg: '#4A2F5C', tag: 'Early' }
+    ];
+    const pill = on => 'flex: 0 0 auto; min-height: 40px; padding: 0 16px; border-radius: 999px; cursor: pointer; font: 600 14px Inter, sans-serif; ' + (on ? 'border: 0; background: #B82010; color: #FFFFFF' : 'border: 0; background: #FFFFFF; color: #000000; box-shadow: 0 1px 3px rgba(0,0,0,0.08)');
+    const list = this.state.cat === 'All' ? all.slice(0, 4) : all.filter(r => r.cat === this.state.cat);
+    return {
+      cats: cats.map(c => ({ label: c, on: this.state.cat === c, style: pill(this.state.cat === c), pick: () => this.setState({ cat: c }) })),
+      items: list.map(r => ({
+        ...r,
+        thumb: 'flex: 0 0 auto; width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; box-sizing: border-box; background: ' + r.bg,
+        noteColor: r.gold ? '#B07A00' : 'rgba(60,60,67,0.75)',
+        btn: 'flex: 0 0 auto; min-width: 64px; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #B82010; background: #FFFFFF; color: #B82010; font-size: 14px; cursor: pointer',
+        aria: 'Redeem for ' + r.cost + ' points'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1131,10 +1131,9 @@ textarea::placeholder {
 [data-theme="dark"] .home-bar { background: rgba(28,28,30,0.96); }
 
 .home-sheet {
-  position: relative; z-index: 3; margin-top: -28px; padding: 14px 0 calc(96px + env(safe-area-inset-bottom, 0px));
-  background: var(--system-bg); border-radius: 28px 28px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.12);
+  position: relative; z-index: 3; padding: 6px 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  background: var(--system-bg);
 }
-.home-sheet::before { content: ""; display: block; width: 36px; height: 5px; border-radius: 3px; background: var(--label-quaternary); margin: 0 auto 10px; }
 .home-section { margin-top: var(--home-gap); }
 .home-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 0 20px 12px; }
 .home-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rum-text); margin-bottom: 2px; }

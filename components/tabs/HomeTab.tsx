@@ -1,25 +1,22 @@
 // components/tabs/HomeTab.tsx — Home (route /, kept alive by
 // components/TabKeeper): "today in <town>". Top to bottom, always:
-//   Hero → Stories → the stage's card ("Planning a trip?") → Your Day →
+//   slim top bar (the location switcher + the points pill) → Stories →
+//   the stage's card ("Planning a trip?") → Your Day →
 //   Featured · Destinations → Parties & Happenings · This Week →
 //   Moods · Choose The Vibe → Dock
-// The hero is a real photo or short muted loop of the selected town for the
-// daypart (from the town's real sun times), or tonight's big event on a
-// party night; over it the location pill (the one location changer) and
-// the points pill, and bottom-left "Wah Gwan, <name>" with "<Daypart> In
-// <Town> · Sunset <time>". Data comes from /api/home (lib/home.ts).
+// No hero and no greeting: Home starts straight with the content. Data
+// comes from /api/home (lib/home.ts).
 //
 // One Home, different states (lib/stage.ts): the trip stage changes only
-// the top — the hero's words, a card or prompt above the stories, and what
-// sits in Your Day's place (the countdown, Your Last Trip, the cruise day's
-// rides back). Big switches are always confirmed first.
+// the top — a card or prompt above the stories, and what sits in Your
+// Day's place (the countdown, Your Last Trip, the cruise day's rides back).
+// Big switches are always confirmed first.
 //
-// Feel: pull down to stretch the hero, then a refresh wave and a "What's
-// new" toast; past the hero the pills tuck into a slim frosted bar; the
-// Home tab turns into an up arrow when scrolled; changing town crossfades
-// the hero and staggers the sections back in. Everything respects reduce
-// motion. First open at an airport or hotel goes to the arrival flow
-// (app/arrival); otherwise onboarding asks the first question.
+// Feel: the top bar stays put (frosted once you scroll); pull down at the
+// top to refresh, then a "What's new" toast; changing town staggers the
+// sections back in. Everything respects reduce motion. First open at an
+// airport or hotel goes to the arrival flow (app/arrival); otherwise
+// onboarding asks the first question.
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -33,14 +30,13 @@ import AtYourStay from '@/components/AtYourStay'
 import PlanBCard from '@/components/PlanBCard'
 import VerifyEmailBanner from '@/components/VerifyEmailBanner'
 import ErrorState from '@/components/ErrorState'
-import HomeHero, { HERO_HEIGHT } from '@/components/home/HomeHero'
 import RegionPill from '@/components/home/RegionPill'
 import PointsPill from '@/components/home/PointsPill'
 import YourDay from '@/components/home/YourDay'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
 import HomeEvents from '@/components/home/HomeEvents'
 import QuickPreview, { type PreviewTarget } from '@/components/home/QuickPreview'
-import { BrowsingCard, CountdownBlock, CruiseBlock, GuestCard, LastTripCard, StagePrompts, useAboard, useHeroLines } from '@/components/home/StageBlocks'
+import { BrowsingCard, CountdownBlock, CruiseBlock, GuestCard, LastTripCard, StagePrompts } from '@/components/home/StageBlocks'
 import { Reveal, SectionHead } from '@/components/home/bits'
 import { useRegion } from '@/components/RegionProvider'
 import { useAtStay } from '@/lib/at-stay-client'
@@ -56,7 +52,7 @@ import { vibeMoodNames } from '@/lib/vibes'
 import { useLegFollower, useStage, type TripView } from '@/lib/stage-client'
 import { useTabShow } from '@/components/TabKeeper'
 import { cruisePortFor } from '@/lib/places-geo'
-import type { FeaturedItem, HeroMedia, PartyNight } from '@/lib/home'
+import type { FeaturedItem } from '@/lib/home'
 import type { EventItem } from '@/lib/events'
 import type { DictKey } from '@/lib/i18n'
 
@@ -64,8 +60,6 @@ interface Mood { id: string; name: string; icon: string; description: string; co
 interface HomeData {
   town: { city: string; name: string }
   sun: { daypart: Daypart; sunset: string }
-  hero: HeroMedia | null
-  party: (Omit<PartyNight, 'startAt'> & { startAt: string }) | null
   featured: FeaturedItem[]
   moods: Mood[]
 }
@@ -87,8 +81,7 @@ const TZ = 'America/Jamaica'
 
 export default function HomePage() {
   const router = useRouter()
-  const { t, lang } = useLang()
-  const locale = lang === 'en' ? 'en-US' : lang
+  const { t } = useLang()
   const { city, town, ready } = useRegion()
   const reduce = useReducedMotion()
   const stage = useStage()
@@ -97,14 +90,12 @@ export default function HomePage() {
   const { stay: atStay, host } = useAtStay()
   const [data, setData] = useState<HomeData | null>(null)
   const [failed, setFailed] = useState(false)
-  const [firstName, setFirstName] = useState<string | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [refreshKey, setRefreshKey] = useState(0)
-  const [washKey, setWashKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [pull, setPull] = useState(0)
-  const [barOn, setBarOn] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const [hasDay, setHasDay] = useState(false)
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [toast, setToast] = useState<{ stories: number; events: number } | null>(null)
@@ -125,7 +116,7 @@ export default function HomePage() {
   }, [router])
 
   useEffect(() => {
-    const read = () => { const u = getCurrentUser(); setFirstName(u?.name?.split(' ')[0] ?? null); setSignedIn(Boolean(u)) }
+    const read = () => setSignedIn(Boolean(getCurrentUser()))
     read()
     window.addEventListener(AUTH_EVENT, read)
     return () => window.removeEventListener(AUTH_EVENT, read)
@@ -163,10 +154,10 @@ export default function HomePage() {
     if (lastPart.current !== daypart) { lastPart.current = daypart; load() }
   }, [daypart, load])
 
-  // The slim frosted bar once the hero has gone.
+  // The top bar turns frosted once the page scrolls under it.
   useEffect(() => {
     let raf = 0
-    const update = () => { raf = 0; setBarOn(window.scrollY > HERO_HEIGHT - 70) }
+    const update = () => { raf = 0; setScrolled(window.scrollY > 4) }
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -176,7 +167,6 @@ export default function HomePage() {
   const refresh = useCallback(async () => {
     setRefreshing(true)
     triggerHaptic('medium')
-    setWashKey(k => k + 1)
     const since = loadedAt.current
     setNow(Date.now())
     await load()
@@ -192,7 +182,7 @@ export default function HomePage() {
     return () => clearTimeout(id)
   }, [toast])
 
-  // Pull down at the top: the hero stretches and zooms, then the wave.
+  // Pull down at the top to refresh.
   const onTouchStart = (e: React.TouchEvent) => { pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null }
   const onTouchMove = (e: React.TouchEvent) => {
     if (pullStart.current === null) return
@@ -221,13 +211,6 @@ export default function HomePage() {
   }, [data])
   const loading = !data && !failed
 
-  // The hero's words: the stage's, or tonight's big event.
-  const sunset = sun.sunset.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: TZ })
-  const daypartLine = t('m.h2.line', { daypart: t(`m.h2.dp.${daypart}` as DictKey), town: town.name, time: sunset })
-  const lines = useHeroLines(result, firstName, daypartLine, now)
-  const aboard = useAboard(cruise?.allAboardAt ?? null)
-  const party = result.stage !== 'countdown' && data?.party ? data.party : null
-  const heroMedia = party ? (party.video ? { kind: 'video' as const, url: party.video, poster: party.image } : party.image ? { kind: 'photo' as const, url: party.image, poster: null } : data?.hero ?? null) : data?.hero ?? null
   const trip = result.trip as TripView | null
 
   const yourDayPlace =
@@ -237,12 +220,6 @@ export default function HomePage() {
       : 'day'
   const onDayState = useCallback((has: boolean) => setHasDay(has), [])
 
-  const topBar = (solid: boolean) => (
-    <div className="home-pills">
-      <RegionPill />
-      <PointsPill solid={solid} />
-    </div>
-  )
 
   const openEventPreview = useCallback((ev: EventItem) => setPreview({ kind: 'event', id: ev.id, name: ev.title, images: [ev.imageUrl, ...(ev.vendor?.images ?? [])].filter((u): u is string => Boolean(u)), lat: ev.lat, lng: ev.lng, startAt: ev.startAt, endAt: ev.endAt, venue: ev.venueName, bookable: Boolean(ev.inAppTickets || ev.ticketUrl) }), [])
   const openVendorPreview = useCallback((v: FeaturedItem) => setPreview({ kind: 'vendor', id: v.id, name: v.name, images: v.images.length ? v.images : v.image ? [v.image] : [], lat: v.lat, lng: v.lng, subtitle: v.neighborhood }), [])
@@ -259,45 +236,19 @@ export default function HomePage() {
 
   return (
     <main className="home" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      {/* Slim frosted bar once the hero is gone */}
-      <div className={`home-bar ${barOn ? 'on' : ''}`} aria-hidden={!barOn}>{topBar(true)}</div>
-
-      <HomeHero
-        media={heroMedia}
-        sceneKey={party ? `party-${party.id}` : city}
-        pull={pull}
-        washKey={washKey}
-        credit={!party && data?.hero?.source === 'town' && data.hero.credit ? t(data.hero.kind === 'video' ? 'm.h2.creditVideo' : 'm.h2.creditPhoto', { name: data.hero.credit, source: data.hero.creditSource ?? 'Pexels' }) : null}
-        topBar={<>
-          {topBar(false)}
-          {(refreshing || pull > 0) && (
-            <p role="status" className="glass-pill home-refresh-pill" style={{ opacity: refreshing ? 1 : Math.min(1, pull / PULL_TRIGGER) }}>
-              <Icon name="wave" size={14} /> {refreshing ? t('m.home.refreshing') : pull >= PULL_TRIGGER ? t('m.refresh.release') : t('m.refresh.pull')}
-            </p>
-          )}
-        </>}
-      >
-        {party ? (
-          <>
-            <p className="home-hero-over">{t('m.h2.tonight', { title: party.title, time: new Date(party.startAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: TZ }) })}</p>
-            <h1 className="home-greeting">{lines.title}</h1>
-            <Link href={`/events/${party.id}`} onClick={() => triggerHaptic('medium')} className="home-watch press" style={{ marginTop: '12px' }}>
-              <Icon name="ticket" size={15} /> {t('m.events.getTickets')}
-            </Link>
-          </>
-        ) : (
-          <>
-            {lines.over && <p className="home-hero-over">{lines.over}</p>}
-            <h1 className="home-greeting">{lines.title}</h1>
-            <p className="home-tagline">
-              {result.stage === 'cruise' && aboard ? <><Icon name="ship" size={14} /> <span className="num-font">{aboard}</span></> : lines.line}
-            </p>
-            {result.stage === 'trip' && result.day && (
-              <Link href="/trips" className="glass-pill press home-day-chip num-font"><Icon name="calendar" size={12} /> {t('m.trip.dayOf', { day: result.day.n, total: result.day.total })}</Link>
-            )}
-          </>
-        )}
-      </HomeHero>
+      {/* Slim top bar: the location switcher and the points pill */}
+      <header className={`home-top ${scrolled ? 'scrolled' : ''}`}>
+        <div className="home-pills">
+          <RegionPill />
+          <PointsPill solid />
+        </div>
+      </header>
+      <div className="home-top-space" aria-hidden />
+      {(refreshing || pull > 0) && (
+        <p role="status" className="home-refresh-line" style={{ opacity: refreshing ? 1 : Math.min(1, pull / PULL_TRIGGER), height: refreshing ? 36 : Math.min(36, pull / 2) }}>
+          <Icon name="wave" size={14} /> {refreshing ? t('m.home.refreshing') : pull >= PULL_TRIGGER ? t('m.refresh.release') : t('m.refresh.pull')}
+        </p>
+      )}
 
       <div className="home-sheet">
         {/* 1. Stories */}

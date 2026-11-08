@@ -8,7 +8,8 @@
 // (useTabShow). After Home loads, Experiences, Market and Profile are
 // mounted in the background so their data is ready before the first tap
 // (Scan & Pay isn't: it opens the camera). Opening a tab with a deep link
-// (?mood=, ?trip=, ?code=, ?settings=…) starts that tab afresh.
+// (?mood=, ?trip=, ?code=, ?settings=…) starts that tab afresh. Switching
+// tabs crossfades the new one in (app/motion.css).
 'use client'
 
 import { createContext, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -59,6 +60,7 @@ function Keeper({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState<Partial<Record<TabPath, string>>>(() => (current ? { [current]: `${current}?${query}` } : {}))
   const scrolls = useRef<Partial<Record<TabPath, number>>>({})
   const shown = useRef<TabPath | null>(current)
+  const screens = useRef<Partial<Record<TabPath, HTMLDivElement | null>>>({})
 
   // Visiting a tab mounts it; a deep link (a query) starts it afresh.
   useEffect(() => {
@@ -84,6 +86,9 @@ function Keeper({ children }: { children: React.ReactNode }) {
     shown.current = current
     if (!current || prev === current) return
     const y = scrolls.current[current] ?? 0
+    // Crossfade the tab in (app/motion.css; a plain short fade with Reduce Motion).
+    const el = screens.current[current]
+    if (el) { el.classList.remove('tab-enter'); void el.offsetWidth; el.classList.add('tab-enter') }
     window.scrollTo(0, y)
     requestAnimationFrame(() => window.scrollTo(0, y))
     window.dispatchEvent(new CustomEvent(SHOW_EVENT, { detail: current }))
@@ -111,7 +116,7 @@ function Keeper({ children }: { children: React.ReactNode }) {
         const Tab = TABS[path]
         const on = path === current
         return (
-          <div key={key} className="tab-screen" hidden={!on} aria-hidden={!on} style={on ? undefined : { display: 'none' }}>
+          <div key={key} ref={el => { screens.current[path] = el }} className="tab-screen" hidden={!on} aria-hidden={!on} style={on ? undefined : { display: 'none' }}>
             <Tab />
           </div>
         )
