@@ -7,6 +7,8 @@ import { httpsUrl, lat, lng, parseBody, text, z } from '@/lib/validate'
 import { CITY_CODES } from '@/lib/regions'
 import { popularTimes } from '@/lib/popular-times'
 import { approvedMentionStories } from '@/lib/instagram'
+import { boostEndsIn, boostLive, jamaicaClock } from '@/lib/boosts'
+import { capsLeft } from '@/lib/vouchers'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +25,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
         },
         experienceStops: { include: { experience: true } },
         flashDeals: { where: { expires: { gt: new Date() } } },
+        boosts: { where: { active: true, kind: 'quiet_hour' } },
+        rewardVendors: { where: { reward: { active: true, kind: 'catalog', category: 'vendor', audience: 'all' } }, include: { reward: { select: { id: true, name: true, description: true, cost: true, icon: true, dailyCap: true, monthlyBudget: true } } } },
         menuItems: { where: { available: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }
       }
     })
@@ -34,7 +38,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
       : undefined
 
     // Experiences whose route stops here (each listed once).
-    const { experienceStops, ...rest } = vendor
+    const { experienceStops, boosts, rewardVendors, ...rest } = vendor
+    // Deals Right Now on Market link here (?deal=<id>): the vendor's perks and today's quiet hours.
+    const at = Date.now()
+    const { minutes, dow } = jamaicaClock(at)
+    const quietHours = boosts
+      .filter(b => (!b.days.length || b.days.includes(dow)) && (b.endMin ?? 1440) > minutes)
+      .map(b => { const live = boostLive(b, at); return { id: b.id, multiplier: b.multiplier, startMin: b.startMin, endMin: b.endMin, live, endsAt: live && b.endMin !== null ? new Date(at + (boostEndsIn(b, at) ?? 0)).toISOString() : null } })
+    const perks = await Promise.all(rewardVendors.map(async ({ reward: r }) => ({ id: r.id, name: r.name, description: r.description, cost: r.cost, icon: r.icon, leftToday: (await capsLeft(r)).today })))
     const experiences = Array.from(new Map(experienceStops.map(s => [s.experience.id, s.experience])).values())
     const igStories = await approvedMentionStories({ vendorId: vendor.id })
     return NextResponse.json({
@@ -42,6 +53,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       stories: [...rest.stories, ...igStories],
       reviews: rest.reviews.map(r => ({ ...r, user: { name: r.user.name.split(' ')[0], avatarUrl: r.user.avatarUrl } })),
       experiences,
+      perks,
+      quietHours,
       rating,
       reviewCount: reviewCount > 0 ? reviewCount : undefined,
       popularTimes: await popularTimes(vendor.id)

@@ -693,7 +693,7 @@ export default function ExperiencesPage() {
         : null
     return (
       <>
-        <MomentsHome onPlan={() => openPlanner(null)} yourTrip={yourTrip} />
+        <MomentsHome onPlan={() => openPlanner(null)} onMap={() => changeMode('discover')} yourTrip={yourTrip} />
         <Dock />
       </>
     )

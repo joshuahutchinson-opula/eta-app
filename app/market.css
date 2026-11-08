@@ -63,8 +63,9 @@
 /* Dishes of the day: top-down plates with tilted price stickers */
 .mk-dish { flex: 0 0 140px; text-align: center; }
 .mk-plate { position: relative; width: 132px; height: 132px; margin: 0 auto; border-radius: 50%; background: #FFFFFF; box-shadow: 0 6px 16px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; }
-.mk-plate::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #F5EFE6; }
-.mk-plate-food { position: relative; width: 96px; height: 96px; border-radius: 50%; overflow: hidden; background: #8B3A1A; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+.mk-plate::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: #F5EFE6; }
+.mk-plate-food { position: relative; width: 124px; height: 124px; border-radius: 50%; overflow: hidden; background: #8B3A1A; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); isolation: isolate; }
+.mk-plate-food video, .mk-plate-food img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mk-sticker { position: absolute; z-index: 2; right: -2px; top: 6px; padding: 4px 8px; border-radius: 999px; background: #000000; color: #FFFFFF; font-size: 12px; transform: rotate(8deg); }
 [data-theme="dark"] .mk-sticker { box-shadow: 0 0 0 1.5px rgba(255,255,255,0.85); }
 [data-theme="dark"] .mk-plate { box-shadow: 0 6px 16px rgba(0,0,0,0.5); }

@@ -131,6 +131,9 @@ export const MOMENTS_STRINGS = {
   'm.mk.f.services': ['Services', 'Servicios', 'Services', 'Services'],
   'm.mk.close': ['Close', 'Cerrar', 'Schließen', 'Fermer'],
 
+  // ---------- Vendor page: deals ----------
+  'm.vd.redeem': ['Redeem In Rewards', 'Canjear en Premios', 'In Prämien einlösen', 'Échanger dans Récompenses'],
+
   // ---------- Event page ----------
   'm.ev.buyTicket': ['Buy Ticket', 'Comprar entrada', 'Ticket kaufen', 'Acheter un billet'],
   'm.ev.freeRsvp': ['Free Entry · RSVP', 'Entrada libre · Confirmar', 'Freier Eintritt · Zusagen', 'Entrée libre · Confirmer'],

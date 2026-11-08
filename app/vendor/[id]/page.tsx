@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useMorphIn } from '@/lib/morph'
+import { prefersReducedMotion } from '@/lib/motion'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
@@ -75,6 +76,10 @@ interface FlashDealItem {
   expires: string
 }
 
+/** A vendor perk from Rewards, and a quiet-hour points boost (Market's Deals Right Now). */
+interface PerkItem { id: string; name: string; description: string; cost: number; icon: string; leftToday: number }
+interface QuietHourItem { id: string; multiplier: number; startMin: number | null; endMin: number | null; live: boolean; endsAt: string | null }
+
 interface VendorDetail {
   id: string
   name: string
@@ -112,6 +117,8 @@ interface VendorDetail {
   reviews: ReviewItem[]
   experiences: ExperienceItem[]
   flashDeals: FlashDealItem[]
+  perks?: PerkItem[]
+  quietHours?: QuietHourItem[]
 }
 
 type SheetKey = 'about' | 'menu' | 'hours' | 'reviews' | 'location' | 'info' | 'deals' | 'experiences' | 'stories'
@@ -188,7 +195,11 @@ export default function VendorDetailPage() {
   const router = useRouter()
   const vendorId = params.id as string
   // Adding to a trip belongs to the Experiences flow; from Market/Home the vendor is just browsed.
-  const fromExperiences = useSearchParams().get('from') === 'experiences'
+  const search = useSearchParams()
+  const fromExperiences = search.get('from') === 'experiences'
+  // Opened from a Market deal ticket: that deal is scrolled to and highlighted.
+  const dealParam = search.get('deal')
+  const [dealLit, setDealLit] = useState<string | null>(null)
 
   const [vendor, setVendor] = useState<VendorDetail | null>(null)
   // The tapped card's image grows into the hero (lib/morph.ts).
@@ -241,6 +252,18 @@ export default function VendorDetailPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!vendor || !dealParam) return
+    const el = document.getElementById(`deal-${dealParam}`)
+    if (!el) return
+    const id = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' })
+      setDealLit(dealParam)
+      triggerHaptic('light')
+    }, 350)
+    return () => window.clearTimeout(id)
+  }, [vendor, dealParam])
 
   const share = async () => {
     if (!vendor) return
@@ -403,7 +426,6 @@ export default function VendorDetailPage() {
 
   const rows: Array<{ key: SheetKey; icon: string; label: string; detail?: string | null; show: boolean }> = [
     { key: 'about', icon: 'journal', label: t('m.vendor.about'), detail: vendor.description.slice(0, 60) + (vendor.description.length > 60 ? '…' : ''), show: Boolean(vendor.description) },
-    { key: 'deals', icon: 'flame', label: t('m.market.flashDeals'), detail: vendor.flashDeals[0]?.deal, show: vendor.flashDeals.length > 0 },
     { key: 'menu', icon: 'food', label: t('m.vendor.menu'), detail: vendor.menuItems?.length ? t('m.vendor.itemsN', { n: vendor.menuItems.length }) : null, show: hasMenu },
     { key: 'hours', icon: 'clock', label: t('m.vendor.hours'), detail: hoursDetail ?? (isOpen ? t('common.open') : t('common.closed')), show: Boolean(hours) || Boolean(vendor.popularTimes) },
     { key: 'reviews', icon: 'star', label: t('vendor.reviews'), detail: vendor.reviewCount ? `★ ${vendor.rating?.toFixed(1)} · ${vendor.reviewCount}` : t('m.review.write'), show: true },
@@ -417,6 +439,9 @@ export default function VendorDetailPage() {
     about: t('m.vendor.about'), menu: t('m.vendor.menu'), hours: t('m.vendor.hours'), reviews: t('vendor.reviews'), location: t('m.vendor.location'),
     info: t('m.vendor.goodToKnow'), deals: t('m.market.flashDeals'), experiences: t('m.home.experiences'), stories: t('m.vendor.recentStories')
   }
+
+  const clockMin = (m: number) => new Date(Date.UTC(2000, 0, 1, Math.floor(m / 60) + 5, m % 60)).toLocaleTimeString(locale, { hour: 'numeric', minute: m % 60 ? '2-digit' : undefined, timeZone: 'America/Jamaica' })
+  const minsLeft = (iso: string) => { const m = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m` }
 
   return (
     <main className="screen-push-in" style={{ minHeight: '100dvh', background: 'var(--system-bg)', paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}>
@@ -515,6 +540,49 @@ export default function VendorDetailPage() {
             <p style={{ flex: 1, fontSize: '14px', color: 'var(--label-primary)' }}>{alertMsg ?? t('m.vendor.alertPrompt', { name: vendor.name })}</p>
             {!alertsOn && <button className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 12px', fontSize: '14px' }} onClick={turnOnLiveAlerts}>{t('m.vendor.turnOn')}</button>}
           </div>
+        )}
+
+        {/* Deals: perks, quiet-hour boosts and flash deals, right on the page (Market's tickets land here) */}
+        {((vendor.perks?.length ?? 0) + (vendor.quietHours?.length ?? 0) + vendor.flashDeals.length) > 0 && (
+          <section style={{ marginBottom: '16px' }} aria-label={t('m.mk.deals')}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--label-primary)', marginBottom: '10px' }}>{t('m.mk.deals')}</h2>
+            <div className="list-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(vendor.quietHours ?? []).map(q => (
+                <div key={q.id} id={`deal-${q.id}`} className={`card vd-deal ${dealLit === q.id ? 'lit' : ''}`} style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'default' }}>
+                  <span className="num-font" style={{ flexShrink: 0, width: '48px', height: '48px', borderRadius: '12px', background: q.live ? '#B82010' : 'var(--rum-tint)', color: q.live ? '#FFFFFF' : 'var(--rum-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: 700 }}>{q.multiplier}×</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{t('m.rw.xPoints', { x: q.multiplier })}</span>
+                    <span style={{ display: 'block', fontSize: '13px', color: q.live ? 'var(--rum-text)' : 'var(--label-secondary)', marginTop: '2px', fontWeight: q.live ? 600 : 400 }}>
+                      {q.live && q.endsAt ? `${t('m.rw.liveNow')} · ${t('m.rw.endsIn', { time: minsLeft(q.endsAt) })}` : q.startMin !== null && q.endMin !== null ? t('m.rw.quietLine', { range: `${clockMin(q.startMin)}–${clockMin(q.endMin)}` }) : null}
+                    </span>
+                  </span>
+                  <Link href="/pay" className="btn btn-secondary" style={{ minHeight: '36px', padding: '0 14px', fontSize: '14px', textDecoration: 'none' }}>{t('m.scan.payButton')}</Link>
+                </div>
+              ))}
+              {(vendor.perks ?? []).map(p => (
+                <div key={p.id} id={`deal-${p.id}`} className={`card vd-deal ${dealLit === p.id ? 'lit' : ''}`} style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'default' }}>
+                  <span style={{ flexShrink: 0, width: '48px', height: '48px', borderRadius: '12px', background: '#FFB800', color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1 }}>
+                    <span className="num-font" style={{ fontSize: '14px', fontWeight: 700 }}>{p.cost.toLocaleString(locale)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700 }}>{t('m.mk.pts')}</span>
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{p.name}</span>
+                    <span style={{ display: 'block', fontSize: '13px', color: 'var(--label-secondary)', marginTop: '2px' }}>{p.leftToday > 0 ? t('m.mk.leftToday', { n: p.leftToday }) : t('m.rw.soldOut')}</span>
+                  </span>
+                  <Link href="/rewards" className="btn btn-primary" style={{ minHeight: '36px', padding: '0 14px', fontSize: '14px', textDecoration: 'none' }}>{t('m.vd.redeem')}</Link>
+                </div>
+              ))}
+              {vendor.flashDeals.map(fd => (
+                <div key={fd.id} id={`deal-${fd.id}`} className={`card vd-deal ${dealLit === fd.id ? 'lit' : ''}`} style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'default' }}>
+                  <span style={{ flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: '16px', fontWeight: 700, color: 'var(--label-primary)' }}>{fd.deal}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--label-secondary)', marginTop: '2px' }}><Icon name="clock" size={12} /> {formatCountdown(fd.expires, t)}</span>
+                  </span>
+                  <button className="btn btn-primary" onClick={() => claimDeal(fd.id)} disabled={claiming === fd.id} style={{ minHeight: '36px', padding: '0 14px', fontSize: '14px' }}>{claiming === fd.id ? '…' : t('m.vendor.claim')}</button>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* One row per topic; each opens a sheet */}
