@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Market redesign</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Space+Mono:wght@700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B82010;text-decoration:none}
+.num{font-family:'Space Mono',monospace}
+.eb{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B82010}
+.st{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.sub{color:rgba(60,60,67,0.75)}
+.sec{margin-top:36px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+.all{min-height:44px;display:flex;align-items:center;font-size:15px;font-weight:600}
+.scroll{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 6px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.card{border-radius:18px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.ph{position:relative;overflow:hidden}
+.tag{position:absolute;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:600;background:#FFFFFF;color:#000000;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.ticket{position:relative;flex:0 0 250px;display:flex;border-radius:16px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,0.08);
+  -webkit-mask:radial-gradient(circle 9px at 172px 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 172px 100%,#0000 98%,#000) bottom/100% 51% no-repeat;
+  mask:radial-gradient(circle 9px at 172px 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 172px 100%,#0000 98%,#000) bottom/100% 51% no-repeat}
+.pep{display:inline-block;width:10px;height:14px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;margin-right:2px}
+@keyframes eta-ping{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+.me::after{content:"";position:absolute;inset:0;border-radius:50%;background:#0A84FF;animation:eta-ping 2s ease-out infinite}
+@keyframes eta-smoke{0%{transform:translateY(0) scale(1);opacity:.0}30%{opacity:.35}100%{transform:translateY(-40px) scale(1.6);opacity:0}}
+.smoke{position:absolute;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.6),rgba(255,255,255,0));animation:eta-smoke 4s ease-out infinite}
+@media (prefers-reduced-motion: reduce){.me::after,.smoke{animation:none;display:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 4360px; box-sizing: border-box; position: relative; overflow: hidden; background: #F2F2F7; font-family: Inter, system-ui, sans-serif; color: #000000">
+
+  <!-- Top bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Market</h1>
+    <div style="display: flex; gap: 8px">
+      <button style="display: inline-flex; align-items: center; gap: 5px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font: 600 14px Inter, sans-serif">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Negril
+      </button>
+      <button aria-label="Map" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"></path><path d="M9 4v14M15 6v14"></path></svg>
+      </button>
+      <button aria-label="Search" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Sticky jump bar: the page is long, so you can jump straight to what you need -->
+  <div style="position: relative; padding: 8px 16px 10px; background: rgba(242,242,247,0.94)">
+    <div class="scroll" role="tablist" aria-label="Jump to">
+      <span class="chip" role="tab" aria-selected="true" style="background: #000000; color: #FFFFFF">Today's Picks</span>
+      <span class="chip" role="tab">Around You</span>
+      <span class="chip" role="tab">Food &amp; Drink</span>
+      <span class="chip" role="tab">Shop &amp; Stay</span>
+      <span class="chip" role="tab">Everything</span>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px">
+
+    <!-- CHAPTER 01 -->
+    <div style="margin-top: 18px; display: flex; align-items: center; gap: 12px" role="separator" aria-label="Today's Picks">
+      <div style="flex: 0 0 auto">
+        <p style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #000000">Today's Picks</p>
+      </div>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184,32,16,0.5), rgba(184,32,16,0))"></span>
+    </div>
+
+    <!-- 5 · B.O.N MEMBERS: black & gold -->
+    <div style="margin-top: 14px">
+      <div style="border-radius: 22px; padding: 18px 16px; background: linear-gradient(160deg, #141414, #2A2418); color: #FFFFFF">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <div><p class="st" style="color: #FFFFFF">B.O.N Members</p></div>
+          <span style="padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,213,74,0.5); color: #FFD54A; font-size: 12px; font-weight: 700">You're In</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px">
+          <div>
+            <div style="height: 110px; border-radius: 14px; background: linear-gradient(160deg, #3B3F6B, #141428)"></div>
+            <p style="margin: 8px 0 0; font-size: 14px; font-weight: 700">The Rockhouse</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: #FFD54A">Free cocktail on arrival</p>
+          </div>
+          <div>
+            <div style="height: 110px; border-radius: 14px; background: linear-gradient(160deg, #C4654F, #4A2F5C)"></div>
+            <p style="margin: 8px 0 0; font-size: 14px; font-weight: 700">Kuyaba</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: #FFD54A">15% off dinner</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · DISHES OF THE DAY: plates, top-down -->
+    <div style="margin-top: 18px">
+      <div class="head"><div><p class="st">Dishes Of The Day</p></div><a href="#" class="all">See All</a></div>
+      <div class="scroll">
+        <div style="flex: 0 0 140px; text-align: center">
+          <div style="position: relative; width: 132px; height: 132px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #8B3A1A 0 52%, #F5EFE6 53% 66%, #FFFFFF 67%); box-shadow: 0 6px 16px rgba(0,0,0,0.12)">
+            <span class="num" style="position: absolute; right: -2px; top: 6px; padding: 4px 8px; border-radius: 999px; background: #000000; color: #FFFFFF; font-size: 12px; transform: rotate(8deg)">$14</span>
+          </div>
+          <p style="margin: 10px 0 0; font-size: 15px; font-weight: 700">Oxtail &amp; Rice</p>
+          <p class="sub" style="margin: 2px 0 0; font-size: 12px">Miss Lily's · 12 left</p>
+        </div>
+        <div style="flex: 0 0 140px; text-align: center">
+          <div style="position: relative; width: 132px; height: 132px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #D9A441 0 52%, #F5EFE6 53% 66%, #FFFFFF 67%); box-shadow: 0 6px 16px rgba(0,0,0,0.12)">
+            <span class="num" style="position: absolute; right: -2px; top: 6px; padding: 4px 8px; border-radius: 999px; background: #000000; color: #FFFFFF; font-size: 12px; transform: rotate(8deg)">$11</span>
+          </div>
+          <p style="margin: 10px 0 0; font-size: 15px; font-weight: 700">Ackee &amp; Saltfish</p>
+          <p class="sub" style="margin: 2px 0 0; font-size: 12px">Sips &amp; Bites · Till noon</p>
+        </div>
+        <div style="flex: 0 0 140px; text-align: center">
+          <div style="position: relative; width: 132px; height: 132px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #C4654F 0 52%, #F5EFE6 53% 66%, #FFFFFF 67%); box-shadow: 0 6px 16px rgba(0,0,0,0.12)">
+            <span class="num" style="position: absolute; right: -2px; top: 6px; padding: 4px 8px; border-radius: 999px; background: #000000; color: #FFFFFF; font-size: 12px; transform: rotate(8deg)">$18</span>
+          </div>
+          <p style="margin: 10px 0 0; font-size: 15px; font-weight: 700">Escovitch Fish</p>
+          <p class="sub" style="margin: 2px 0 0; font-size: 12px">Ivan's · Today's catch</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · DEALS RIGHT NOW: tear-off tickets with countdowns -->
+    <div class="sec">
+      <div class="head"><div><p class="st">Deals Right Now</p></div><a href="#" class="all">See All</a></div>
+      <div class="scroll">
+        <div class="ticket">
+          <div style="flex: 0 0 172px; padding: 14px; box-sizing: border-box; border-right: 1.5px dashed #E5E5EA">
+            <p style="margin: 0; font-size: 12px; font-weight: 700; color: #B82010">Rick's Café</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; line-height: 1.15">Free Rum Punch</p>
+            <p class="sub" style="margin: 6px 0 0; font-size: 12px">14 left today</p>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #FFB800; color: #000000">
+            <p class="num" style="margin: 0; font-size: 18px">300</p>
+            <p style="margin: 0; font-size: 11px; font-weight: 700">pts</p>
+          </div>
+        </div>
+        <div class="ticket">
+          <div style="flex: 0 0 172px; padding: 14px; box-sizing: border-box; border-right: 1.5px dashed #E5E5EA">
+            <p style="margin: 0; font-size: 12px; font-weight: 700; color: #B82010">Pushcart</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; line-height: 1.15">2× Points</p>
+            <p class="num" style="margin: 6px 0 0; font-size: 12px; color: #B82010">Ends 1:52:10</p>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #B82010; color: #FFFFFF">
+            <p class="num" style="margin: 0; font-size: 22px">2×</p>
+            <p style="margin: 0; font-size: 11px; font-weight: 700">Live</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 02 -->
+    <div style="margin-top: 52px; display: flex; align-items: center; gap: 12px" role="separator" aria-label="Around You">
+      <div style="flex: 0 0 auto">
+        <p style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #000000">Around You</p>
+      </div>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184,32,16,0.5), rgba(184,32,16,0))"></span>
+    </div>
+
+    <!-- 2 · NEAR YOU NOW: a live mini-map + numbered walk list (different from every other section) -->
+    <div class="sec">
+      <div class="head"><div><p class="st">Near You Now</p></div><a href="#" class="all">Open Map</a></div>
+      <div class="card" style="overflow: hidden">
+        <div style="position: relative; height: 150px; background: #E8EEF0">
+          <svg width="100%" height="150" viewBox="0 0 358 150" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 110 C 80 100, 140 60, 220 70 S 330 40, 358 30" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"></path>
+            <path d="M0 110 C 80 100, 140 60, 220 70 S 330 40, 358 30" fill="none" stroke="#D6DDE0" stroke-width="1"></path>
+            <path d="M150 150 L 170 0" stroke="#FFFFFF" stroke-width="8"></path>
+            <path d="M0 150 L 0 125 C 60 128, 120 150, 160 150 Z" fill="#9FD3E0"></path>
+            <path d="M181 92 C 200 80, 222 70, 252 58" fill="none" stroke="#B82010" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></path>
+          </svg>
+          <span class="me" style="position: absolute; left: 172px; top: 84px; width: 14px; height: 14px; border-radius: 50%; background: #0A84FF; border: 3px solid #FFFFFF; box-sizing: border-box"></span>
+          <span class="num" style="position: absolute; left: 244px; top: 40px; width: 26px; height: 26px; border-radius: 50%; background: #B82010; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.25)">1</span>
+          <span class="num" style="position: absolute; left: 96px; top: 70px; width: 26px; height: 26px; border-radius: 50%; background: #000000; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.25)">2</span>
+          <span class="num" style="position: absolute; left: 300px; top: 92px; width: 26px; height: 26px; border-radius: 50%; background: #000000; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.25)">3</span>
+        </div>
+        <div style="padding: 4px 14px">
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 64px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+            <span class="num" style="width: 26px; height: 26px; border-radius: 50%; background: #B82010; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px">1</span>
+            <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 700">Pushcart Restaurant</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">Jamaican · 2× points till 5pm</p></div>
+            <div style="text-align: right"><p class="num" style="margin: 0; font-size: 18px">4</p><p class="sub" style="margin: 0; font-size: 11px">min walk</p></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 64px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+            <span class="num" style="width: 26px; height: 26px; border-radius: 50%; background: #000000; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px">2</span>
+            <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 700">Juicy Patties</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">Patties · Quick bite</p></div>
+            <div style="text-align: right"><p class="num" style="margin: 0; font-size: 18px">6</p><p class="sub" style="margin: 0; font-size: 11px">min walk</p></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 64px">
+            <span class="num" style="width: 26px; height: 26px; border-radius: 50%; background: #000000; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px">3</span>
+            <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 700">Sips &amp; Bites</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">Café · Closes 6pm</p></div>
+            <div style="text-align: right"><p class="num" style="margin: 0; font-size: 18px">9</p><p class="sub" style="margin: 0; font-size: 11px">min walk</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 · LOCAL FAVOURITES: told in locals' own words -->
+    <div style="margin-top: 18px">
+      <div class="head"><div><p class="st">Local Favourites</p></div><a href="#" class="all">See All</a></div>
+      <div class="scroll">
+        <div class="card" style="flex: 0 0 270px; padding: 16px; position: relative">
+          <svg width="28" height="22" viewBox="0 0 28 22" aria-hidden="true"><path d="M0 22V12C0 5 4 1 11 0l1 3C8 4 6 7 6 10h5v12zM16 22V12c0-7 4-11 11-12l1 3c-4 1-6 4-6 7h5v12z" fill="#B82010" opacity=".2"></path></svg>
+          <p style="margin: 6px 0 0; font-size: 16px; font-weight: 600; line-height: 1.4">"Best curry goat in Negril. Mi go every Sunday after church."</p>
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px">
+            <span style="width: 32px; height: 32px; border-radius: 50%; background: #2E7D8C"></span>
+            <div style="flex: 1"><p style="margin: 0; font-size: 13px; font-weight: 700">Andre · Negril local</p><p class="sub" style="margin: 0; font-size: 12px">about Niah's Patties</p></div>
+          </div>
+          <span style="position: absolute; top: 14px; right: 14px; padding: 4px 8px; border-radius: 6px; border: 1.5px solid #B82010; color: #B82010; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; transform: rotate(-6deg)">Locals' Pick</span>
+        </div>
+        <div class="card" style="flex: 0 0 270px; padding: 16px; position: relative">
+          <svg width="28" height="22" viewBox="0 0 28 22" aria-hidden="true"><path d="M0 22V12C0 5 4 1 11 0l1 3C8 4 6 7 6 10h5v12zM16 22V12c0-7 4-11 11-12l1 3c-4 1-6 4-6 7h5v12z" fill="#B82010" opacity=".2"></path></svg>
+          <p style="margin: 6px 0 0; font-size: 16px; font-weight: 600; line-height: 1.4">"Fresh fish straight off the boat. No tourist prices."</p>
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px">
+            <span style="width: 32px; height: 32px; border-radius: 50%; background: #C4654F"></span>
+            <div style="flex: 1"><p style="margin: 0; font-size: 13px; font-weight: 700">Keisha · Sheffield</p><p class="sub" style="margin: 0; font-size: 12px">about Sweet Spice</p></div>
+          </div>
+          <span style="position: absolute; top: 14px; right: 14px; padding: 4px 8px; border-radius: 6px; border: 1.5px solid #B82010; color: #B82010; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; transform: rotate(-6deg)">Locals' Pick</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 03 -->
+    <div style="margin-top: 52px; display: flex; align-items: center; gap: 12px" role="separator" aria-label="Food &amp; Drink">
+      <div style="flex: 0 0 auto">
+        <p style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #000000">Food &amp; Drink</p>
+      </div>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184,32,16,0.5), rgba(184,32,16,0))"></span>
+    </div>
+
+    <!-- 6 · JERK SPOTS: big smoky photo cards with a heat scale -->
+    <div class="sec">
+      <div class="head"><div><p class="st">Jerk Spots</p></div><a href="#" class="all">See All</a></div>
+      <div class="ph" style="height: 230px; border-radius: 22px; background: linear-gradient(170deg, #3A1A0A 0%, #7A1408 55%, #D9481F 100%)">
+        <span class="smoke" style="left: 40px; bottom: 60px"></span>
+        <span class="smoke" style="left: 90px; bottom: 50px; animation-delay: 1.3s"></span>
+        <span class="smoke" style="left: 60px; bottom: 70px; animation-delay: 2.6s"></span>
+        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.7) 100%)"></div>
+        <span class="tag" style="top: 14px; left: 14px; background: #FFFFFF; color: #000000">#1 In Negril</span>
+        <div style="position: absolute; left: 16px; right: 16px; bottom: 14px; color: #FFFFFF; display: flex; justify-content: space-between; align-items: flex-end">
+          <div>
+            <p style="margin: 0; font-size: 22px; font-weight: 800">Ossie's Jerk Centre</p>
+            <p style="margin: 3px 0 0; font-size: 13px; color: rgba(255,255,255,0.85)">Chicken · Pork · Festival · 7 min drive</p>
+          </div>
+          <div style="text-align: right">
+            <p style="margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,0.75)">Heat</p>
+            <p style="margin: 3px 0 0"><span class="pep" style="background: #FFB800"></span><span class="pep" style="background: #FF7A00"></span><span class="pep" style="background: #FF3B30"></span><span class="pep" style="background: rgba(255,255,255,0.3)"></span></p>
+          </div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px">
+        <div class="card" style="padding: 12px">
+          <p style="margin: 0; font-size: 15px; font-weight: 700">3 Dives Jerk</p>
+          <p class="sub" style="margin: 2px 0 6px; font-size: 12px">West End · Cliffside</p>
+          <span class="pep" style="background: #FFB800"></span><span class="pep" style="background: #FF7A00"></span><span class="pep" style="background: rgba(60,60,67,0.18)"></span><span class="pep" style="background: rgba(60,60,67,0.18)"></span>
+        </div>
+        <div class="card" style="padding: 12px">
+          <p style="margin: 0; font-size: 15px; font-weight: 700">Best Jerk</p>
+          <p class="sub" style="margin: 2px 0 6px; font-size: 12px">Roadside · Till 11pm</p>
+          <span class="pep" style="background: #FFB800"></span><span class="pep" style="background: #FF7A00"></span><span class="pep" style="background: #FF3B30"></span><span class="pep" style="background: #B82010"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8 · RUM BARS & BEACH BARS: warm tiles with happy-hour bar -->
+    <div style="margin-top: 18px">
+      <div class="head"><div><p class="st">Rum Bars &amp; Beach Bars</p></div><a href="#" class="all">See All</a></div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <div style="border-radius: 18px; overflow: hidden; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+          <div class="ph" style="height: 150px; background: linear-gradient(180deg, #F2A65A 0%, #E07A3A 45%, #2E7D8C 46%, #1F4E5A 100%)">
+            <span class="tag" style="left: 10px; bottom: 10px; background: rgba(0,0,0,0.45); color: #FFFFFF">Sunset View</span>
+          </div>
+          <div style="padding: 10px 12px 12px">
+            <p style="margin: 0; font-size: 15px; font-weight: 700">Margaritaville</p>
+            <p class="sub" style="margin: 2px 0 8px; font-size: 12px">Beach bar · Seven Mile</p>
+            <div style="height: 4px; border-radius: 999px; background: #F2F2F7"><div style="width: 55%; height: 100%; border-radius: 999px; background: #FFB800"></div></div>
+            <p style="margin: 5px 0 0; font-size: 12px; font-weight: 600; color: #B07A00">Happy hour · 4–6pm</p>
+          </div>
+        </div>
+        <div style="border-radius: 18px; overflow: hidden; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+          <div class="ph" style="height: 150px; background: linear-gradient(160deg, #8B4A1A, #3B1A0A)">
+            <span class="tag" style="left: 10px; bottom: 10px; background: rgba(0,0,0,0.45); color: #FFFFFF">40+ Rums</span>
+          </div>
+          <div style="padding: 10px 12px 12px">
+            <p style="margin: 0; font-size: 15px; font-weight: 700">The Rum Shack</p>
+            <p class="sub" style="margin: 2px 0 8px; font-size: 12px">Rum bar · West End</p>
+            <div style="height: 4px; border-radius: 999px; background: #F2F2F7"></div>
+            <p class="sub" style="margin: 5px 0 0; font-size: 12px; font-weight: 600">Happy hour from 9pm</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9 · OPEN LATE: sleek night panel, closing time + time left -->
+    <div class="sec">
+      <div style="position: relative; overflow: hidden; border-radius: 22px; padding: 18px 16px 6px; background: #0E0E10; box-shadow: 0 10px 30px rgba(0,0,0,0.25)">
+        <div style="position: absolute; top: -80px; right: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(242,66,48,0.28), rgba(242,66,48,0) 70%)"></div>
+        <div style="position: relative; display: flex; align-items: flex-end; justify-content: space-between">
+          <div>
+            
+            <p class="st" style="color: #FFFFFF">Open Late</p>
+          </div>
+          <span style="display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.75); font-size: 12px; font-weight: 600"><span class="num" style="color: #FFFFFF">8</span> open now</span>
+        </div>
+        <div style="position: relative; margin-top: 12px">
+          <div style="padding: 12px 0; border-top: 0.5px solid rgba(255,255,255,0.08)">
+            <div style="display: flex; align-items: baseline; gap: 12px">
+              <div style="flex: 1; min-width: 0"><p style="margin: 0; font-size: 16px; font-weight: 700; color: #FFFFFF">Late Night Patty Stop</p><p style="margin: 3px 0 0; font-size: 12px; color: rgba(255,255,255,0.55)">Patties · 3 min walk</p></div>
+              <div style="text-align: right"><p class="num" style="margin: 0; font-size: 15px; color: #FFFFFF">3:00 AM</p><p style="margin: 2px 0 0; font-size: 11px; color: rgba(255,255,255,0.5)">4h 28m left</p></div>
+            </div>
+            <div style="margin-top: 10px; height: 2px; border-radius: 999px; background: rgba(255,255,255,0.08)"><div style="width: 85%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B82010, #F24230)"></div></div>
+          </div>
+          <div style="padding: 12px 0; border-top: 0.5px solid rgba(255,255,255,0.08)">
+            <div style="display: flex; align-items: baseline; gap: 12px">
+              <div style="flex: 1; min-width: 0"><p style="margin: 0; font-size: 16px; font-weight: 700; color: #FFFFFF">Bourbon Beach</p><p style="margin: 3px 0 0; font-size: 12px; color: rgba(255,255,255,0.55)">Bar · Live music · 9 min</p></div>
+              <div style="text-align: right"><p class="num" style="margin: 0; font-size: 15px; color: #FFFFFF">2:00 AM</p><p style="margin: 2px 0 0; font-size: 11px; color: rgba(255,255,255,0.5)">3h 28m left</p></div>
+            </div>
+            <div style="margin-top: 10px; height: 2px; border-radius: 999px; background: rgba(255,255,255,0.08)"><div style="width: 70%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B82010, #F24230)"></div></div>
+          </div>
+          <div style="padding: 12px 0; border-top: 0.5px solid rgba(255,255,255,0.08)">
+            <div style="display: flex; align-items: baseline; gap: 12px">
+              <div style="flex: 1; min-width: 0"><p style="margin: 0; font-size: 16px; font-weight: 700; color: #FFFFFF">Best Jerk</p><p style="margin: 3px 0 0; font-size: 12px; color: rgba(255,255,255,0.55)">Jerk · Roadside · 7 min</p></div>
+              <div style="text-align: right"><p class="num" style="margin: 0; font-size: 15px; color: #FFFFFF">11:00 PM</p><p style="margin: 2px 0 0; font-size: 11px; color: rgba(255,255,255,0.5)">28m left</p></div>
+            </div>
+            <div style="margin-top: 10px; height: 2px; border-radius: 999px; background: rgba(255,255,255,0.08)"><div style="width: 15%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B82010, #F24230)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 04 -->
+    <div style="margin-top: 52px; display: flex; align-items: center; gap: 12px" role="separator" aria-label="Shop &amp; Stay">
+      <div style="flex: 0 0 auto">
+        <p style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #000000">Shop &amp; Stay</p>
+      </div>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184,32,16,0.5), rgba(184,32,16,0))"></span>
+    </div>
+
+    <!-- 10 · CRAFTS & SOUVENIRS: maker-first mosaic -->
+    <div class="sec">
+      <div class="head"><div><p class="st">Crafts &amp; Souvenirs</p></div><a href="#" class="all">See All</a></div>
+      <div style="display: grid; grid-template-columns: 1.2fr 1fr; grid-template-rows: 120px 120px; gap: 10px">
+        <div class="ph" style="grid-row: span 2; border-radius: 18px; background: linear-gradient(160deg, #C98A2B, #6B3A12)">
+          <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%)"></div>
+          <div style="position: absolute; left: 12px; right: 12px; bottom: 12px; color: #FFFFFF">
+            <p style="margin: 0; font-size: 16px; font-weight: 700">Errol's Wood Carvings</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: rgba(255,255,255,0.85)">Carving since 1989 · Craft Market</p>
+          </div>
+        </div>
+        <div class="ph" style="border-radius: 18px; background: linear-gradient(160deg, #2E8C6E, #1F4E3A)">
+          <p style="position: absolute; left: 10px; bottom: 10px; margin: 0; font-size: 14px; font-weight: 700; color: #FFFFFF">Negril Craft Market</p>
+        </div>
+        <div class="ph" style="border-radius: 18px; background: linear-gradient(160deg, #E07A3A, #B82010)">
+          <p style="position: absolute; left: 10px; bottom: 10px; margin: 0; font-size: 14px; font-weight: 700; color: #FFFFFF">Hand-painted Art</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 · ACCOMMODATION: wide stay cards -->
+    <div style="margin-top: 18px">
+      <div class="head"><div><p class="st">Accommodation</p></div><a href="#" class="all">See All</a></div>
+      <div class="scroll">
+        <div style="flex: 0 0 290px">
+          <div class="ph" style="height: 180px; border-radius: 20px; background: linear-gradient(160deg, #7FB8D6, #2E7D8C 60%, #1F4E5A)">
+            <span class="tag" style="top: 12px; left: 12px; background: rgba(255,255,255,0.92); color: #000000">ETA Partner · Welcome Gift</span>
+            <button aria-label="Save" style="position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg></button>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 4px; justify-content: center; padding: 10px"><span style="width: 16px; height: 4px; border-radius: 999px; background: #FFFFFF"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.6)"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.6)"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.6)"></span></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: 8px; margin-top: 10px">
+            <div><p style="margin: 0; font-size: 16px; font-weight: 700">The Cliffs Villas</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">West End · Cliffside · Pool</p></div>
+            <p style="margin: 0; text-align: right; font-size: 13px" class="sub">from<br><b class="num" style="font-size: 16px; color: #000000">$140</b></p>
+          </div>
+        </div>
+        <div style="flex: 0 0 290px">
+          <div class="ph" style="height: 180px; border-radius: 20px; background: linear-gradient(160deg, #F2C27A, #C4654F 70%)">
+            <span class="tag" style="top: 12px; left: 12px; background: rgba(255,255,255,0.92); color: #000000">On Seven Mile Beach</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: 8px; margin-top: 10px">
+            <div><p style="margin: 0; font-size: 16px; font-weight: 700">Rondel Village</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">Seven Mile · Beachfront</p></div>
+            <p style="margin: 0; text-align: right; font-size: 13px" class="sub">from<br><b class="num" style="font-size: 16px; color: #000000">$95</b></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11 · GROCERIES & ESSENTIALS: compact, utility-first -->
+    <div class="sec">
+      <div class="head"><div><p class="st">Groceries &amp; Essentials</p></div></div>
+      <div class="card" style="padding: 4px 14px">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(184,32,16,0.1); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.5 11h11L21 7H7"></path><circle cx="10" cy="20" r="1.5"></circle><circle cx="17" cy="20" r="1.5"></circle></svg></span>
+          <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 600">Hi-Lo Supermarket</p><p class="sub" style="margin: 0; font-size: 12px">Groceries · Closes 9pm · 1.2 mi</p></div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; border-bottom: 0.5px solid rgba(60,60,67,0.18)">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(184,32,16,0.1); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M12 8v8M8 12h8"></path></svg></span>
+          <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 600">Negril Pharmacy</p><p class="sub" style="margin: 0; font-size: 12px">Sunscreen, after-sun, first aid · 0.6 mi</p></div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(184,32,16,0.1); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"></rect><path d="M11 18h2"></path></svg></span>
+          <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 600">Phone Top-Up &amp; SIM</p><p class="sub" style="margin: 0; font-size: 12px">Digicel · Flow · 3 spots nearby</p></div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 05 -->
+    <div style="margin-top: 52px; display: flex; align-items: center; gap: 12px" role="separator" aria-label="Everything">
+      <div style="flex: 0 0 auto">
+        <p style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #000000">Everything</p>
+      </div>
+      <span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184,32,16,0.5), rgba(184,32,16,0))"></span>
+    </div>
+
+    <!-- 12 · ALL VENDORS -->
+    <div class="sec">
+      <div class="head"><div><p class="st">All Vendors</p></div><span class="sub num" style="font-size: 13px; min-height: 44px; display: flex; align-items: center">142</span></div>
+      <div class="scroll" style="margin-bottom: 8px">
+        <span class="chip" style="background: #000000; color: #FFFFFF">All</span><span class="chip">Food</span><span class="chip">Drinks</span><span class="chip">Shops</span><span class="chip">Services</span>
+      </div>
+      <div class="card" style="display: flex; gap: 12px; align-items: center; padding: 10px">
+        <div style="width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(160deg, #C4654F, #7A1408)"></div>
+        <div style="flex: 1"><p style="margin: 0; font-size: 15px; font-weight: 700">Kuyaba</p><p class="sub" style="margin: 2px 0 0; font-size: 13px">Restaurant · Seven Mile · 1.4 mi</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOCK -->
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(255,255,255,0.96); border-top: 0.5px solid rgba(60,60,67,0.29); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 8px; box-sizing: border-box" aria-label="Tabs">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg>Experiences</a>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; margin-top: -14px; border-radius: 50%; background: #B82010; color: #FFFFFF; font: 800 15px Inter, sans-serif; box-shadow: 0 4px 12px rgba(184,32,16,0.35)" aria-label="Scan and pay">ETA</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: #B82010; font-size: 10px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.5 11h-13z"></path><path d="M8 9V7a4 4 0 0 1 8 0v2"></path></svg>Market</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>Profile</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":4360}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

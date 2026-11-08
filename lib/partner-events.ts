@@ -11,6 +11,9 @@ export const partnerEventSchema = z.object({
   venueName: text(120).optional(),
   imageUrl: httpsUrl.nullable().optional(),
   videoUrl: httpsUrl.nullable().optional(),
+  // More promo media for the event page's hero: videos play first, then photos.
+  videos: z.array(httpsUrl).max(6).optional(),
+  photos: z.array(httpsUrl).max(12).optional(),
   price: z.number().finite().min(0).max(10000).nullable().optional(),
   isFree: z.boolean().optional(),
   ticketUrl: httpsUrl.nullable().optional(),
@@ -38,6 +41,8 @@ export async function partnerEventData(propertyId: string, input: Partial<Partne
   if (endAt !== undefined) data.endAt = endAt
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl
   if (input.videoUrl !== undefined) data.videoUrl = input.videoUrl
+  if (input.videos !== undefined) data.videos = Array.from(new Set(input.videos))
+  if (input.photos !== undefined) data.photos = Array.from(new Set(input.photos))
   if (input.ticketUrl !== undefined) data.ticketUrl = input.ticketUrl
   if (input.vendorId !== undefined) data.vendorId = input.vendorId
   if (input.price !== undefined) data.price = input.price

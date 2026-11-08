@@ -12,5 +12,3 @@ node_modules
 # Visual Studio
 .vs/
 
-# Stock-footage review output (scripts/fetch-town-media.ts)
-scripts/out/

@@ -1,6 +1,7 @@
 // components/rewards/Leaderboard.tsx — this month's leaderboard for the town
-// (lib/leaderboard.ts). Opt-in: a switch, off by default; names are first
-// name + initial. Shows the top places and your own rank.
+// (lib/leaderboard.ts; docs/mockups/RewardsHub.dc.html): the top places,
+// then your own row highlighted. Opt-in with the switch under it, off by
+// default; names are first name + initial.
 'use client'
 
 import { useState } from 'react'
@@ -34,31 +35,47 @@ export default function Leaderboard({ board, optedIn, townName, signedIn, onChan
     }
   }
 
+  const tones = ['#C4654F', '#2E7D8C', '#3B3F6B', '#B82010', '#2E8C6E', '#C98A2B']
+  const tone = (name: string) => tones[name.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % tones.length]
+  const meRow = board.rows.find(r => r.me)
+  const rows = board.rows.filter(r => !r.me).slice(0, meRow ? 2 : 3)
+
   return (
-    <div className="rw-board">
-      {board.rows.length === 0 ? (
-        <p style={{ fontSize: '14px', color: 'var(--label-secondary)', padding: '14px 0' }}>{t('m.rw.boardEmpty')}</p>
-      ) : board.rows.map(r => (
-        <div key={r.rank} className={`rw-board-row ${r.me ? 'me' : ''}`}>
-          <span className={`rw-rank num-font ${r.rank <= 3 ? `r${r.rank}` : ''}`}>{r.rank}</span>
-          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.me ? ` · ${t('m.rw.you')}` : ''}</span>
-          <span className="num-font" style={{ color: 'var(--label-secondary)', fontWeight: 700 }}>{t('m.rewards.ptsShort', { n: n(r.points) })}</span>
-        </div>
-      ))}
-      {signedIn && board.mine && (
-        <p className="num-font" style={{ padding: '12px 0', borderTop: '0.5px solid var(--separator)', fontSize: '14px', fontWeight: 700, color: 'var(--rum-text)' }}>
-          {board.mine.rank ? t('m.rw.yourRank', { n: board.mine.rank, town: townName }) : board.mine.points > 0 ? t('m.rw.yourRankHidden', { n: n(board.mine.points) }) : t('m.rw.yourRankNone', { town: townName })}
-        </p>
-      )}
+    <>
+      <div className="rh-card" style={{ padding: '6px 14px' }}>
+        {board.rows.length === 0 ? (
+          <p className="rh-sub" style={{ fontSize: '14px', padding: '12px 0' }}>{t('m.rw.boardEmpty')}</p>
+        ) : (
+          <div className="list-in">
+            {rows.map(r => (
+              <div key={r.rank} className="rh-row">
+                <span className="num" style={{ width: '24px', color: r.rank === 1 ? '#E0A100' : 'var(--label-secondary)' }}>{r.rank}</span>
+                <span className="rh-av" style={{ background: tone(r.name) }} aria-hidden>{r.name.charAt(0)}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: '15px', fontWeight: 600, color: 'var(--label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                <span className="num" style={{ fontSize: '14px', color: 'var(--label-primary)' }}>{n(r.points)}</span>
+              </div>
+            ))}
+            {meRow ? (
+              <div className="rh-row me">
+                <span className="num" style={{ width: '24px', color: 'var(--rum-text)' }}>{meRow.rank}</span>
+                <span className="rh-av" style={{ background: '#3B3F6B' }} aria-hidden>{meRow.name.charAt(0)}</span>
+                <span style={{ flex: 1, fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{t('m.rw.youTag')}</span>
+                <span className="num" style={{ fontSize: '14px', color: 'var(--label-primary)' }}>{n(meRow.points)}</span>
+              </div>
+            ) : signedIn && board.mine ? (
+              <p className="num" style={{ padding: '12px 0', fontSize: '13px', fontWeight: 700, color: 'var(--rum-text)' }}>
+                {board.mine.rank ? t('m.rw.yourRank', { n: board.mine.rank, town: townName }) : board.mine.points > 0 ? t('m.rw.yourRankHidden', { n: n(board.mine.points) }) : t('m.rw.yourRankNone', { town: townName })}
+              </p>
+            ) : null}
+          </div>
+        )}
+      </div>
       {signedIn && (
-        <button role="switch" aria-checked={on} onClick={toggle} disabled={busy} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', background: 'none', border: 'none', borderTop: '0.5px solid var(--separator)', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', minHeight: '44px' }}>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{t('m.rw.boardJoin')}</span>
-            <span style={{ display: 'block', fontSize: '12px', color: 'var(--label-secondary)', marginTop: '2px' }}>{t('m.rw.boardSub')}</span>
-          </span>
-          <span className={`rw-switch ${on ? 'on' : ''}`} aria-hidden />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px', padding: '0 4px' }}>
+          <span className="rh-sub" style={{ flex: 1, fontSize: '13px' }}>{t('m.rw.boardJoin')}</span>
+          <button role="switch" aria-checked={on} aria-label={t('m.rw.boardJoin')} className="rh-switch" onClick={toggle} disabled={busy} />
+        </div>
       )}
-    </div>
+    </>
   )
 }

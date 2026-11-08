@@ -5,7 +5,8 @@
 // Bookings as history.
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMorphIn } from '@/lib/morph'
 import { useParams } from 'next/navigation'
 import Icon from '@/lib/icons'
 import Price from '@/components/Price'
@@ -46,6 +47,9 @@ export default function AccommodationDetailPage() {
   const { t } = useLang()
   const labels = useLabels()
   const [accom, setAccom] = useState<Accommodation | null>(null)
+  // The tapped card's image grows into the hero (lib/morph.ts).
+  const heroRef = useRef<HTMLDivElement>(null)
+  useMorphIn(heroRef, Boolean(accom))
   const [state, setState] = useState<'loading' | 'ready' | 'notFound' | 'error'>('loading')
   const [slide, setSlide] = useState(0)
 
@@ -95,7 +99,7 @@ export default function AccommodationDetailPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--system-bg)', position: 'relative', paddingBottom: '40px' }}>
       {backButton}
-      <div style={{ position: 'relative', height: '320px', background: 'var(--system-bg-secondary)' }}>
+      <div ref={heroRef} style={{ position: 'relative', height: '320px', background: 'var(--system-bg-secondary)' }}>
         <div onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
           {photos.map((src, i) => (
             <div key={src} style={{ flex: '0 0 100%', height: '100%', scrollSnapAlign: 'start' }}>

@@ -1,5 +1,6 @@
-// lib/calendar.ts — "Add to calendar" for events and bookings: an .ics file
-// (Apple Calendar, Outlook, most phones) and a Google Calendar link.
+// lib/calendar.ts — "Add to calendar" for events and bookings. One button
+// (components/AddToCalendar) opens a picker: Apple Calendar and Other take
+// the .ics file, Google Calendar and Outlook get their own add-event links.
 
 export interface CalendarItem {
   title: string
@@ -57,6 +58,20 @@ export function googleCalendarUrl(item: CalendarItem): string {
     ctz: 'America/Jamaica'
   })
   return `https://calendar.google.com/calendar/render?${q}`
+}
+
+/** Outlook (outlook.com / Microsoft 365) add-event link. */
+export function outlookCalendarUrl(item: CalendarItem): string {
+  const q = new URLSearchParams({
+    path: '/calendar/action/compose',
+    rru: 'addevent',
+    subject: item.title,
+    startdt: item.start.toISOString(),
+    enddt: endOf(item).toISOString(),
+    ...(item.location ? { location: item.location } : {}),
+    ...(item.description || item.url ? { body: [item.description, item.url].filter(Boolean).join('\n') } : {})
+  })
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${q}`
 }
 
 /** Browser only: download the .ics so the phone offers to add it. */

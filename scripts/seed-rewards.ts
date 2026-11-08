@@ -48,7 +48,8 @@ async function main() {
   await prisma.pointsLedger.deleteMany({ where: { isMock: true } })
   await prisma.donation.deleteMany({ where: { isMock: true } })
   await prisma.userBadge.deleteMany({ where: { isMock: true } })
-  await prisma.user.deleteMany({ where: { isMock: true } })
+  // Only this script's leaderboard people (seed-market-moments has its own locals).
+  await prisma.user.deleteMany({ where: { isMock: true, email: { startsWith: 'mock-board-' } } })
 
   // ---------- Vendors we hang perks and boosts on ----------
   const v = {

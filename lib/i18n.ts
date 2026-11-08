@@ -11,6 +11,7 @@
 // native speaker.
 
 import { REWARDS_STRINGS } from '@/lib/i18n-rewards'
+import { MOMENTS_STRINGS } from '@/lib/i18n-moments'
 
 export type Lang = 'en' | 'es' | 'de' | 'fr'
 export const LANGS: Lang[] = ['en', 'es', 'de', 'fr']
@@ -2805,8 +2806,6 @@ const more = {
   'm.profile.theme.auto': ['Auto', 'Auto', 'Auto', 'Auto'],
   'm.profile.themeAutoSub': ['Goes dark at sunset in {town}.', 'Se oscurece al atardecer en {town}.', 'Wird dunkel bei Sonnenuntergang in {town}.', 'Passe en sombre au coucher du soleil à {town}.'],
   // Hero credit (stock footage)
-  'm.h2.creditPhoto': ['Photo: {name} / {source}', 'Foto: {name} / {source}', 'Foto: {name} / {source}', 'Photo : {name} / {source}'],
-  'm.h2.creditVideo': ['Video: {name} / {source}', 'Vídeo: {name} / {source}', 'Video: {name} / {source}', 'Vidéo : {name} / {source}'],
   // Range calendar
   'm.cal.addDates': ['Add dates', 'Añadir fechas', 'Daten hinzufügen', 'Ajouter des dates'],
   'm.cal.clear': ['Clear', 'Borrar', 'Löschen', 'Effacer'],
@@ -2869,9 +2868,9 @@ const more = {
   'm.sv.sent': ['Sent', 'Enviado', 'Gesendet', 'Envoyé'],
 } as const satisfies Record<string, readonly [string, string, string, string]>
 
-export type DictKey = BaseKey | keyof typeof more | keyof typeof REWARDS_STRINGS
+export type DictKey = BaseKey | keyof typeof more | keyof typeof REWARDS_STRINGS | keyof typeof MOMENTS_STRINGS
 
-const column = (i: 0 | 1 | 2 | 3) => Object.fromEntries([...Object.entries(more), ...Object.entries(REWARDS_STRINGS)].map(([k, v]) => [k, v[i]])) as Record<keyof typeof more | keyof typeof REWARDS_STRINGS, string>
+const column = (i: 0 | 1 | 2 | 3) => Object.fromEntries([...Object.entries(more), ...Object.entries(REWARDS_STRINGS), ...Object.entries(MOMENTS_STRINGS)].map(([k, v]) => [k, v[i]])) as Record<keyof typeof more | keyof typeof REWARDS_STRINGS | keyof typeof MOMENTS_STRINGS, string>
 
 const DICTS: Record<Lang, Record<DictKey, string>> = {
   en: { ...en, ...column(0) },

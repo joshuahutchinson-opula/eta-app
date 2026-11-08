@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Experiences moments</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Space+Mono:wght@700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B82010;text-decoration:none}
+.num{font-family:'Space Mono',monospace}
+.eb{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B82010}
+.st{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.sub{color:rgba(60,60,67,0.75)}
+.scroll{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+@keyframes eta-live{0%,100%{opacity:1}50%{opacity:.3}}
+.live{width:7px;height:7px;border-radius:50%;background:#FF3B30;animation:eta-live 1.4s ease-in-out infinite}
+@keyframes eta-kb{0%{transform:scale(1)}100%{transform:scale(1.08)}}
+.kb{position:absolute;inset:0;animation:eta-kb 9s ease-in-out infinite alternate}
+@keyframes eta-fill{0%{width:0}100%{width:100%}}
+.bar i{display:block;height:100%;border-radius:999px;background:#FFFFFF;animation:eta-fill 5s linear infinite}
+@media (prefers-reduced-motion: reduce){.live,.kb,.bar i{animation:none}.bar i{width:100%}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1380px; box-sizing: border-box; position: relative; overflow: hidden; background: #F2F2F7; font-family: Inter, system-ui, sans-serif; color: #000000">
+
+  <!-- Mockup-only switch to preview how the tab changes -->
+  <div style="display: flex; gap: 6px; padding: 10px 16px; background: #1C1C1E" aria-label="Mockup preview time">
+    <span style="align-self: center; margin-right: 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,0.6)">Preview</span>
+    <sc-for list="{{modes}}" as="m" hint-placeholder-count="4">
+      <button onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="{{m.style}}">{{m.label}}</button>
+    </sc-for>
+  </div>
+
+  <!-- Top bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Experiences</h1>
+    <div style="display: flex; gap: 8px">
+      <button style="display: inline-flex; align-items: center; gap: 5px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font: 600 14px Inter, sans-serif">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Negril
+      </button>
+      <button aria-label="Search" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="padding: 10px 16px 0">
+
+    <!-- THE MOMENT: one big, clear first action -->
+    <p class="eb">{{eyebrow}}</p>
+    <div style="position: relative; margin-top: 8px; height: 470px; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.18)">
+      <div class="kb" style="{{heroBg}}"></div>
+      <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"></div>
+
+      <!-- story-style progress bars: swipe between today's moments -->
+      <div style="position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 4px">
+        <span class="bar" style="flex: 1; height: 3px; border-radius: 999px; background: rgba(255,255,255,0.35)"><i></i></span>
+        <span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(255,255,255,0.35)"></span>
+        <span style="flex: 1; height: 3px; border-radius: 999px; background: rgba(255,255,255,0.35)"></span>
+      </div>
+      <div style="position: absolute; top: 26px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center">
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(0,0,0,0.35); color: #FFFFFF; font-size: 12px; font-weight: 700"><span class="live"></span>{{heroBadge}}</span>
+        <span style="padding: 5px 10px; border-radius: 999px; background: rgba(0,0,0,0.35); color: rgba(255,255,255,0.85); font-size: 11px; font-weight: 600">Video</span>
+      </div>
+
+      <div style="position: absolute; left: 18px; right: 18px; bottom: 18px; color: #FFFFFF">
+        <p style="margin: 0; font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em">{{heroTitle}}</p>
+        <p style="margin: 8px 0 0; font-size: 14px; color: rgba(255,255,255,0.88)">{{heroMeta}}</p>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px">
+          <div style="display: flex">
+            <span style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); background: #C4654F"></span>
+            <span style="width: 24px; height: 24px; margin-left: -8px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); background: #2E7D8C"></span>
+            <span style="width: 24px; height: 24px; margin-left: -8px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); background: #3B3F6B"></span>
+          </div>
+          <span style="font-size: 13px; color: rgba(255,255,255,0.85)">{{heroSocial}}</span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 14px">
+          <button style="flex: 1; min-height: 52px; border: 0; border-radius: 14px; background: #B82010; color: #FFFFFF; font: 700 16px Inter, sans-serif">{{heroCta}}</button>
+          <button aria-label="Save" style="width: 52px; min-height: 52px; border: 0; border-radius: 14px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+          </button>
+        </div>
+        <p style="margin: 8px 0 0; font-size: 12px; color: rgba(255,255,255,0.75); text-align: center">{{heroPay}}</p>
+      </div>
+    </div>
+
+    <!-- PLAN MY DAY (opens the quick planner / survey) -->
+    <a href="Planner.dc.html" style="display: flex; align-items: center; gap: 12px; margin-top: 12px; min-height: 56px; padding: 0 14px; border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); color: #000000">
+      <span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(184,32,16,0.1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"></path><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"></path></svg></span>
+      <span style="flex: 1"><span style="display: block; font-size: 15px; font-weight: 700">Plan My Day</span><span class="sub" style="display: block; font-size: 13px">Tell us your vibe, we'll line it up</span></span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B82010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+    </a>
+
+    <!-- UP NEXT: tall video tiles, time-led -->
+    <div style="margin-top: 32px">
+      <p class="eb">{{nextEyebrow}}</p>
+      <p class="st" style="margin-bottom: 12px">Up Next</p>
+      <div class="scroll">
+        <sc-for list="{{next}}" as="n" hint-placeholder-count="4">
+          <div style="flex: 0 0 150px; position: relative; height: 250px; border-radius: 18px; overflow: hidden">
+            <div style="{{n.bg}}"></div>
+            <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%)"></div>
+            <span class="num" style="position: absolute; top: 10px; left: 10px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.92); font-size: 12px">{{n.time}}</span>
+            <div style="position: absolute; left: 10px; right: 10px; bottom: 10px; color: #FFFFFF">
+              <p style="margin: 0; font-size: 15px; font-weight: 700; line-height: 1.2">{{n.title}}</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: rgba(255,255,255,0.85)">{{n.meta}}</p>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- PARTIES TONIGHT: compact strip -->
+    <div style="margin-top: 32px">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between">
+        <div><p class="eb">Parties &amp; Happenings</p><p class="st">{{partyTitle}}</p></div>
+        <a href="#" style="min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">See All</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px">
+        <sc-for list="{{parties}}" as="p" hint-placeholder-count="2">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08)">
+            <div style="{{p.bg}}"></div>
+            <div style="flex: 1; min-width: 0">
+              <p style="margin: 0; font-size: 15px; font-weight: 700">{{p.title}}</p>
+              <p class="sub" style="margin: 2px 0 0; font-size: 13px">{{p.meta}}</p>
+            </div>
+            <span class="num" style="padding: 6px 10px; border-radius: 999px; background: rgba(184,32,16,0.1); color: #B82010; font-size: 13px">{{p.price}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DOCK -->
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(255,255,255,0.96); border-top: 0.5px solid rgba(60,60,67,0.29); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 8px; box-sizing: border-box" aria-label="Tabs">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: #B82010; font-size: 10px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg>Experiences</a>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; margin-top: -14px; border-radius: 50%; background: #B82010; color: #FFFFFF; font: 800 15px Inter, sans-serif; box-shadow: 0 4px 12px rgba(184,32,16,0.35)" aria-label="Scan and pay">ETA</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.5 11h-13z"></path><path d="M8 9V7a4 4 0 0 1 8 0v2"></path></svg>Market</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; color: rgba(60,60,67,0.6); font-size: 10px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>Profile</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1380}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { mode: 'Afternoon' }; }
+  renderVals() {
+    const g = (a, b) => 'position: absolute; inset: 0; background: linear-gradient(160deg, ' + a + ', ' + b + ')';
+    const tile = (a, b) => g(a, b);
+    const thumb = (a, b) => 'flex: 0 0 auto; width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(160deg, ' + a + ', ' + b + ')';
+    const D = {
+      Morning: {
+        eyebrow: 'This Morning In Negril', heroBadge: 'Starts 8:30', heroBg: g('#7FB8D6', '#2E7D8C'),
+        heroTitle: 'Snorkel The Reef Before The Crowds', heroMeta: 'Calm water till 11 · 8 min away · 4 spots left', heroSocial: '11 booked today', heroCta: 'Reserve', heroPay: '$40 · pay there with ETA Pay for 2× points',
+        nextEyebrow: 'Later Today',
+        next: [
+          { time: '11:00', title: 'Jerk Lunch Tour', meta: 'West End · $35', bg: tile('#C98A2B', '#7A1408') },
+          { time: '2:00', title: 'Mayfield Falls', meta: '45 min drive · $55', bg: tile('#2E8C6E', '#1F4E3A') },
+          { time: '5:10', title: 'Cliff Jumping', meta: "Rick's Café · $45", bg: tile('#E07A3A', '#7A1408') }
+        ],
+        partyTitle: 'Tonight',
+        parties: [{ title: 'Reggae Night', meta: "Alfred's · 9pm", price: '$10', bg: thumb('#4A2F5C', '#B82010') }, { title: 'Beach Bonfire', meta: 'Bloody Bay · 8pm', price: 'Free', bg: thumb('#C4654F', '#3B3F6B') }]
+      },
+      Afternoon: {
+        eyebrow: 'Golden Hour In Negril', heroBadge: 'Starts 5:10', heroBg: g('#F2A65A', '#7A1408'),
+        heroTitle: 'Cliff Jumping At Golden Hour', heroMeta: "Rick's Café · 12 min away · 6 spots left", heroSocial: '24 going tonight', heroCta: 'Reserve', heroPay: '$45 · pay there with ETA Pay for 2× points',
+        nextEyebrow: 'After Sunset',
+        next: [
+          { time: '6:30', title: 'Glowing Lagoon Night Swim', meta: 'Luminous · $50', bg: tile('#1E3A6B', '#0B1630') },
+          { time: '7:00', title: 'Seafood On The Sand', meta: 'Seven Mile · $30', bg: tile('#C4654F', '#4A2F5C') },
+          { time: '9:00', title: 'Rum Tasting', meta: 'West End · $25', bg: tile('#8B4A1A', '#3B1A0A') }
+        ],
+        partyTitle: 'Tonight',
+        parties: [{ title: 'Reggae Night', meta: "Alfred's · 9pm", price: '$10', bg: thumb('#4A2F5C', '#B82010') }, { title: 'Beach Bonfire', meta: 'Bloody Bay · 8pm', price: 'Free', bg: thumb('#C4654F', '#3B3F6B') }]
+      },
+      Night: {
+        eyebrow: 'Tonight In Negril', heroBadge: 'Live Now', heroBg: g('#3B2A6B', '#0B1630'),
+        heroTitle: 'Reggae Night On The Beach', heroMeta: "Alfred's Ocean Palace · 6 min away · Till 2am", heroSocial: '86 going', heroCta: 'Buy Ticket · $10', heroPay: 'Or pay at the door with ETA Pay for 2× points',
+        nextEyebrow: 'Still On Tonight',
+        next: [
+          { time: '10:00', title: 'Glowing Lagoon', meta: 'Last boat · $50', bg: tile('#1E3A6B', '#0B1630') },
+          { time: '11:00', title: 'Late Jerk Run', meta: 'Sweet Spice · $12', bg: tile('#7A1408', '#2A0A05') },
+          { time: '8:30am', title: 'Sunrise Yoga', meta: 'Tomorrow · $20', bg: tile('#F2C27A', '#C4654F') }
+        ],
+        partyTitle: 'Right Now',
+        parties: [{ title: 'Beach Bonfire', meta: 'Bloody Bay · on now', price: 'Free', bg: thumb('#C4654F', '#3B3F6B') }, { title: 'Dancehall Fridays', meta: 'Bourbon Beach · 11pm', price: '$15', bg: thumb('#B82010', '#2A0A05') }]
+      },
+      Rain: {
+        eyebrow: 'Rainy Afternoon In Negril', heroBadge: 'Indoors · Starts 3:00', heroBg: g('#4A5A86', '#2F3B5C'),
+        heroTitle: 'Jamaican Cooking Class', heroMeta: 'Covered kitchen · 10 min away · 5 spots left', heroSocial: '2× points while it rains', heroCta: 'Reserve', heroPay: '$60 · pay there with ETA Pay for 2× points',
+        nextEyebrow: 'Good In The Rain',
+        next: [
+          { time: '3:30', title: 'Spa Hour', meta: 'Rockhouse · $70', bg: tile('#8FA3A0', '#3B4A48') },
+          { time: '4:00', title: 'Rum Tasting', meta: 'West End · $25', bg: tile('#8B4A1A', '#3B1A0A') },
+          { time: '5:00', title: 'Art Studio Visit', meta: 'Sheffield · Free', bg: tile('#C98A2B', '#4A2F5C') }
+        ],
+        partyTitle: 'Tonight',
+        parties: [{ title: 'Reggae Night', meta: "Alfred's · 9pm · covered", price: '$10', bg: thumb('#4A2F5C', '#B82010') }]
+      }
+    };
+    const d = D[this.state.mode];
+    const chip = on => 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer; font: 600 13px Inter, sans-serif; ' + (on ? 'background: #FFFFFF; color: #000000' : 'background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85)');
+    return {
+      ...d,
+      modes: ['Morning', 'Afternoon', 'Night', 'Rain'].map(m => ({ label: m, on: this.state.mode === m, style: chip(this.state.mode === m), pick: () => this.setState({ mode: m }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

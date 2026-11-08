@@ -4,7 +4,9 @@
 // them first under "At your stay".
 // GET  → its upcoming and recent events.
 // POST { title, description, startAt, endAt?, venueName?, imageUrl?,
-//        videoUrl?, price?, isFree?, ticketUrl?, vendorId? } → a new event.
+//        videoUrl?, videos?, photos?, price?, isFree?, ticketUrl?, vendorId? }
+//        → a new event. videos/photos: more promo media for the event
+//        page (videos always play first).
 //        Venue and location default to the property; vendorId must be one
 //        of its linked vendors.
 import { NextResponse } from 'next/server'

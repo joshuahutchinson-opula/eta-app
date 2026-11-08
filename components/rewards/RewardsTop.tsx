@@ -1,5 +1,7 @@
-// components/rewards/RewardsTop.tsx — the title bar on the Rewards screens,
-// with a back button on the sub-screens (Tiers, My Rewards, History…).
+// components/rewards/RewardsTop.tsx — the title bar on the Rewards screens
+// (docs/mockups/RewardsHub.dc.html): a round back button, the title in the
+// middle, and an optional round button on the right (the hub's "How it
+// works", which opens Tiers & Earning).
 'use client'
 
 import { useRouter } from 'next/navigation'
@@ -16,10 +18,10 @@ export default function RewardsTop({ title, back = true, fallback = '/rewards', 
     else router.push(fallback)
   }
   return (
-    <header className="rw-top">
-      {back && <button className="rw-back press" onClick={goBack} aria-label={t('m.common.back')}><Icon name="back" size={18} /></button>}
+    <header className="rh-top">
+      {back ? <button className="rh-round press" onClick={goBack} aria-label={t('m.common.back')}><Icon name="back" size={18} /></button> : <span className="rh-spacer" />}
       <h1>{title}</h1>
-      {right}
+      {right ?? <span className="rh-spacer" />}
     </header>
   )
 }

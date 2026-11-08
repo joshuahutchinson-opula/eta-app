@@ -15,7 +15,8 @@
     "mock:remove": "tsx scripts/remove-mock-data.ts",
     "locations:suggest": "tsx scripts/suggest-vendor-locations.ts",
     "seed:events": "tsx scripts/seed-mock-events.ts",
-    "seed:rewards": "tsx scripts/seed-rewards.ts"
+    "seed:rewards": "tsx scripts/seed-rewards.ts",
+    "seed:market": "tsx scripts/seed-market-moments.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -1,6 +1,7 @@
 // components/tabs/ExperiencesTab.tsx — the Experiences tab (route
-// /experiences, kept alive by components/TabKeeper). Home (plan my day, your
-// trip, tonight's events, moods) → Quick planner → Results (three options) →
+// /experiences, kept alive by components/TabKeeper). Moments (the big
+// swipeable card for right now, Plan My Day, Up Next, Parties & Happenings;
+// components/experiences/MomentsHome) → Quick planner → Results (three options) →
 // (Home's mood tiles open /experiences?mood=<id>, straight to its results) →
 // route detail; plus the Discover map, crew trip planning and the active trip.
 'use client'
@@ -36,7 +37,7 @@ import { vibeMoodNames } from '@/lib/vibes'
 import type { GeneratedBundle } from '@/lib/experience-generator'
 import { cacheTripForOffline, clearTripCache, getActiveCachedTrip, getCachedTrip, updateCachedTrip, useOnline } from '@/lib/trip-offline'
 import { defaultPlan, generateBody, localShare, optionBadges, shortDuration, TIMES, whyItFits, type MoodItem, type PlanAnchor, type PlanInput } from '@/lib/plan'
-import ExperiencesHome, { type YourTripRow } from '@/components/experiences/ExperiencesHome'
+import MomentsHome, { rememberMomentPrefs, type YourTripRow } from '@/components/experiences/MomentsHome'
 import QuickPlanner from '@/components/experiences/QuickPlanner'
 import ResultsCarousel, { type ResultOption } from '@/components/experiences/ResultsCarousel'
 import ExperienceDetailView, { type DetailData } from '@/components/experiences/ExperienceDetailView'
@@ -380,6 +381,8 @@ export default function ExperiencesPage() {
   // at least ~1.2s so it doesn't flash.
   const runPlan = async (p: PlanInput) => {
     setPlan(p)
+    // The answers also steer which moments lead the tab.
+    rememberMomentPrefs({ mood: p.mood?.name ?? null, time: p.time, crew: p.crew })
     setGenerateError(null)
     setScreen('loading')
     const [res] = await Promise.allSettled([
@@ -688,29 +691,9 @@ export default function ExperiencesPage() {
       : activeBooking
         ? { name: activeBooking.experience?.name || activeBooking.vendor?.name || t('m.home.yourTrip'), image: null, status: live(activeBooking.date) ? t('m.xh.happeningNow') : t('m.xh.bookedFor', { when: when(activeBooking.date) }), onOpen: () => router.push('/bookings') }
         : null
-    const videoMood = moods.find(m => m.videoUrl)
-    const videoExp = experiences.find(e => e.videoUrl)
-    const heroVideo = videoMood ? { src: videoMood.videoUrl!, poster: videoMood.coverImage }
-      : videoExp ? { src: videoExp.videoUrl!, poster: videoExp.imageUrl }
-      : moods[0] ? { src: null, poster: moods[0].coverImage }
-      : experiences[0] ? { src: null, poster: experiences[0].imageUrl }
-      : null
     return (
       <>
-        <ExperiencesHome
-          moods={orderedMoods}
-          heroVideo={heroVideo}
-          loading={dataLoading && moods.length === 0}
-          failed={dataFailed}
-          onRetry={fetchAll}
-          mode={tabMode}
-          onModeChange={changeMode}
-          onStart={() => openPlanner(null)}
-          onSurprise={surprise}
-          onMood={runMood}
-          surprising={false}
-          yourTrip={yourTrip}
-        />
+        <MomentsHome onPlan={() => openPlanner(null)} yourTrip={yourTrip} />
         <Dock />
       </>
     )

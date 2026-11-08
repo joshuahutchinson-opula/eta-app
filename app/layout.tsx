@@ -4,6 +4,9 @@ import './globals.css'
 import './home.css'
 import './stories.css'
 import './rewards.css'
+import './market.css'
+import './moments.css'
+import './motion.css'
 import LaunchScreen from '@/components/LaunchScreen'
 import SessionGuard from '@/components/SessionGuard'
 import { RegionProvider } from '@/components/RegionProvider'
@@ -13,6 +16,7 @@ import ReviewPrompt from '@/components/ReviewPrompt'
 import PlanTripSheet from '@/components/PlanTripSheet'
 import TabKeeper from '@/components/TabKeeper'
 import TierUpCelebration from '@/components/rewards/TierUpCelebration'
+import MorphCapture from '@/components/MorphCapture'
 
 import { siteUrl } from '@/lib/site-url'
 
@@ -59,6 +63,7 @@ export default function RootLayout({
         <LaunchScreen />
         <SessionGuard />
         <HapticFallback />
+        <MorphCapture />
         <main style={{ 
           paddingBottom: '80px',
           minHeight: '100dvh',

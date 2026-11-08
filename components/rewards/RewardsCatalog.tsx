@@ -1,7 +1,9 @@
 // components/rewards/RewardsCatalog.tsx — the Rewards list on the hub with
-// its filter pills (All, Vendor Perks, Insider Only, Events, ETA Perks).
-// Each reward shows its cost, tier, cap left today and where it's honoured;
-// redeeming spends points and opens the single-use voucher straight away.
+// its filter pills (All, Vendor Perks, Insider Only, Events, ETA Perks),
+// as rows (docs/mockups/RewardsHub.dc.html): a coloured thumbnail, the name,
+// where it's honoured, what's left today or the tier it needs, and the
+// points cost as the button. Redeeming spends points (after a confirm) and
+// opens the single-use voucher straight away.
 'use client'
 
 import { useState } from 'react'
@@ -17,6 +19,9 @@ import type { DictKey } from '@/lib/i18n'
 import VoucherSheet, { type Voucher } from '@/components/rewards/VoucherSheet'
 
 type Filter = (typeof REWARD_FILTERS)[number]
+
+/** Each kind of reward gets its own colour on the thumbnail. */
+const THUMB: Record<string, string> = { vendor: '#C4654F', insider: '#3B3F6B', events: '#7A1408', eta: '#2E7D8C' }
 
 export default function RewardsCatalog({ rewards, points, lifetimePoints, signedIn, onRedeemed }: {
   rewards: RewardItem[] | null
@@ -58,43 +63,43 @@ export default function RewardsCatalog({ rewards, points, lifetimePoints, signed
 
   return (
     <>
-      <div className="rw-pills" role="tablist" aria-label={t('m.rw.rewards')}>
+      <div className="rh-pills" role="tablist" aria-label={t('m.rw.rewards')}>
         {REWARD_FILTERS.map(f => (
-          <button key={f} role="tab" aria-selected={filter === f} className={`chip ${filter === f ? 'active' : ''}`} onClick={() => { triggerHaptic('selection'); setFilter(f) }}>
+          <button key={f} role="tab" aria-selected={filter === f} onClick={() => { triggerHaptic('selection'); setFilter(f) }}>
             {t(`m.rw.filter.${f}` as DictKey)}
           </button>
         ))}
       </div>
 
       {rewards === null ? (
-        <div className="rw-grid">{[0, 1, 2, 3].map(i => <div key={i} className="skeleton-card" style={{ height: '210px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>)}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>{[0, 1, 2].map(i => <div key={i} className="skeleton-card" style={{ height: '84px', borderRadius: '18px' }}><div className="skeleton-image" style={{ height: '100%' }} /></div>)}</div>
       ) : shown.length === 0 ? (
-        <p className="rw-pad" style={{ fontSize: '14px', color: 'var(--label-secondary)' }}>{t('m.rw.empty')}</p>
+        <p style={{ fontSize: '14px', color: 'var(--label-secondary)', marginTop: '12px' }}>{t('m.rw.empty')}</p>
       ) : (
-        <div className="rw-grid">
+        <div key={filter} className="list-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
           {shown.map(r => {
             const tierOk = !r.minTier || atLeast(lifetimePoints, r.minTier as TierKey)
             const out = r.left ? r.left.today <= 0 || r.left.month <= 0 : false
             const can = signedIn && tierOk && !r.locked && !out && points >= r.cost
-            const gold = r.category === 'insider' || r.category === 'events'
+            const cat = r.category ?? 'eta'
+            const where = r.vendors && r.vendors.length ? r.vendors.map(v => v.name).join(', ') : r.description
+            const gold = Boolean(r.minTier) || cat === 'insider'
+            const note = r.locked ? t('m.rewards.visitToUnlock')
+              : !tierOk && r.minTier ? t('m.rw.tierOnly', { tier: labels.tier(r.minTier) })
+              : out ? t('m.rw.soldOut')
+              : r.minTier ? `${t('m.rw.tierOnly', { tier: labels.tier(r.minTier) })}${r.left ? ` · ${t('m.rw.leftToday', { n: r.left.today })}` : ''}`
+              : r.left ? t('m.rw.leftToday', { n: r.left.today }) : null
             return (
-              <article key={r.id} className={`rw-card ${can ? '' : 'dim'}`}>
-                <span className={`rw-card-ic ${gold ? 'gold' : ''}`} aria-hidden><Icon name={r.locked || !tierOk ? 'lock' : r.icon} size={20} /></span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-                  {r.minTier && <span className="rw-tag gold"><Icon name="crown" size={10} />{t('m.rw.tierOnly', { tier: labels.tier(r.minTier) })}</span>}
-                  {r.audience === 'local' && <span className="rw-tag">{t('m.rw.localsOnly')}</span>}
-                  {r.rotatingQr && <span className="rw-tag"><Icon name="qr" size={10} />{t('m.rw.liveQr')}</span>}
+              <article key={r.id} className="rh-card rh-reward" style={can || !signedIn ? undefined : { opacity: 0.75 }}>
+                <span className="rh-thumb" style={{ background: THUMB[cat] ?? THUMB.eta }} aria-hidden><Icon name={r.locked || !tierOk ? 'lock' : r.icon} size={24} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--label-primary)' }}>{r.name}</p>
+                  <p className="rh-sub" style={{ margin: '2px 0 0', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{where}</p>
+                  {note && <p className={gold ? 'rh-gold-note' : 'rh-sub'} style={{ margin: '5px 0 0', fontSize: '12px', fontWeight: 600 }}>{note}</p>}
                 </div>
-                <h3>{r.name}</h3>
-                <p>{r.description}</p>
-                {r.vendors && r.vendors.length > 0 && <p style={{ marginTop: '6px', fontSize: '12px' }}>{t('m.rewards.at', { list: r.vendors.map(v => v.name).join(', ') })}</p>}
-                <div className="rw-card-foot">
-                  <span className="rw-cost num-font">{t('m.rewards.ptsShort', { n: r.cost.toLocaleString(locale) })}</span>
-                  {r.left && <span className="rw-left num-font">{out ? t('m.rw.soldOut') : t('m.rw.leftToday', { n: r.left.today })}</span>}
-                  <button className={`btn ${can ? 'btn-primary' : 'btn-secondary'}`} style={{ width: '100%', minHeight: '40px', fontSize: '14px' }} disabled={!can} onClick={() => { triggerHaptic('light'); setError(null); setSelected(r) }}>
-                    {r.locked ? t('m.rewards.visitToUnlock') : !tierOk && r.minTier ? t('m.rewards.tierRequired', { tier: labels.tier(r.minTier) }) : out ? t('m.rw.soldOut') : !signedIn || points >= r.cost ? t('m.rewards.redeem') : t('m.rewards.needMore', { n: (r.cost - points).toLocaleString(locale) })}
-                  </button>
-                </div>
+                <button className="rh-cost press" disabled={signedIn && !can} aria-label={t('m.rw.redeemFor', { n: r.cost.toLocaleString(locale) })} onClick={() => { triggerHaptic('light'); setError(null); setSelected(r) }}>
+                  <span className="num">{r.cost.toLocaleString(locale)}</span>
+                </button>
               </article>
             )
           })}

@@ -5,7 +5,8 @@
 // vendor's QR card.
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useMorphIn } from '@/lib/morph'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/lib/icons'
@@ -190,6 +191,9 @@ export default function VendorDetailPage() {
   const fromExperiences = useSearchParams().get('from') === 'experiences'
 
   const [vendor, setVendor] = useState<VendorDetail | null>(null)
+  // The tapped card's image grows into the hero (lib/morph.ts).
+  const heroRef = useRef<HTMLDivElement>(null)
+  useMorphIn(heroRef, Boolean(vendor))
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -419,7 +423,7 @@ export default function VendorDetailPage() {
       {BackButton}
 
       {/* Photos: videos first, then photos; swipe through */}
-      <div style={{ position: 'relative', height: '40vh', background: 'var(--system-bg-secondary)', overflow: 'hidden', borderBottom: `3px solid ${cat.color}` }}>
+      <div ref={heroRef} style={{ position: 'relative', height: '40vh', background: 'var(--system-bg-secondary)', overflow: 'hidden', borderBottom: `3px solid ${cat.color}` }}>
         <div onScroll={e => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} style={{ display: 'flex', height: '100%', overflowX: 'auto', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}>
           {media.map((m, i) => (
             <div key={m.src} style={{ flex: '0 0 100%', width: '100%', height: '100%', scrollSnapAlign: 'start' }}>
